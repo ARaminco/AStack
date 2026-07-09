@@ -312,6 +312,7 @@
         <a href="#intro">معرفی</a>
         <a href="#principles">اصول محصول</a>
         <a href="#quick-start">شروع سریع</a>
+        <a href="#project-adoption">استفاده در پروژه‌های واقعی</a>
         <a href="#claude-code">اجرای داخل Claude Code</a>
         <a href="#architecture">معماری Enterprise</a>
         <a href="#cli">دستورهای CLI</a>
@@ -373,6 +374,90 @@ node bin/astack.mjs review "Laravel security deployment"</code></pre>
         <div class="callout success">
           اگر خروجی <code>AStack Enterprise verification passed.</code> و پیام سلامت فارسی را دیدید، runtime اصلی آماده است.
         </div>
+      </section>
+
+      <section id="project-adoption">
+        <h2>استفاده در پروژه‌های واقعی</h2>
+        <p>
+          AStack Enterprise را می‌توانید به دو شکل استفاده کنید: یا به‌عنوان یک لایه‌ی راهنمایی و orchestration کنار پروژه‌های قدیمی، یا به‌عنوان نقطه‌ی شروع فکری برای ساخت یک پروژه‌ی جدید. در نسخه‌ی فعلی، AStack خودش کد پروژه‌ی مقصد را خودکار تغییر نمی‌دهد؛ نقش آن این است که context، workflow، role، memory، checklist و استاندارد تصمیم‌گیری را برای agent آماده کند.
+        </p>
+
+        <h3>فعال‌سازی در پروژه‌های قدیمی</h3>
+        <p>
+          برای پروژه‌ای که از قبل وجود دارد، لازم نیست ساختار آن را به هم بزنید. AStack را کنار پروژه نگه دارید و از Claude Code یا agent بخواهید هم پروژه‌ی مقصد را بخواند و هم این مخزن را به‌عنوان operating guide لود کند.
+        </p>
+        <ol>
+          <li>اول داخل همین مخزن سلامت AStack را بررسی کنید: <code>npm test</code> و <code>node bin/astack.mjs doctor</code>.</li>
+          <li>در پروژه‌ی قدیمی یک branch جدا بسازید، مثل <code>agent/astack-review</code> یا <code>agent/security-audit</code>.</li>
+          <li>از agent بخواهید فایل‌های <code>CLAUDE.md</code>، <code>astack.config.yaml</code>، <code>system/language-policy.md</code>، workflow مرتبط و knowledge pack مرتبط را از AStack بخواند.</li>
+          <li>برای پروژه‌ی مقصد یک خلاصه‌ی کوتاه بسازید: زبان، framework، مسیرهای مهم، دیتابیس، سرویس‌های خارجی، محدودیت‌های deployment و ریسک‌های شناخته‌شده.</li>
+          <li>به جای درخواست کلی، کار را با یک intent مشخص شروع کنید: audit امنیتی، refactor، migration، performance، تست، مستندسازی یا اضافه‌کردن feature.</li>
+          <li>قبل از هر تغییر، از agent بخواهید plan فارسی بدهد و فایل‌هایی را که قرار است لمس کند مشخص کند.</li>
+          <li>بعد از تغییر، تست‌های پروژه‌ی مقصد را اجرا کنید و نتیجه را داخل memory یا گزارش تغییرات ثبت کنید.</li>
+        </ol>
+        <pre><code># داخل مخزن AStack
+npm test
+node bin/astack.mjs doctor
+node bin/astack.mjs knowledge
+node bin/astack.mjs review "Review an existing Laravel project for security, deployment, and database risks"</code></pre>
+        <div class="callout">
+          برای پروژه‌های قدیمی، بهترین الگو «کم‌ریسک و مرحله‌ای» است: اول read-only review، بعد plan، بعد یک PR کوچک. AStack باید کمک کند تغییرات قابل‌ردیابی، قابل‌تست و قابل‌برگشت باشند.
+        </div>
+
+        <h3>نمونه prompt برای پروژه قدیمی</h3>
+        <pre><code>این پروژه قدیمی Laravel را با کمک AStack بررسی کن.
+اول context زیر را از AStack بخوان:
+- CLAUDE.md
+- astack.config.yaml
+- system/language-policy.md
+- workflow-engine/workflows.json
+- knowledge-packs/laravel/README.md
+- skills/security-review/SKILL.md
+
+بعد فقط گزارش بده:
+1. ریسک‌های فوری
+2. پیشنهادهای کم‌ریسک برای اولین PR
+3. تست‌هایی که قبل از تغییر باید اجرا شوند
+فعلا هیچ فایلی را تغییر نده.</code></pre>
+
+        <h3>شروع یک پروژه جدید با کمک AStack</h3>
+        <p>
+          برای پروژه‌ی جدید، AStack را مثل اتاق فرمان محصول و مهندسی استفاده کنید. ابتدا مسئله، دامنه، stack، محدودیت‌ها و کیفیت مورد انتظار را روشن کنید؛ بعد از workflowهای AStack برای تبدیل ایده به معماری، backlog، پیاده‌سازی و release استفاده کنید.
+        </p>
+        <ol>
+          <li>ایده و هدف محصول را در چند جمله بنویسید: کاربر کیست، مشکل چیست، خروجی MVP چیست.</li>
+          <li>از workflow مناسب شروع کنید؛ برای نمونه <code>idea-to-release</code>، <code>feature</code>، <code>laravel-feature</code>، <code>bug-fix</code> یا <code>startup-validation</code>.</li>
+          <li>departmentهای لازم را مشخص کنید: Product، Architecture، Backend، Frontend، DevOps، Security، QA، SEO یا Marketing.</li>
+          <li>knowledge packهای مرتبط را انتخاب کنید؛ مثلا <code>laravel</code>، <code>nextjs</code>، <code>react</code>، <code>docker</code>، <code>postgresql</code> یا <code>seo</code>.</li>
+          <li>قبل از تولید کد، از agent بخواهید architecture brief، folder structure، migration plan، test plan و release checklist بسازد.</li>
+          <li>پیاده‌سازی را به PRهای کوچک تقسیم کنید: scaffold، auth، data model، API، UI، tests، deployment.</li>
+          <li>بعد از هر مرحله، تصمیم‌های مهم را در memory یا ADR ثبت کنید تا agentهای بعدی context را از دست ندهند.</li>
+        </ol>
+        <pre><code>node bin/astack.mjs review "Plan a new SaaS MVP with Laravel, PostgreSQL, Docker, security baseline, tests, and release workflow"</code></pre>
+
+        <h3>نمونه prompt برای پروژه جدید</h3>
+        <pre><code>با کمک AStack برای یک پروژه جدید برنامه بده.
+محصول: سیستم مدیریت نوبت آنلاین برای کلینیک‌ها
+Stack پیشنهادی: Laravel, PostgreSQL, Redis, Docker
+هدف: MVP قابل deploy در کمتر از ۴ هفته
+
+از workflow ایده تا release استفاده کن و خروجی را فارسی بده:
+1. معماری پیشنهادی
+2. ماژول‌های MVP
+3. ساختار پوشه‌ها
+4. مدل‌های دیتابیس
+5. APIهای اصلی
+6. تست‌های ضروری
+7. برنامه PRهای کوچک
+8. ریسک‌های امنیتی و عملیاتی</code></pre>
+
+        <h3>قانون طلایی استفاده</h3>
+        <ul>
+          <li>برای گفتگو، تحلیل، گزارش، هشدار و تصمیم‌سازی از فارسی استفاده کنید.</li>
+          <li>برای کد، نام branch، commit message، API route، migration، database و identifierها انگلیسی بمانید.</li>
+          <li>هر درخواست بزرگ را به plan، تغییر کوچک، تست و گزارش نهایی تقسیم کنید.</li>
+          <li>در پروژه‌های production، هیچ تغییر پرریسکی بدون branch، backup، تست و توضیح اثر انجام نشود.</li>
+        </ul>
       </section>
 
       <section id="claude-code">
