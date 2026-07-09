@@ -1,0 +1,39 @@
+{
+  "meta": {
+    "locale": "fa",
+    "direction": "rtl",
+    "name": "فارسی"
+  },
+  "cli": {
+    "title": "AStack Enterprise CLI",
+    "usage": "نحوه استفاده:",
+    "commands": "فرمان‌ها:",
+    "configOk": "پیکربندی Enterprise معتبر است.",
+    "doctorOk": "بررسی سلامت AStack Enterprise کامل شد.",
+    "errorPrefix": "خطای AStack",
+    "unknownCommand": "فرمان ناشناخته است: {command}",
+    "installed": "نصب محلی آماده است.",
+    "updated": "به‌روزرسانی ساختار محلی کامل شد.",
+    "backupCreated": "نسخه‌ی پشتیبان حافظه ساخته شد: {path}",
+    "initDone": "پروژه برای استفاده با Claude Code آماده است.",
+    "reviewIntro": "Orchestrator درخواست را تحلیل کرد و تیم‌های مرتبط را فعال کرد.",
+    "workflowList": "Workflowهای Enterprise:",
+    "providerList": "Providerهای فعال:",
+    "pluginList": "Pluginهای قابل‌بارگذاری:",
+    "knowledgeList": "Knowledge Packهای نصب‌شده:",
+    "memoryList": "Scopeهای حافظه:",
+    "help": {
+      "init": "ساختار لازم برای اجرای AStack داخل Claude Code را آماده می‌کند.",
+      "install": "نصب محلی و بررسی فایل‌های ضروری را انجام می‌دهد.",
+      "doctor": "سلامت معماری، localization، providerها، pluginها و Claude Code را بررسی می‌کند.",
+      "update": "bootstrap Enterprise را دوباره اجرا می‌کند.",
+      "review": "درخواست را به Orchestrator می‌دهد و گزارش فارسی برمی‌گرداند.",
+      "workflow": "Workflowها را فهرست یا inspect می‌کند.",
+      "provider": "Providerها را فهرست می‌کند.",
+      "plugin": "Pluginها را فهرست می‌کند.",
+      "memory": "Scopeهای حافظه را فهرست می‌کند.",
+      "knowledge": "Knowledge Packها را فهرست می‌کند.",
+      "backup": "از memory فایل پشتیبان می‌سازد."
+    }
+  }
+}

@@ -1,0 +1,244 @@
+{
+  "departments": [
+    {
+      "id": "engineering",
+      "name": "Engineering",
+      "roles": [
+        "principal-laravel-engineer",
+        "principal-node-engineer",
+        "principal-typescript-engineer",
+        "principal-clean-architecture-engineer"
+      ]
+    },
+    {
+      "id": "ai-engineering",
+      "name": "AI Engineering",
+      "roles": [
+        "prompt-engineer",
+        "rag-architect",
+        "agent-systems-engineer",
+        "evaluation-engineer"
+      ]
+    },
+    {
+      "id": "backend",
+      "name": "Backend",
+      "roles": [
+        "php-engineer",
+        "node-engineer",
+        "python-engineer",
+        "go-engineer",
+        "java-engineer"
+      ]
+    },
+    {
+      "id": "frontend",
+      "name": "Frontend",
+      "roles": [
+        "react-engineer",
+        "nextjs-engineer",
+        "vue-engineer",
+        "angular-engineer"
+      ]
+    },
+    {
+      "id": "mobile",
+      "name": "Mobile",
+      "roles": [
+        "flutter-engineer",
+        "react-native-engineer",
+        "swift-engineer",
+        "kotlin-engineer"
+      ]
+    },
+    {
+      "id": "devops",
+      "name": "DevOps",
+      "roles": [
+        "docker-engineer",
+        "kubernetes-engineer",
+        "terraform-engineer",
+        "ci-engineer"
+      ]
+    },
+    {
+      "id": "infrastructure",
+      "name": "Infrastructure",
+      "roles": [
+        "vmware-engineer",
+        "proxmox-engineer",
+        "network-engineer",
+        "storage-engineer"
+      ]
+    },
+    {
+      "id": "networking",
+      "name": "Networking",
+      "roles": [
+        "mikrotik-engineer",
+        "wireguard-engineer",
+        "routing-engineer",
+        "firewall-engineer"
+      ]
+    },
+    {
+      "id": "cyber-security",
+      "name": "Cyber Security",
+      "roles": [
+        "owasp-engineer",
+        "penetration-tester",
+        "secure-coding-engineer"
+      ]
+    },
+    {
+      "id": "database",
+      "name": "Database",
+      "roles": [
+        "postgresql-architect",
+        "redis-engineer",
+        "database-performance-engineer"
+      ]
+    },
+    {
+      "id": "architecture",
+      "name": "Architecture",
+      "roles": [
+        "principal-architect",
+        "ddd-architect",
+        "hexagonal-architecture-architect"
+      ]
+    },
+    {
+      "id": "ui",
+      "name": "UI",
+      "roles": [
+        "ui-designer",
+        "design-system-engineer"
+      ]
+    },
+    {
+      "id": "ux",
+      "name": "UX",
+      "roles": [
+        "ux-researcher",
+        "product-experience-designer"
+      ]
+    },
+    {
+      "id": "seo",
+      "name": "SEO",
+      "roles": [
+        "technical-seo-expert",
+        "programmatic-seo-expert",
+        "entity-seo-expert"
+      ]
+    },
+    {
+      "id": "marketing",
+      "name": "Marketing",
+      "roles": [
+        "growth-marketer",
+        "performance-marketer",
+        "conversion-specialist"
+      ]
+    },
+    {
+      "id": "content",
+      "name": "Content",
+      "roles": [
+        "technical-writer",
+        "seo-copywriter",
+        "ux-writer",
+        "localization-editor"
+      ]
+    },
+    {
+      "id": "product",
+      "name": "Product",
+      "roles": [
+        "product-manager",
+        "product-strategist"
+      ]
+    },
+    {
+      "id": "business",
+      "name": "Business",
+      "roles": [
+        "startup-advisor",
+        "business-analyst"
+      ]
+    },
+    {
+      "id": "sales",
+      "name": "Sales",
+      "roles": [
+        "sales-strategist",
+        "funnel-specialist"
+      ]
+    },
+    {
+      "id": "finance",
+      "name": "Finance",
+      "roles": [
+        "cost-analyst",
+        "unit-economics-advisor"
+      ]
+    },
+    {
+      "id": "legal",
+      "name": "Legal",
+      "roles": [
+        "privacy-reviewer",
+        "compliance-advisor"
+      ]
+    },
+    {
+      "id": "research",
+      "name": "Research",
+      "roles": [
+        "market-researcher",
+        "technical-researcher"
+      ]
+    },
+    {
+      "id": "analytics",
+      "name": "Analytics",
+      "roles": [
+        "product-analytics-engineer",
+        "growth-analytics-engineer"
+      ]
+    },
+    {
+      "id": "documentation",
+      "name": "Documentation",
+      "roles": [
+        "documentation-architect",
+        "release-notes-writer"
+      ]
+    },
+    {
+      "id": "qa",
+      "name": "QA",
+      "roles": [
+        "qa-engineer",
+        "test-automation-engineer"
+      ]
+    },
+    {
+      "id": "customer-success",
+      "name": "Customer Success",
+      "roles": [
+        "support-ops-specialist",
+        "customer-journey-analyst"
+      ]
+    },
+    {
+      "id": "automation",
+      "name": "Automation",
+      "roles": [
+        "workflow-automation-engineer",
+        "mcp-automation-engineer"
+      ]
+    }
+  ]
+}

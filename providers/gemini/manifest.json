@@ -1,0 +1,7 @@
+{
+  "id": "gemini",
+  "name": "Gemini",
+  "interface": "AbstractProvider",
+  "enabled": true,
+  "requiresCoreChange": false
+}

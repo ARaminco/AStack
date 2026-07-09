@@ -1,0 +1,7 @@
+{
+  "id": "openrouter",
+  "name": "Openrouter",
+  "interface": "AbstractProvider",
+  "enabled": true,
+  "requiresCoreChange": false
+}

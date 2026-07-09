@@ -1,0 +1,7 @@
+{
+  "id": "ollama",
+  "name": "Ollama",
+  "interface": "AbstractProvider",
+  "enabled": true,
+  "requiresCoreChange": false
+}

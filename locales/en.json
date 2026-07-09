@@ -1,0 +1,39 @@
+{
+  "meta": {
+    "locale": "en",
+    "direction": "ltr",
+    "name": "English"
+  },
+  "cli": {
+    "title": "AStack Enterprise CLI",
+    "usage": "Usage:",
+    "commands": "Commands:",
+    "configOk": "Enterprise configuration is valid.",
+    "doctorOk": "AStack Enterprise health check completed.",
+    "errorPrefix": "AStack error",
+    "unknownCommand": "Unknown command: {command}",
+    "installed": "Local installation is ready.",
+    "updated": "Local structure update completed.",
+    "backupCreated": "Memory backup created: {path}",
+    "initDone": "Project is ready for Claude Code.",
+    "reviewIntro": "The Orchestrator analyzed the request and activated the relevant teams.",
+    "workflowList": "Enterprise workflows:",
+    "providerList": "Active providers:",
+    "pluginList": "Loadable plugins:",
+    "knowledgeList": "Installed Knowledge Packs:",
+    "memoryList": "Memory scopes:",
+    "help": {
+      "init": "Prepare the structure required to run AStack inside Claude Code.",
+      "install": "Run local installation checks.",
+      "doctor": "Check architecture, localization, providers, plugins, and Claude Code readiness.",
+      "update": "Run the Enterprise bootstrap again.",
+      "review": "Send a request to the Orchestrator and return a localized report.",
+      "workflow": "List or inspect workflows.",
+      "provider": "List providers.",
+      "plugin": "List plugins.",
+      "memory": "List memory scopes.",
+      "knowledge": "List Knowledge Packs.",
+      "backup": "Create a memory backup."
+    }
+  }
+}

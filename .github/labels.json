@@ -1,0 +1,22 @@
+[
+  {
+    "name": "architecture",
+    "color": "1d76db"
+  },
+  {
+    "name": "security",
+    "color": "d73a4a"
+  },
+  {
+    "name": "claude-code",
+    "color": "5319e7"
+  },
+  {
+    "name": "provider",
+    "color": "0e8a16"
+  },
+  {
+    "name": "plugin",
+    "color": "fbca04"
+  }
+]

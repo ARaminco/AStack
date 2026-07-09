@@ -1,0 +1,7 @@
+{
+  "id": "local-models",
+  "name": "Local Models",
+  "interface": "AbstractProvider",
+  "enabled": true,
+  "requiresCoreChange": false
+}

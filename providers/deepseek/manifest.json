@@ -1,0 +1,7 @@
+{
+  "id": "deepseek",
+  "name": "Deepseek",
+  "interface": "AbstractProvider",
+  "enabled": true,
+  "requiresCoreChange": false
+}

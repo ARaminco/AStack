@@ -1,0 +1,7 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.astack/backups/
+coverage/
+dist/

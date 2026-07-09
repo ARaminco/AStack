@@ -1,0 +1,22 @@
+# چک‌لیست بازبینی Laravel
+
+- [ ] N+1 queries
+- [ ] Repository Pattern
+- [ ] Service Layer
+- [ ] Policies
+- [ ] Validation
+- [ ] Filament Resources
+- [ ] Livewire Components
+- [ ] Events
+- [ ] Queues
+- [ ] Redis
+- [ ] Caching
+- [ ] Eloquent
+- [ ] Security
+- [ ] Performance
+- [ ] Pest
+- [ ] `../../system/language-policy.md` قبل از اجرا خوانده شده است.
+- [ ] هر finding دارای severity، evidence و impact است.
+- [ ] remediationها scoped و قابل‌تست هستند.
+- [ ] commandهای verification ذکر شده‌اند.
+- [ ] documentation update در صورت نیاز مشخص شده است.

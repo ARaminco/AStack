@@ -1,0 +1,7 @@
+{
+  "id": "codex",
+  "name": "Codex",
+  "interface": "AbstractProvider",
+  "enabled": true,
+  "requiresCoreChange": false
+}

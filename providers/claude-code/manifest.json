@@ -1,0 +1,7 @@
+{
+  "id": "claude-code",
+  "name": "Claude Code",
+  "interface": "AbstractProvider",
+  "enabled": true,
+  "requiresCoreChange": false
+}

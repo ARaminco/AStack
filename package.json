@@ -1,0 +1,20 @@
+{
+  "name": "astack-enterprise",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "AStack Enterprise AI Engineering Operating System.",
+  "bin": {
+    "astack": "./bin/astack.mjs"
+  },
+  "scripts": {
+    "bootstrap": "node scripts/bootstrap-enterprise.mjs",
+    "doctor": "node bin/astack.mjs doctor",
+    "test": "node tests/verify-astack.mjs",
+    "claude:doctor": "node bin/astack.mjs doctor --claude-code",
+    "list:knowledge": "node bin/astack.mjs knowledge list"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

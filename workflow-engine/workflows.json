@@ -1,0 +1,291 @@
+{
+  "workflows": [
+    {
+      "id": "idea",
+      "title": "Idea",
+      "keywords": [
+        "idea",
+        "idea"
+      ],
+      "stages": [
+        "intake",
+        "analysis",
+        "execution",
+        "review",
+        "handoff"
+      ]
+    },
+    {
+      "id": "discovery",
+      "title": "Discovery",
+      "keywords": [
+        "discovery",
+        "discovery"
+      ],
+      "stages": [
+        "intake",
+        "analysis",
+        "execution",
+        "review",
+        "handoff"
+      ]
+    },
+    {
+      "id": "architecture",
+      "title": "Architecture",
+      "keywords": [
+        "architecture",
+        "architecture"
+      ],
+      "stages": [
+        "intake",
+        "analysis",
+        "execution",
+        "review",
+        "handoff"
+      ]
+    },
+    {
+      "id": "planning",
+      "title": "Planning",
+      "keywords": [
+        "planning",
+        "planning"
+      ],
+      "stages": [
+        "intake",
+        "analysis",
+        "execution",
+        "review",
+        "handoff"
+      ]
+    },
+    {
+      "id": "implementation",
+      "title": "Implementation",
+      "keywords": [
+        "implementation",
+        "implementation"
+      ],
+      "stages": [
+        "intake",
+        "analysis",
+        "execution",
+        "review",
+        "handoff"
+      ]
+    },
+    {
+      "id": "review",
+      "title": "Review",
+      "keywords": [
+        "review",
+        "review"
+      ],
+      "stages": [
+        "intake",
+        "analysis",
+        "execution",
+        "review",
+        "handoff"
+      ]
+    },
+    {
+      "id": "qa",
+      "title": "Qa",
+      "keywords": [
+        "qa",
+        "qa"
+      ],
+      "stages": [
+        "intake",
+        "analysis",
+        "execution",
+        "review",
+        "handoff"
+      ]
+    },
+    {
+      "id": "security",
+      "title": "Security",
+      "keywords": [
+        "security",
+        "security"
+      ],
+      "stages": [
+        "intake",
+        "analysis",
+        "execution",
+        "review",
+        "handoff"
+      ]
+    },
+    {
+      "id": "deployment",
+      "title": "Deployment",
+      "keywords": [
+        "deployment",
+        "deployment"
+      ],
+      "stages": [
+        "intake",
+        "analysis",
+        "execution",
+        "review",
+        "handoff"
+      ]
+    },
+    {
+      "id": "seo",
+      "title": "Seo",
+      "keywords": [
+        "seo",
+        "seo"
+      ],
+      "stages": [
+        "intake",
+        "analysis",
+        "execution",
+        "review",
+        "handoff"
+      ]
+    },
+    {
+      "id": "marketing",
+      "title": "Marketing",
+      "keywords": [
+        "marketing",
+        "marketing"
+      ],
+      "stages": [
+        "intake",
+        "analysis",
+        "execution",
+        "review",
+        "handoff"
+      ]
+    },
+    {
+      "id": "release",
+      "title": "Release",
+      "keywords": [
+        "release",
+        "release"
+      ],
+      "stages": [
+        "intake",
+        "analysis",
+        "execution",
+        "review",
+        "handoff"
+      ]
+    },
+    {
+      "id": "maintenance",
+      "title": "Maintenance",
+      "keywords": [
+        "maintenance",
+        "maintenance"
+      ],
+      "stages": [
+        "intake",
+        "analysis",
+        "execution",
+        "review",
+        "handoff"
+      ]
+    },
+    {
+      "id": "bug-fix",
+      "title": "Bug Fix",
+      "keywords": [
+        "bug-fix",
+        "bug",
+        "fix"
+      ],
+      "stages": [
+        "intake",
+        "analysis",
+        "execution",
+        "review",
+        "handoff"
+      ]
+    },
+    {
+      "id": "refactor",
+      "title": "Refactor",
+      "keywords": [
+        "refactor",
+        "refactor"
+      ],
+      "stages": [
+        "intake",
+        "analysis",
+        "execution",
+        "review",
+        "handoff"
+      ]
+    },
+    {
+      "id": "feature",
+      "title": "Feature",
+      "keywords": [
+        "feature",
+        "feature"
+      ],
+      "stages": [
+        "intake",
+        "analysis",
+        "execution",
+        "review",
+        "handoff"
+      ]
+    },
+    {
+      "id": "mvp",
+      "title": "Mvp",
+      "keywords": [
+        "mvp",
+        "mvp"
+      ],
+      "stages": [
+        "intake",
+        "analysis",
+        "execution",
+        "review",
+        "handoff"
+      ]
+    },
+    {
+      "id": "startup-validation",
+      "title": "Startup Validation",
+      "keywords": [
+        "startup-validation",
+        "startup",
+        "validation"
+      ],
+      "stages": [
+        "intake",
+        "analysis",
+        "execution",
+        "review",
+        "handoff"
+      ]
+    },
+    {
+      "id": "documentation",
+      "title": "Documentation",
+      "keywords": [
+        "documentation",
+        "documentation"
+      ],
+      "stages": [
+        "intake",
+        "analysis",
+        "execution",
+        "review",
+        "handoff"
+      ]
+    }
+  ]
+}

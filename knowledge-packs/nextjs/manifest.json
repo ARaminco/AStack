@@ -1,0 +1,16 @@
+{
+  "id": "nextjs",
+  "name": "nextjs",
+  "installable": true,
+  "sections": [
+    "best-practices",
+    "coding-standards",
+    "architecture-rules",
+    "review-rules",
+    "templates",
+    "examples",
+    "checklists",
+    "common-mistakes",
+    "latest-recommendations"
+  ]
+}

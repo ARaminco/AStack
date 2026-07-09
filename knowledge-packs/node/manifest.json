@@ -1,0 +1,16 @@
+{
+  "id": "node",
+  "name": "node",
+  "installable": true,
+  "sections": [
+    "best-practices",
+    "coding-standards",
+    "architecture-rules",
+    "review-rules",
+    "templates",
+    "examples",
+    "checklists",
+    "common-mistakes",
+    "latest-recommendations"
+  ]
+}

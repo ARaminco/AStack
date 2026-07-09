@@ -1,0 +1,1524 @@
+{
+  "roles": [
+    {
+      "id": "engineering-laravel",
+      "department": "engineering",
+      "title": "Principal Laravel Engineer",
+      "specialization": "Laravel",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-php",
+      "department": "engineering",
+      "title": "Principal PHP Engineer",
+      "specialization": "PHP",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-node-js",
+      "department": "engineering",
+      "title": "Principal Node.js Engineer",
+      "specialization": "Node.js",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-express",
+      "department": "engineering",
+      "title": "Principal Express Engineer",
+      "specialization": "Express",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-nestjs",
+      "department": "engineering",
+      "title": "Principal NestJS Engineer",
+      "specialization": "NestJS",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-fastify",
+      "department": "engineering",
+      "title": "Principal Fastify Engineer",
+      "specialization": "Fastify",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-next-js",
+      "department": "engineering",
+      "title": "Principal Next.js Engineer",
+      "specialization": "Next.js",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-react",
+      "department": "engineering",
+      "title": "Principal React Engineer",
+      "specialization": "React",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-vue",
+      "department": "engineering",
+      "title": "Principal Vue Engineer",
+      "specialization": "Vue",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-nuxt",
+      "department": "engineering",
+      "title": "Principal Nuxt Engineer",
+      "specialization": "Nuxt",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-angular",
+      "department": "engineering",
+      "title": "Principal Angular Engineer",
+      "specialization": "Angular",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-typescript",
+      "department": "engineering",
+      "title": "Principal TypeScript Engineer",
+      "specialization": "TypeScript",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-python",
+      "department": "engineering",
+      "title": "Principal Python Engineer",
+      "specialization": "Python",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-fastapi",
+      "department": "engineering",
+      "title": "Principal FastAPI Engineer",
+      "specialization": "FastAPI",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-django",
+      "department": "engineering",
+      "title": "Principal Django Engineer",
+      "specialization": "Django",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-go",
+      "department": "engineering",
+      "title": "Principal Go Engineer",
+      "specialization": "Go",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-rust",
+      "department": "engineering",
+      "title": "Principal Rust Engineer",
+      "specialization": "Rust",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-java",
+      "department": "engineering",
+      "title": "Principal Java Engineer",
+      "specialization": "Java",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-spring",
+      "department": "engineering",
+      "title": "Principal Spring Engineer",
+      "specialization": "Spring",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-c",
+      "department": "engineering",
+      "title": "Principal C# Engineer",
+      "specialization": "C#",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-net",
+      "department": "engineering",
+      "title": "Principal .NET Engineer",
+      "specialization": ".NET",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-flutter",
+      "department": "engineering",
+      "title": "Principal Flutter Engineer",
+      "specialization": "Flutter",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-react-native",
+      "department": "engineering",
+      "title": "Principal React Native Engineer",
+      "specialization": "React Native",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-swift",
+      "department": "engineering",
+      "title": "Principal Swift Engineer",
+      "specialization": "Swift",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-kotlin",
+      "department": "engineering",
+      "title": "Principal Kotlin Engineer",
+      "specialization": "Kotlin",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-electron",
+      "department": "engineering",
+      "title": "Principal Electron Engineer",
+      "specialization": "Electron",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-tauri",
+      "department": "engineering",
+      "title": "Principal Tauri Engineer",
+      "specialization": "Tauri",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-wordpress",
+      "department": "engineering",
+      "title": "Principal WordPress Engineer",
+      "specialization": "WordPress",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-whmcs",
+      "department": "engineering",
+      "title": "Principal WHMCS Engineer",
+      "specialization": "WHMCS",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-graphql",
+      "department": "engineering",
+      "title": "Principal GraphQL Engineer",
+      "specialization": "GraphQL",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-rest",
+      "department": "engineering",
+      "title": "Principal REST Engineer",
+      "specialization": "REST",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-grpc",
+      "department": "engineering",
+      "title": "Principal gRPC Engineer",
+      "specialization": "gRPC",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-microservices",
+      "department": "engineering",
+      "title": "Principal Microservices Engineer",
+      "specialization": "Microservices",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-serverless",
+      "department": "engineering",
+      "title": "Principal Serverless Engineer",
+      "specialization": "Serverless",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-event-driven",
+      "department": "engineering",
+      "title": "Principal Event Driven Engineer",
+      "specialization": "Event Driven",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-ddd",
+      "department": "engineering",
+      "title": "Principal DDD Engineer",
+      "specialization": "DDD",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-clean-architecture",
+      "department": "engineering",
+      "title": "Principal Clean Architecture Engineer",
+      "specialization": "Clean Architecture",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-hexagonal-architecture",
+      "department": "engineering",
+      "title": "Principal Hexagonal Architecture Engineer",
+      "specialization": "Hexagonal Architecture",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-repository-pattern",
+      "department": "engineering",
+      "title": "Principal Repository Pattern Engineer",
+      "specialization": "Repository Pattern",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "engineering-solid",
+      "department": "engineering",
+      "title": "Principal SOLID Engineer",
+      "specialization": "SOLID",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "ai-prompt-engineering",
+      "department": "ai",
+      "title": "Prompt Engineering Specialist",
+      "specialization": "Prompt Engineering",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "ai-prompt-optimization",
+      "department": "ai",
+      "title": "Prompt Optimization Specialist",
+      "specialization": "Prompt Optimization",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "ai-rag",
+      "department": "ai",
+      "title": "RAG Specialist",
+      "specialization": "RAG",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "ai-embeddings",
+      "department": "ai",
+      "title": "Embeddings Specialist",
+      "specialization": "Embeddings",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "ai-hybrid-search",
+      "department": "ai",
+      "title": "Hybrid Search Specialist",
+      "specialization": "Hybrid Search",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "ai-re-ranking",
+      "department": "ai",
+      "title": "Re-ranking Specialist",
+      "specialization": "Re-ranking",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "ai-mcp",
+      "department": "ai",
+      "title": "MCP Specialist",
+      "specialization": "MCP",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "ai-function-calling",
+      "department": "ai",
+      "title": "Function Calling Specialist",
+      "specialization": "Function Calling",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "ai-agent-systems",
+      "department": "ai",
+      "title": "Agent Systems Specialist",
+      "specialization": "Agent Systems",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "ai-multi-agent-systems",
+      "department": "ai",
+      "title": "Multi-Agent Systems Specialist",
+      "specialization": "Multi-Agent Systems",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "ai-evaluation",
+      "department": "ai",
+      "title": "Evaluation Specialist",
+      "specialization": "Evaluation",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "ai-model-comparison",
+      "department": "ai",
+      "title": "Model Comparison Specialist",
+      "specialization": "Model Comparison",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "ai-context-engineering",
+      "department": "ai",
+      "title": "Context Engineering Specialist",
+      "specialization": "Context Engineering",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "ai-token-optimization",
+      "department": "ai",
+      "title": "Token Optimization Specialist",
+      "specialization": "Token Optimization",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "ai-latency-optimization",
+      "department": "ai",
+      "title": "Latency Optimization Specialist",
+      "specialization": "Latency Optimization",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "ai-cost-optimization",
+      "department": "ai",
+      "title": "Cost Optimization Specialist",
+      "specialization": "Cost Optimization",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "ai-fine-tuning",
+      "department": "ai",
+      "title": "Fine Tuning Specialist",
+      "specialization": "Fine Tuning",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "ai-reasoning-models",
+      "department": "ai",
+      "title": "Reasoning Models Specialist",
+      "specialization": "Reasoning Models",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-docker",
+      "department": "devops",
+      "title": "Docker Specialist",
+      "specialization": "Docker",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-docker-compose",
+      "department": "devops",
+      "title": "Docker Compose Specialist",
+      "specialization": "Docker Compose",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-docker-swarm",
+      "department": "devops",
+      "title": "Docker Swarm Specialist",
+      "specialization": "Docker Swarm",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-kubernetes",
+      "department": "devops",
+      "title": "Kubernetes Specialist",
+      "specialization": "Kubernetes",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-helm",
+      "department": "devops",
+      "title": "Helm Specialist",
+      "specialization": "Helm",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-terraform",
+      "department": "devops",
+      "title": "Terraform Specialist",
+      "specialization": "Terraform",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-ansible",
+      "department": "devops",
+      "title": "Ansible Specialist",
+      "specialization": "Ansible",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-packer",
+      "department": "devops",
+      "title": "Packer Specialist",
+      "specialization": "Packer",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-github-actions",
+      "department": "devops",
+      "title": "GitHub Actions Specialist",
+      "specialization": "GitHub Actions",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-gitlab-ci",
+      "department": "devops",
+      "title": "GitLab CI Specialist",
+      "specialization": "GitLab CI",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-jenkins",
+      "department": "devops",
+      "title": "Jenkins Specialist",
+      "specialization": "Jenkins",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-linux",
+      "department": "devops",
+      "title": "Linux Specialist",
+      "specialization": "Linux",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-ubuntu",
+      "department": "devops",
+      "title": "Ubuntu Specialist",
+      "specialization": "Ubuntu",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-debian",
+      "department": "devops",
+      "title": "Debian Specialist",
+      "specialization": "Debian",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-rocky-linux",
+      "department": "devops",
+      "title": "Rocky Linux Specialist",
+      "specialization": "Rocky Linux",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-almalinux",
+      "department": "devops",
+      "title": "AlmaLinux Specialist",
+      "specialization": "AlmaLinux",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-cloudflare",
+      "department": "devops",
+      "title": "Cloudflare Specialist",
+      "specialization": "Cloudflare",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-workers",
+      "department": "devops",
+      "title": "Workers Specialist",
+      "specialization": "Workers",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-tunnel",
+      "department": "devops",
+      "title": "Tunnel Specialist",
+      "specialization": "Tunnel",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-r2",
+      "department": "devops",
+      "title": "R2 Specialist",
+      "specialization": "R2",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-dns",
+      "department": "devops",
+      "title": "DNS Specialist",
+      "specialization": "DNS",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-ssl",
+      "department": "devops",
+      "title": "SSL Specialist",
+      "specialization": "SSL",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-nginx",
+      "department": "devops",
+      "title": "Nginx Specialist",
+      "specialization": "Nginx",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-apache",
+      "department": "devops",
+      "title": "Apache Specialist",
+      "specialization": "Apache",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-haproxy",
+      "department": "devops",
+      "title": "HAProxy Specialist",
+      "specialization": "HAProxy",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-traefik",
+      "department": "devops",
+      "title": "Traefik Specialist",
+      "specialization": "Traefik",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-caddy",
+      "department": "devops",
+      "title": "Caddy Specialist",
+      "specialization": "Caddy",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-redis",
+      "department": "devops",
+      "title": "Redis Specialist",
+      "specialization": "Redis",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-rabbitmq",
+      "department": "devops",
+      "title": "RabbitMQ Specialist",
+      "specialization": "RabbitMQ",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-kafka",
+      "department": "devops",
+      "title": "Kafka Specialist",
+      "specialization": "Kafka",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-prometheus",
+      "department": "devops",
+      "title": "Prometheus Specialist",
+      "specialization": "Prometheus",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-grafana",
+      "department": "devops",
+      "title": "Grafana Specialist",
+      "specialization": "Grafana",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-loki",
+      "department": "devops",
+      "title": "Loki Specialist",
+      "specialization": "Loki",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "devops-elk",
+      "department": "devops",
+      "title": "ELK Specialist",
+      "specialization": "ELK",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-vmware-esxi",
+      "department": "infrastructure",
+      "title": "VMware ESXi Specialist",
+      "specialization": "VMware ESXi",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-vcenter",
+      "department": "infrastructure",
+      "title": "vCenter Specialist",
+      "specialization": "vCenter",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-proxmox",
+      "department": "infrastructure",
+      "title": "Proxmox Specialist",
+      "specialization": "Proxmox",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-hyper-v",
+      "department": "infrastructure",
+      "title": "Hyper-V Specialist",
+      "specialization": "Hyper-V",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-virtualbox",
+      "department": "infrastructure",
+      "title": "VirtualBox Specialist",
+      "specialization": "VirtualBox",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-mikrotik",
+      "department": "infrastructure",
+      "title": "MikroTik Specialist",
+      "specialization": "MikroTik",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-wireguard",
+      "department": "infrastructure",
+      "title": "WireGuard Specialist",
+      "specialization": "WireGuard",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-openvpn",
+      "department": "infrastructure",
+      "title": "OpenVPN Specialist",
+      "specialization": "OpenVPN",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-ipsec",
+      "department": "infrastructure",
+      "title": "IPSec Specialist",
+      "specialization": "IPSec",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-bgp",
+      "department": "infrastructure",
+      "title": "BGP Specialist",
+      "specialization": "BGP",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-ospf",
+      "department": "infrastructure",
+      "title": "OSPF Specialist",
+      "specialization": "OSPF",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-vlan",
+      "department": "infrastructure",
+      "title": "VLAN Specialist",
+      "specialization": "VLAN",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-vxlan",
+      "department": "infrastructure",
+      "title": "VXLAN Specialist",
+      "specialization": "VXLAN",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-firewall",
+      "department": "infrastructure",
+      "title": "Firewall Specialist",
+      "specialization": "Firewall",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-routing",
+      "department": "infrastructure",
+      "title": "Routing Specialist",
+      "specialization": "Routing",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-nat",
+      "department": "infrastructure",
+      "title": "NAT Specialist",
+      "specialization": "NAT",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-qnap",
+      "department": "infrastructure",
+      "title": "QNAP Specialist",
+      "specialization": "QNAP",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-truenas",
+      "department": "infrastructure",
+      "title": "TrueNAS Specialist",
+      "specialization": "TrueNAS",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-synology",
+      "department": "infrastructure",
+      "title": "Synology Specialist",
+      "specialization": "Synology",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-storage",
+      "department": "infrastructure",
+      "title": "Storage Specialist",
+      "specialization": "Storage",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-backup",
+      "department": "infrastructure",
+      "title": "Backup Specialist",
+      "specialization": "Backup",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-high-availability",
+      "department": "infrastructure",
+      "title": "High Availability Specialist",
+      "specialization": "High Availability",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-load-balancing",
+      "department": "infrastructure",
+      "title": "Load Balancing Specialist",
+      "specialization": "Load Balancing",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-cpanel",
+      "department": "infrastructure",
+      "title": "cPanel Specialist",
+      "specialization": "cPanel",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-whm",
+      "department": "infrastructure",
+      "title": "WHM Specialist",
+      "specialization": "WHM",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-cloudpanel",
+      "department": "infrastructure",
+      "title": "CloudPanel Specialist",
+      "specialization": "CloudPanel",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-aapanel",
+      "department": "infrastructure",
+      "title": "aaPanel Specialist",
+      "specialization": "aaPanel",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-plesk",
+      "department": "infrastructure",
+      "title": "Plesk Specialist",
+      "specialization": "Plesk",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-directadmin",
+      "department": "infrastructure",
+      "title": "DirectAdmin Specialist",
+      "specialization": "DirectAdmin",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "infrastructure-virtualizor",
+      "department": "infrastructure",
+      "title": "Virtualizor Specialist",
+      "specialization": "Virtualizor",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "mobile-flutter",
+      "department": "mobile",
+      "title": "Flutter Specialist",
+      "specialization": "Flutter",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "mobile-flutter-web",
+      "department": "mobile",
+      "title": "Flutter Web Specialist",
+      "specialization": "Flutter Web",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "mobile-flutter-desktop",
+      "department": "mobile",
+      "title": "Flutter Desktop Specialist",
+      "specialization": "Flutter Desktop",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "mobile-flutter-ios",
+      "department": "mobile",
+      "title": "Flutter iOS Specialist",
+      "specialization": "Flutter iOS",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "mobile-flutter-android",
+      "department": "mobile",
+      "title": "Flutter Android Specialist",
+      "specialization": "Flutter Android",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "mobile-riverpod",
+      "department": "mobile",
+      "title": "Riverpod Specialist",
+      "specialization": "Riverpod",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "mobile-bloc",
+      "department": "mobile",
+      "title": "Bloc Specialist",
+      "specialization": "Bloc",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "mobile-gorouter",
+      "department": "mobile",
+      "title": "GoRouter Specialist",
+      "specialization": "GoRouter",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "mobile-firebase",
+      "department": "mobile",
+      "title": "Firebase Specialist",
+      "specialization": "Firebase",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "mobile-supabase",
+      "department": "mobile",
+      "title": "Supabase Specialist",
+      "specialization": "Supabase",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "mobile-hive",
+      "department": "mobile",
+      "title": "Hive Specialist",
+      "specialization": "Hive",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "mobile-drift",
+      "department": "mobile",
+      "title": "Drift Specialist",
+      "specialization": "Drift",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "mobile-sqlite",
+      "department": "mobile",
+      "title": "SQLite Specialist",
+      "specialization": "SQLite",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "mobile-material-3",
+      "department": "mobile",
+      "title": "Material 3 Specialist",
+      "specialization": "Material 3",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "mobile-cupertino",
+      "department": "mobile",
+      "title": "Cupertino Specialist",
+      "specialization": "Cupertino",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "mobile-responsive-design",
+      "department": "mobile",
+      "title": "Responsive Design Specialist",
+      "specialization": "Responsive Design",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "mobile-app-store",
+      "department": "mobile",
+      "title": "App Store Specialist",
+      "specialization": "App Store",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "mobile-google-play",
+      "department": "mobile",
+      "title": "Google Play Specialist",
+      "specialization": "Google Play",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "mobile-push-notifications",
+      "department": "mobile",
+      "title": "Push Notifications Specialist",
+      "specialization": "Push Notifications",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "mobile-deep-linking",
+      "department": "mobile",
+      "title": "Deep Linking Specialist",
+      "specialization": "Deep Linking",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "mobile-offline-first",
+      "department": "mobile",
+      "title": "Offline First Specialist",
+      "specialization": "Offline First",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "seo-technical-seo",
+      "department": "seo",
+      "title": "Technical SEO Specialist",
+      "specialization": "Technical SEO",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "seo-programmatic-seo",
+      "department": "seo",
+      "title": "Programmatic SEO Specialist",
+      "specialization": "Programmatic SEO",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "seo-schema",
+      "department": "seo",
+      "title": "Schema Specialist",
+      "specialization": "Schema",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "seo-json-ld",
+      "department": "seo",
+      "title": "JSON-LD Specialist",
+      "specialization": "JSON-LD",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "seo-core-web-vitals",
+      "department": "seo",
+      "title": "Core Web Vitals Specialist",
+      "specialization": "Core Web Vitals",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "seo-entity-seo",
+      "department": "seo",
+      "title": "Entity SEO Specialist",
+      "specialization": "Entity SEO",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "seo-topical-authority",
+      "department": "seo",
+      "title": "Topical Authority Specialist",
+      "specialization": "Topical Authority",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "seo-internal-linking",
+      "department": "seo",
+      "title": "Internal Linking Specialist",
+      "specialization": "Internal Linking",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "seo-eeat",
+      "department": "seo",
+      "title": "EEAT Specialist",
+      "specialization": "EEAT",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "seo-international-seo",
+      "department": "seo",
+      "title": "International SEO Specialist",
+      "specialization": "International SEO",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "seo-google-search-console",
+      "department": "seo",
+      "title": "Google Search Console Specialist",
+      "specialization": "Google Search Console",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "seo-google-analytics",
+      "department": "seo",
+      "title": "Google Analytics Specialist",
+      "specialization": "Google Analytics",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "marketing-growth-marketing",
+      "department": "marketing",
+      "title": "Growth Marketing Specialist",
+      "specialization": "Growth Marketing",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "marketing-digital-marketing",
+      "department": "marketing",
+      "title": "Digital Marketing Specialist",
+      "specialization": "Digital Marketing",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "marketing-performance-marketing",
+      "department": "marketing",
+      "title": "Performance Marketing Specialist",
+      "specialization": "Performance Marketing",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "marketing-meta-ads",
+      "department": "marketing",
+      "title": "Meta Ads Specialist",
+      "specialization": "Meta Ads",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "marketing-google-ads",
+      "department": "marketing",
+      "title": "Google Ads Specialist",
+      "specialization": "Google Ads",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "marketing-email-marketing",
+      "department": "marketing",
+      "title": "Email Marketing Specialist",
+      "specialization": "Email Marketing",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "marketing-automation",
+      "department": "marketing",
+      "title": "Automation Specialist",
+      "specialization": "Automation",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "marketing-sales-funnel",
+      "department": "marketing",
+      "title": "Sales Funnel Specialist",
+      "specialization": "Sales Funnel",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "marketing-conversion-rate-optimization",
+      "department": "marketing",
+      "title": "Conversion Rate Optimization Specialist",
+      "specialization": "Conversion Rate Optimization",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "marketing-brand-strategy",
+      "department": "marketing",
+      "title": "Brand Strategy Specialist",
+      "specialization": "Brand Strategy",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "marketing-competitor-analysis",
+      "department": "marketing",
+      "title": "Competitor Analysis Specialist",
+      "specialization": "Competitor Analysis",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "marketing-customer-journey",
+      "department": "marketing",
+      "title": "Customer Journey Specialist",
+      "specialization": "Customer Journey",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "marketing-product-positioning",
+      "department": "marketing",
+      "title": "Product Positioning Specialist",
+      "specialization": "Product Positioning",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "content-seo-copywriter",
+      "department": "content",
+      "title": "SEO Copywriter Specialist",
+      "specialization": "SEO Copywriter",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "content-technical-writer",
+      "department": "content",
+      "title": "Technical Writer Specialist",
+      "specialization": "Technical Writer",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "content-product-writer",
+      "department": "content",
+      "title": "Product Writer Specialist",
+      "specialization": "Product Writer",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "content-ux-writer",
+      "department": "content",
+      "title": "UX Writer Specialist",
+      "specialization": "UX Writer",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "content-landing-page-writer",
+      "department": "content",
+      "title": "Landing Page Writer Specialist",
+      "specialization": "Landing Page Writer",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "content-email-copywriter",
+      "department": "content",
+      "title": "Email Copywriter Specialist",
+      "specialization": "Email Copywriter",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "content-sales-copywriter",
+      "department": "content",
+      "title": "Sales Copywriter Specialist",
+      "specialization": "Sales Copywriter",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "content-storytelling",
+      "department": "content",
+      "title": "Storytelling Specialist",
+      "specialization": "Storytelling",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "content-content-strategy",
+      "department": "content",
+      "title": "Content Strategy Specialist",
+      "specialization": "Content Strategy",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "content-proofreading",
+      "department": "content",
+      "title": "Proofreading Specialist",
+      "specialization": "Proofreading",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "content-localization",
+      "department": "content",
+      "title": "Localization Specialist",
+      "specialization": "Localization",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "security-owasp",
+      "department": "security",
+      "title": "OWASP Specialist",
+      "specialization": "OWASP",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "security-jwt",
+      "department": "security",
+      "title": "JWT Specialist",
+      "specialization": "JWT",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "security-oauth",
+      "department": "security",
+      "title": "OAuth Specialist",
+      "specialization": "OAuth",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "security-csrf",
+      "department": "security",
+      "title": "CSRF Specialist",
+      "specialization": "CSRF",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "security-xss",
+      "department": "security",
+      "title": "XSS Specialist",
+      "specialization": "XSS",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "security-sql-injection",
+      "department": "security",
+      "title": "SQL Injection Specialist",
+      "specialization": "SQL Injection",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "security-secrets",
+      "department": "security",
+      "title": "Secrets Specialist",
+      "specialization": "Secrets",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "security-waf",
+      "department": "security",
+      "title": "WAF Specialist",
+      "specialization": "WAF",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "security-dependency-audit",
+      "department": "security",
+      "title": "Dependency Audit Specialist",
+      "specialization": "Dependency Audit",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "security-secure-coding",
+      "department": "security",
+      "title": "Secure Coding Specialist",
+      "specialization": "Secure Coding",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "security-penetration-testing",
+      "department": "security",
+      "title": "Penetration Testing Specialist",
+      "specialization": "Penetration Testing",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    }
+  ]
+}

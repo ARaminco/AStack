@@ -1,0 +1,8 @@
+{
+  "id": "example-department",
+  "type": "department",
+  "name": "Example Department Plugin",
+  "enabled": false,
+  "entry": "plugin.mjs",
+  "requiresCoreChange": false
+}

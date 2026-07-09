@@ -1,0 +1,151 @@
+project:
+  name: AStack Enterprise
+  product: AI Engineering Operating System
+  version: 1.0.0
+  philosophy: enterprise_modular_platform
+  primary_runtime: claude-code
+  compatibility:
+    claude_code: true
+    openai_codex: true
+    chatgpt: true
+    markdown_first: true
+
+language:
+  supported_locales:
+    - fa
+    - en
+    - ar
+    - tr
+  fallback_locale: en
+  conversation: fa
+  ui: fa
+  explanations: fa
+  reports: fa
+  planning: fa
+  architecture: fa
+  review: fa
+  progress: fa
+  questions: fa
+  errors: fa
+  code: en
+  comments: en
+  commits: en
+  documentation: en
+  variables: en
+  classes: en
+  functions: en
+  database: en
+  api: en
+
+documentation_language:
+  default: en
+  secondary: fa
+
+architecture:
+  layers:
+    - core
+    - runtime
+    - orchestrator
+    - departments
+    - roles
+    - providers
+    - knowledge-packs
+    - plugins
+    - memory-engine
+    - workflow-engine
+    - localization-engine
+    - configuration-engine
+    - event-bus
+    - permission-system
+    - cli
+    - installer
+    - documentation
+    - testing
+    - telemetry
+
+models:
+  default_ai_model: claude-sonnet-4
+  routing:
+    planning: claude-sonnet-4
+    coding: claude-code
+    review: claude-sonnet-4
+    local: ollama
+  providers:
+    claude_code:
+      enabled: true
+      default_model: claude-sonnet-4
+    openai:
+      enabled: true
+      default_model: gpt-5
+    codex:
+      enabled: true
+      default_model: gpt-5-codex
+    gemini:
+      enabled: true
+      default_model: gemini-2.5-pro
+    openrouter:
+      enabled: true
+      default_model: openrouter/auto
+    ollama:
+      enabled: true
+      default_model: llama3.1
+      base_url: http://localhost:11434
+    deepseek:
+      enabled: true
+      default_model: deepseek-chat
+    local_models:
+      enabled: true
+      default_model: local/default
+
+localization:
+  service: localization-engine/service.mjs
+  translations: locales
+  global_policy: system/language-policy.md
+  fallback_enabled: true
+
+memory:
+  enabled: true
+  engine: memory-engine/memory-engine.mjs
+  directory: memory
+  scopes:
+    - global
+    - project
+    - department
+    - role
+    - decision
+    - coding-standards
+    - architecture
+    - business
+    - user-preferences
+
+plugins:
+  enabled: true
+  directory: plugins
+  manifest: plugin.json
+
+telemetry:
+  enabled: false
+  mode: local-summary
+
+security:
+  permissions:
+    default: least_privilege
+    policy: permission-system/policy.mjs
+  secrets:
+    storage: environment_variables
+    commit_allowed: false
+
+cli:
+  default_locale: fa
+  commands:
+    - init
+    - install
+    - doctor
+    - update
+    - review
+    - workflow
+    - provider
+    - plugin
+    - memory
+    - knowledge
+    - backup

@@ -1,0 +1,7 @@
+{
+  "id": "openai",
+  "name": "Openai",
+  "interface": "AbstractProvider",
+  "enabled": true,
+  "requiresCoreChange": false
+}
