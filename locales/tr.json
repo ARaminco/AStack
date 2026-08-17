@@ -28,6 +28,7 @@
       "doctor": "Check architecture, localization, providers, plugins, and Claude Code readiness.",
       "update": "Run the Enterprise bootstrap again.",
       "review": "Send a request to the Orchestrator and return a localized report.",
+      "project": "Profesyonel proje yönetimi: yaşam döngüsü, sprintler, riskler, tahmin ve sağlık raporları.",
       "workflow": "List or inspect workflows.",
       "provider": "List providers.",
       "plugin": "List plugins.",

@@ -10,7 +10,7 @@
   "scripts": {
     "bootstrap": "node scripts/bootstrap-enterprise.mjs",
     "doctor": "node bin/astack.mjs doctor",
-    "test": "node tests/verify-astack.mjs",
+    "test": "node tests/verify-astack.mjs && node tests/verify-delivery.mjs",
     "claude:doctor": "node bin/astack.mjs doctor --claude-code",
     "list:knowledge": "node bin/astack.mjs knowledge list"
   },

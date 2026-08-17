@@ -3,5 +3,6 @@ node_modules/
 .env.*
 !.env.example
 .astack/backups/
+.astack/projects/
 coverage/
 dist/

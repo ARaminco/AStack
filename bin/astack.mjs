@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createLocalization } from "../localization-engine/service.mjs";
 import { createRuntime } from "../runtime/astack-runtime.mjs";
+import { runProjectCommand } from "../delivery-engine/cli.mjs";
 
 const i18n = createLocalization();
 const runtime = createRuntime();
@@ -14,15 +15,15 @@ function printHelp() {
   console.log("  astack <command> [args]");
   console.log("");
   console.log(i18n.t("cli.commands"));
-  for (const command of ["init", "install", "doctor", "update", "review", "workflow", "provider", "plugin", "memory", "knowledge", "backup"]) {
+  for (const command of ["init", "install", "doctor", "update", "review", "project", "workflow", "provider", "plugin", "memory", "knowledge", "backup"]) {
     console.log("  " + command.padEnd(12) + i18n.t("cli.help." + command));
   }
 }
 
 function doctor() {
-  const required = ["core", "runtime", "orchestrator", "departments", "providers", "knowledge-packs", "plugins", "memory-engine", "workflow-engine", "localization-engine", "configuration-engine", "event-bus", "permission-system", "installer", "documentation", "tests", "CLAUDE.md"];
+  const required = ["core", "runtime", "orchestrator", "departments", "providers", "knowledge-packs", "plugins", "memory-engine", "workflow-engine", "delivery-engine", "localization-engine", "configuration-engine", "event-bus", "permission-system", "installer", "documentation", "tests", "CLAUDE.md"];
   const missing = required.filter((item) => !existsSync(join(runtime.root, item)));
-  const config = runtime.configuration.requireSections(["project", "language", "architecture", "models", "memory", "plugins", "telemetry", "security", "cli"]);
+  const config = runtime.configuration.requireSections(["project", "language", "architecture", "models", "memory", "plugins", "telemetry", "security", "delivery", "cli"]);
   if (missing.length || !config.ok) {
     throw new Error("missing=" + missing.join(",") + " config=" + config.missing.join(","));
   }
@@ -32,6 +33,8 @@ function doctor() {
   console.log("Enterprise Roles: " + JSON.parse(readFileSync(join(runtime.root, "roles", "enterprise-roles.json"), "utf8")).roles.length);
   console.log("Providers: " + runtime.providers.length);
   console.log("Knowledge Packs: " + runtime.knowledgePackRegistry.list().length);
+  console.log("Delivery Templates: " + runtime.projects.templates().length);
+  console.log("Projects: " + runtime.projects.list().length);
   console.log("Telemetry: disabled");
 }
 
@@ -67,6 +70,10 @@ function run() {
     for (const line of result.answer) {
       console.log("- " + line);
     }
+    return;
+  }
+  if (command === "project") {
+    runProjectCommand({ runtime, i18n, tokens: [subcommand, ...rest].filter(Boolean) });
     return;
   }
   if (command === "workflow") {

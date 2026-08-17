@@ -5,6 +5,7 @@ AStack is a personal AI software engineering operating system. It organizes reus
 ## Start Here
 - [Persian Owner Guide](fa-guide.html)
 - [Architecture](Architecture.md)
+- [Project Management](Project-Management.md)
 - [Development](Development.md)
 - [Localization](Localization.md)
 - [Deployment](Deployment.md)
