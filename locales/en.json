@@ -28,12 +28,130 @@
       "doctor": "Check architecture, localization, providers, plugins, and Claude Code readiness.",
       "update": "Run the Enterprise bootstrap again.",
       "review": "Send a request to the Orchestrator and return a localized report.",
+      "project": "Professional project delivery: lifecycle, sprints, risks, forecasting, and health reports.",
       "workflow": "List or inspect workflows.",
       "provider": "List providers.",
       "plugin": "List plugins.",
       "memory": "List memory scopes.",
       "knowledge": "List Knowledge Packs.",
       "backup": "Create a memory backup."
+    },
+    "project": {
+      "usage": "Project commands: init, demo, list, status, board, backlog, add, move, start, done, block, unblock, charter, milestone, sprint, risk, gate, advance, baseline, critical-path, forecast, next, digest, decision, scaffold, raci, report, templates",
+      "templatesTitle": "Project templates:",
+      "created": "Project created: {id}",
+      "demoReady": "Demo project seeded with six weeks of history: {id}",
+      "listTitle": "Project portfolio:",
+      "listLine": "{id} | phase: {phase} | health: {rag} ({score}/100) | SPI: {spi} | P85 delivery: {p85}",
+      "idRequired": "A project id is required.",
+      "reportSaved": "Status report saved: {path}",
+      "boardTitle": "Kanban board for project {id}:",
+      "backlogTitle": "Ranked backlog for project {id} (MoSCoW, then WSJF):",
+      "itemAdded": "Work item added: {id}",
+      "itemMoved": "Item {id} moved to {status}.",
+      "charterSaved": "Project charter saved.",
+      "milestoneAdded": "Milestone added: {id}",
+      "milestoneDone": "Milestone completed: {id}",
+      "sprintPlanned": "Sprint {id} planned: {committed} items within a capacity of {capacity} points.",
+      "sprintClosed": "Sprint {id} closed: {points} points delivered.",
+      "sprintUsage": "Usage: astack project sprint <id> plan|close",
+      "riskAdded": "Risk recorded: {id}",
+      "riskClosed": "Risk closed: {id}",
+      "riskTitle": "Open risks for project {id}:",
+      "gateOk": "All gate criteria for this phase are met; the project is ready to advance.",
+      "gateUnmet": "The phase gate is not open yet. Unmet criteria:",
+      "advanced": "Project advanced to the {phase} phase.",
+      "notAdvanced": "Gate passage refused. Unmet criteria:",
+      "baselineSet": "Baseline committed: {points} points by {target}",
+      "forecastUnavailable": "Not enough delivery history yet to forecast.",
+      "throughputLine": "Weekly throughput: {chart} | remaining: {remaining} points",
+      "nextTitle": "Next best actions for project {id}:",
+      "decisionSaved": "Decision recorded and appended to organizational memory: {id}",
+      "scaffolded": "Work structure scaffolded from the goal: {count} items across {departments}",
+      "raciTitle": "RACI matrix for project {id}:",
+      "unknownAction": "Unknown project subcommand: {action}"
+    }
+  },
+  "delivery": {
+    "phase": {
+      "initiation": "initiation",
+      "planning": "planning",
+      "execution": "execution",
+      "closing": "closing",
+      "closed": "closed"
+    },
+    "rag": {
+      "green": "green",
+      "amber": "amber",
+      "red": "red"
+    },
+    "band": {
+      "low": "low",
+      "medium": "medium",
+      "high": "high",
+      "critical": "critical"
+    },
+    "milestone": {
+      "open": "open",
+      "done": "done"
+    },
+    "report": {
+      "title": "Status report for {name}",
+      "generatedAt": "Report date: {date}",
+      "summary": "Executive summary",
+      "phaseLine": "Current phase: {phase}",
+      "healthLine": "Project health: {score} of 100 ({rag})",
+      "evm": "Earned Value Management (EVM)",
+      "sprint": "Current sprint",
+      "sprintLine": "Sprint {id} with goal \"{goal}\" runs until {end}.",
+      "burndownLine": "Burndown: {chart} (scope {scope} points)",
+      "velocityLine": "Team velocity (rolling three sprints): {average} points {chart}",
+      "forecast": "Completion forecast (Monte Carlo)",
+      "forecastLine": "P50: {p50} | P85: {p85} | P95: {p95} | target date: {target}",
+      "criticalPath": "Critical path",
+      "criticalPathLine": "Critical path length {duration} days: {path}",
+      "risks": "Top risks",
+      "riskLine": "{id} {title} — score {score} ({band})",
+      "milestones": "Milestones",
+      "milestoneLine": "{id} {title} — due {due} ({status})",
+      "nextActions": "Next best actions"
+    },
+    "reason": {
+      "schedule-behind": "Schedule is behind: SPI is {spi}.",
+      "no-baseline": "No baseline committed; progress cannot be measured.",
+      "blocked-items": "{count} items are blocked and stop the flow.",
+      "wip-exceeded": "WIP limit exceeded in {status} ({count} of {limit}).",
+      "stale-items": "{count} items have not moved for more than {days} days.",
+      "high-risk-exposure": "A {band} severity risk is open: {title}",
+      "scope-creep": "Scope has grown {percent}% beyond the baseline.",
+      "no-active-sprint": "The project is executing but has no active sprint."
+    },
+    "gate": {
+      "charter-outcome-missing": "The charter outcome is not defined.",
+      "success-criteria-missing": "Success criteria are missing from the charter.",
+      "milestones-missing": "At least one milestone is required.",
+      "estimated-items-missing": "At least three estimated work items are required.",
+      "risks-missing": "At least one risk must be identified and recorded.",
+      "target-date-missing": "The project target date is not set.",
+      "must-items-open": "All must items need to be done or formally descoped.",
+      "sprint-still-active": "The active sprint must be closed before closing the project.",
+      "retrospective-missing": "The closing retrospective has not been recorded."
+    },
+    "action": {
+      "unblock-item": "Unblock {itemId} ({title}) — blocked because: {reason}",
+      "mitigate-risk": "Mitigate the critical risk {riskId} ({title}) now",
+      "set-baseline": "Commit a baseline to enable progress measurement",
+      "reduce-wip": "Reduce work in progress in {status} ({count} of limit {limit})",
+      "start-critical-item": "Start the critical-path item {itemId} ({title})",
+      "close-sprint": "Close sprint {sprintId}; its window has ended",
+      "plan-sprint": "Plan the next sprint to keep execution moving",
+      "milestone-overdue": "Address the overdue milestone {milestoneId} ({title})",
+      "advance-phase": "All gate criteria are met; advance from the {phase} phase"
+    },
+    "digest": {
+      "title": "Project event digest since {since}:",
+      "quiet": "No events were recorded in this window.",
+      "blockedLine": "Blocked: {id} ({title}) — {reason}"
     }
   }
 }

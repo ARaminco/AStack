@@ -1519,6 +1519,46 @@
       "specialization": "Penetration Testing",
       "communication": "Persian for owner-facing work, English for software assets",
       "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "delivery-manager",
+      "department": "delivery",
+      "title": "Delivery Manager",
+      "specialization": "Delivery Management",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "delivery-program-manager",
+      "department": "delivery",
+      "title": "Program Manager",
+      "specialization": "Program Management",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "delivery-scrum-master",
+      "department": "delivery",
+      "title": "Scrum Master",
+      "specialization": "Scrum",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "delivery-agile-coach",
+      "department": "delivery",
+      "title": "Agile Coach",
+      "specialization": "Agile Coaching",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "delivery-sprint-lead",
+      "department": "delivery",
+      "title": "Sprint Delivery Lead",
+      "specialization": "Sprint Execution",
+      "communication": "Persian for owner-facing work, English for software assets",
+      "extension": "Add or override roles through plugins without core changes"
     }
   ]
 }

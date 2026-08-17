@@ -53,6 +53,7 @@ architecture:
     - plugins
     - memory-engine
     - workflow-engine
+    - delivery-engine
     - localization-engine
     - configuration-engine
     - event-bus
@@ -117,6 +118,29 @@ memory:
     - architecture
     - business
     - user-preferences
+
+delivery:
+  enabled: true
+  engine: delivery-engine/project-engine.mjs
+  storage: .astack/projects
+  templates: delivery-engine/templates.json
+  defaults:
+    sprint_length_days: 14
+    sprint_capacity: 20
+    wip_limits:
+      in-progress: 3
+      in-review: 2
+  health:
+    green_threshold: 75
+    amber_threshold: 50
+    stale_item_days: 14
+  forecasting:
+    method: monte-carlo-throughput
+    runs: 5000
+    seed: 42
+  estimation:
+    method: pert-three-point
+    calibration_scope: decision
 
 plugins:
   enabled: true

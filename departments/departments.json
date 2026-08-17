@@ -239,6 +239,17 @@
         "workflow-automation-engineer",
         "mcp-automation-engineer"
       ]
+    },
+    {
+      "id": "delivery",
+      "name": "Delivery",
+      "roles": [
+        "delivery-manager",
+        "program-manager",
+        "scrum-master",
+        "agile-coach",
+        "sprint-delivery-lead"
+      ]
     }
   ]
 }

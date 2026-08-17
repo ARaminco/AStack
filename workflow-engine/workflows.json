@@ -286,6 +286,27 @@
         "review",
         "handoff"
       ]
+    },
+    {
+      "id": "project-delivery",
+      "title": "Project Delivery",
+      "keywords": [
+        "project",
+        "delivery",
+        "sprint",
+        "milestone",
+        "roadmap",
+        "portfolio",
+        "backlog"
+      ],
+      "stages": [
+        "charter",
+        "decomposition",
+        "baseline",
+        "sprint-execution",
+        "monitoring",
+        "closure"
+      ]
     }
   ]
 }

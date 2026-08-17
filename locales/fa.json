@@ -28,12 +28,130 @@
       "doctor": "سلامت معماری، localization، providerها، pluginها و Claude Code را بررسی می‌کند.",
       "update": "bootstrap Enterprise را دوباره اجرا می‌کند.",
       "review": "درخواست را به Orchestrator می‌دهد و گزارش فارسی برمی‌گرداند.",
+      "project": "مدیریت حرفه‌ای پروژه: چرخه حیات، اسپرینت، ریسک، پیش‌بینی و گزارش سلامت.",
       "workflow": "Workflowها را فهرست یا inspect می‌کند.",
       "provider": "Providerها را فهرست می‌کند.",
       "plugin": "Pluginها را فهرست می‌کند.",
       "memory": "Scopeهای حافظه را فهرست می‌کند.",
       "knowledge": "Knowledge Packها را فهرست می‌کند.",
       "backup": "از memory فایل پشتیبان می‌سازد."
+    },
+    "project": {
+      "usage": "فرمان‌های پروژه: init، demo، list، status، board، backlog، add، move، start، done، block، unblock، charter، milestone، sprint، risk، gate، advance، baseline، critical-path، forecast، next، digest، decision، scaffold، raci، report، templates",
+      "templatesTitle": "قالب‌های پروژه:",
+      "created": "پروژه ساخته شد: {id}",
+      "demoReady": "پروژه نمایشی با شش هفته تاریخچه آماده شد: {id}",
+      "listTitle": "سبد پروژه‌ها:",
+      "listLine": "{id} | فاز: {phase} | وضعیت: {rag} ({score}/100) | SPI: {spi} | تحویل P85: {p85}",
+      "idRequired": "شناسه پروژه لازم است.",
+      "reportSaved": "گزارش وضعیت ذخیره شد: {path}",
+      "boardTitle": "برد کانبان پروژه {id}:",
+      "backlogTitle": "بک‌لاگ اولویت‌بندی‌شده پروژه {id} (بر اساس MoSCoW و WSJF):",
+      "itemAdded": "آیتم کاری اضافه شد: {id}",
+      "itemMoved": "آیتم {id} به وضعیت {status} منتقل شد.",
+      "charterSaved": "منشور پروژه ذخیره شد.",
+      "milestoneAdded": "نقطه عطف اضافه شد: {id}",
+      "milestoneDone": "نقطه عطف تکمیل شد: {id}",
+      "sprintPlanned": "اسپرینت {id} برنامه‌ریزی شد: {committed} آیتم با ظرفیت {capacity} امتیاز.",
+      "sprintClosed": "اسپرینت {id} بسته شد: {points} امتیاز تحویل شد.",
+      "sprintUsage": "استفاده: astack project sprint <id> plan|close",
+      "riskAdded": "ریسک ثبت شد: {id}",
+      "riskClosed": "ریسک بسته شد: {id}",
+      "riskTitle": "ریسک‌های باز پروژه {id}:",
+      "gateOk": "همه معیارهای دروازه این فاز برقرار است؛ پروژه آماده عبور است.",
+      "gateUnmet": "دروازه فاز هنوز باز نشده است. معیارهای برقرارنشده:",
+      "advanced": "پروژه وارد فاز {phase} شد.",
+      "notAdvanced": "عبور از دروازه رد شد. معیارهای برقرارنشده:",
+      "baselineSet": "خط مبنا ثبت شد: {points} امتیاز تا تاریخ {target}",
+      "forecastUnavailable": "برای پیش‌بینی هنوز تاریخچه تحویل کافی وجود ندارد.",
+      "throughputLine": "توان تحویل هفتگی: {chart} | باقی‌مانده: {remaining} امتیاز",
+      "nextTitle": "بهترین اقدام‌های بعدی برای پروژه {id}:",
+      "decisionSaved": "تصمیم ثبت و به حافظه سازمانی اضافه شد: {id}",
+      "scaffolded": "ساختار کاری از روی هدف ساخته شد: {count} آیتم برای بخش‌های {departments}",
+      "raciTitle": "ماتریس RACI پروژه {id}:",
+      "unknownAction": "زیرفرمان ناشناخته پروژه: {action}"
+    }
+  },
+  "delivery": {
+    "phase": {
+      "initiation": "آغاز",
+      "planning": "برنامه‌ریزی",
+      "execution": "اجرا",
+      "closing": "اختتام",
+      "closed": "بسته‌شده"
+    },
+    "rag": {
+      "green": "سبز",
+      "amber": "زرد",
+      "red": "قرمز"
+    },
+    "band": {
+      "low": "کم",
+      "medium": "متوسط",
+      "high": "زیاد",
+      "critical": "بحرانی"
+    },
+    "milestone": {
+      "open": "باز",
+      "done": "تکمیل"
+    },
+    "report": {
+      "title": "گزارش وضعیت پروژه {name}",
+      "generatedAt": "تاریخ گزارش: {date}",
+      "summary": "خلاصه مدیریتی",
+      "phaseLine": "فاز فعلی: {phase}",
+      "healthLine": "سلامت پروژه: {score} از 100 ({rag})",
+      "evm": "مدیریت ارزش کسب‌شده (EVM)",
+      "sprint": "اسپرینت جاری",
+      "sprintLine": "اسپرینت {id} با هدف «{goal}» تا {end} ادامه دارد.",
+      "burndownLine": "نمودار burndown: {chart} (دامنه {scope} امتیاز)",
+      "velocityLine": "سرعت تیم (میانگین سه اسپرینت اخیر): {average} امتیاز {chart}",
+      "forecast": "پیش‌بینی تکمیل (مونت‌کارلو)",
+      "forecastLine": "P50: {p50} | P85: {p85} | P95: {p95} | تاریخ هدف: {target}",
+      "criticalPath": "مسیر بحرانی",
+      "criticalPathLine": "طول مسیر بحرانی {duration} روز: {path}",
+      "risks": "ریسک‌های برتر",
+      "riskLine": "{id} {title} — امتیاز {score} ({band})",
+      "milestones": "نقاط عطف",
+      "milestoneLine": "{id} {title} — سررسید {due} ({status})",
+      "nextActions": "بهترین اقدام‌های بعدی"
+    },
+    "reason": {
+      "schedule-behind": "برنامه عقب است: شاخص SPI برابر {spi} است.",
+      "no-baseline": "خط مبنا ثبت نشده است؛ سنجش پیشرفت ممکن نیست.",
+      "blocked-items": "{count} آیتم مسدود است و جریان کار را متوقف کرده است.",
+      "wip-exceeded": "سقف WIP ستون {status} رد شده است ({count} از {limit}).",
+      "stale-items": "{count} آیتم بیش از {days} روز بدون پیشرفت مانده است.",
+      "high-risk-exposure": "ریسک با شدت {band} باز است: {title}",
+      "scope-creep": "دامنه پروژه {percent}٪ نسبت به خط مبنا رشد کرده است.",
+      "no-active-sprint": "پروژه در فاز اجراست اما اسپرینت فعالی ندارد."
+    },
+    "gate": {
+      "charter-outcome-missing": "نتیجه هدف در منشور پروژه تعریف نشده است.",
+      "success-criteria-missing": "معیارهای موفقیت در منشور ثبت نشده است.",
+      "milestones-missing": "حداقل یک نقطه عطف لازم است.",
+      "estimated-items-missing": "حداقل سه آیتم کاری امتیازدار لازم است.",
+      "risks-missing": "حداقل یک ریسک باید شناسایی و ثبت شود.",
+      "target-date-missing": "تاریخ هدف پروژه تعیین نشده است.",
+      "must-items-open": "همه آیتم‌های must باید تکمیل یا رسماً از دامنه خارج شوند.",
+      "sprint-still-active": "اسپرینت فعال باید قبل از اختتام بسته شود.",
+      "retrospective-missing": "بازنگری (retrospective) پایانی هنوز ثبت نشده است."
+    },
+    "action": {
+      "unblock-item": "رفع انسداد {itemId} ({title}) — دلیل انسداد: {reason}",
+      "mitigate-risk": "کاهش فوری ریسک بحرانی {riskId} ({title})",
+      "set-baseline": "ثبت خط مبنا برای فعال‌شدن سنجش پیشرفت",
+      "reduce-wip": "کاهش کار جاری در ستون {status} ({count} از سقف {limit})",
+      "start-critical-item": "شروع آیتم روی مسیر بحرانی: {itemId} ({title})",
+      "close-sprint": "بستن اسپرینت {sprintId} که مهلت آن تمام شده است",
+      "plan-sprint": "برنامه‌ریزی اسپرینت جدید برای ادامه اجرا",
+      "milestone-overdue": "رسیدگی به نقطه عطف عقب‌افتاده {milestoneId} ({title})",
+      "advance-phase": "همه معیارهای دروازه برقرار است؛ عبور از فاز {phase}"
+    },
+    "digest": {
+      "title": "خلاصه رویدادهای پروژه از {since}:",
+      "quiet": "در این بازه رویدادی ثبت نشده است.",
+      "blockedLine": "مسدود: {id} ({title}) — {reason}"
     }
   }
 }
