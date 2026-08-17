@@ -34,7 +34,12 @@
       "plugin": "List plugins.",
       "memory": "List memory scopes.",
       "knowledge": "List Knowledge Packs.",
-      "backup": "Create a memory backup."
+      "backup": "Create a memory backup.",
+      "upgrade": "Upgrade the embedded AStack core to the latest version",
+      "domain": "List or detect engagement domains",
+      "team": "Create and manage cross-functional teams",
+      "agent": "Create, schedule, and supervise agents",
+      "lead": "Leadership: plan, form teams, delegate, review"
     },
     "project": {
       "usage": "Project commands: init, demo, list, status, board, backlog, add, move, start, done, block, unblock, charter, milestone, sprint, risk, gate, advance, baseline, critical-path, forecast, next, digest, decision, scaffold, raci, report, templates",
@@ -70,6 +75,61 @@
       "scaffolded": "Work structure scaffolded from the goal: {count} items across {departments}",
       "raciTitle": "RACI matrix for project {id}:",
       "unknownAction": "Unknown project subcommand: {action}"
+    },
+    "domain": {
+      "listTitle": "Engagement domains:",
+      "detected": "Detected domain: {name} ({id})",
+      "none": "No matching domain was detected."
+    },
+    "team": {
+      "listTitle": "Teams:",
+      "created": "Team created: {id} with {members} members",
+      "domainRequired": "team create requires --domain",
+      "idRequired": "Team id is required",
+      "showTitle": "Team {id} | {name} | {domain} | {status}",
+      "memberAdded": "Member added: {role}",
+      "memberRemoved": "Member removed: {role}",
+      "projectLinked": "Team {id} linked to project {project}",
+      "statusChanged": "Team {id} status: {status}",
+      "disbanded": "Team disbanded: {id}",
+      "unknownAction": "Unknown team action: {action}"
+    },
+    "agent": {
+      "listTitle": "Agents:",
+      "standupTitle": "Agent standup:",
+      "nothingDue": "No assignments are due.",
+      "ranDue": "Dispatched {count} work orders:",
+      "created": "Agent created: {id} ({role})",
+      "idRequired": "Agent id is required",
+      "showTitle": "Agent {id} | {role} | {status}",
+      "briefed": "Agent briefed: {id}",
+      "assigned": "Assignment {id} scheduled for agent {agent}; next run: {next}",
+      "reported": "Assignment {id} reported: {status}",
+      "statusChanged": "Agent {id} status: {status}",
+      "workload": "Workload for {id}: {total} assignments",
+      "unknownAction": "Unknown agent action: {action}"
+    },
+    "lead": {
+      "planTitle": "Leadership plan for: {goal}",
+      "planDomain": "Domain: {name} ({id})",
+      "planWorkflow": "Workflow: {id}",
+      "planLead": "Team lead: {role} ({department})",
+      "teamFormed": "Team {id} formed with {agents} agents:",
+      "delegateUsage": "Usage: astack lead delegate <projectId> --team <teamId>",
+      "delegated": "Delegated {count} work items to team {team} for project {project}",
+      "standupTitle": "Leadership standup - teams: {teams}, due: {due}, awaiting review: {review}",
+      "reviewTitle": "Review queue ({count}):",
+      "unknownAction": "Unknown lead action: {action}"
+    },
+    "upgrade": {
+      "checking": "Checking upgrade source: {source}",
+      "versions": "Installed: {current} | Available: {latest}",
+      "upToDate": "AStack core is up to date.",
+      "planLine": "Planned changes - add: {add}, update: {update}, seed: {seed}, preserved: {preserved}",
+      "checkDone": "Check mode: no files were changed.",
+      "applied": "Upgrade applied: {count} files. Backup: {backup}",
+      "doctorHint": "Run astack doctor to verify the upgraded install.",
+      "configAdded": "Added new config sections to astack.config.yaml: {sections}"
     }
   },
   "delivery": {

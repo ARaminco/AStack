@@ -1,7 +1,5 @@
 {
-  "id": "astack-core",
-  "version": "2.0.0",
-  "layers": [
+  "managed": [
     "agent-engine",
     "bin",
     "browser",
@@ -14,20 +12,21 @@
     "documentation",
     "domains",
     "event-bus",
-    "knowledge-packs",
+    "installer",
+    "knowledge-packs/knowledge-pack-registry.mjs",
     "lib",
-    "locales",
     "localization-engine",
-    "memory",
+    "locales",
     "memory-engine",
     "orchestrator",
     "permission-system",
-    "plugins",
+    "plugins/plugin-registry.mjs",
     "providers",
     "roles",
     "runtime",
     "scripts",
     "skills",
+    "system",
     "team-engine",
     "telemetry",
     "templates",
@@ -35,5 +34,24 @@
     "upgrade-engine",
     "workflow-engine",
     "workflows"
+  ],
+  "seed": [
+    ".github",
+    ".gitignore",
+    "CLAUDE.md",
+    "Dockerfile",
+    "README.md",
+    "astack.config.yaml",
+    "package.json"
+  ],
+  "preserve": [
+    ".astack",
+    ".claude",
+    ".env",
+    ".git",
+    "knowledge-packs",
+    "memory",
+    "node_modules",
+    "plugins"
   ]
 }

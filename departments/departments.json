@@ -250,6 +250,56 @@
         "agile-coach",
         "sprint-delivery-lead"
       ]
+    },
+    {
+      "id": "legal-practice",
+      "name": "Legal Practice",
+      "roles": [
+        "case-manager",
+        "litigation-counsel",
+        "contract-counsel",
+        "legal-researcher",
+        "paralegal"
+      ]
+    },
+    {
+      "id": "accounting",
+      "name": "Accounting",
+      "roles": [
+        "chief-accountant",
+        "bookkeeper",
+        "payroll-specialist",
+        "auditor",
+        "financial-controller"
+      ]
+    },
+    {
+      "id": "tax",
+      "name": "Tax",
+      "roles": [
+        "tax-advisor",
+        "corporate-tax-specialist",
+        "vat-specialist",
+        "tax-compliance-officer"
+      ]
+    },
+    {
+      "id": "hr",
+      "name": "People & HR",
+      "roles": [
+        "hr-manager",
+        "recruiter",
+        "onboarding-specialist"
+      ]
+    },
+    {
+      "id": "operations",
+      "name": "Operations",
+      "roles": [
+        "operations-manager",
+        "process-analyst",
+        "logistics-coordinator"
+      ]
     }
   ]
 }

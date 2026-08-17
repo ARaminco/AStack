@@ -6,6 +6,8 @@ const scopes = [
   "project",
   "department",
   "role",
+  "team",
+  "agent",
   "decision",
   "coding-standards",
   "architecture",

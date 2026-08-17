@@ -1,7 +1,7 @@
 project:
   name: AStack Enterprise
-  product: AI Engineering Operating System
-  version: 1.0.0
+  product: AI Operating System for Any Practice
+  version: 2.0.0
   philosophy: enterprise_modular_platform
   primary_runtime: claude-code
   compatibility:
@@ -46,14 +46,20 @@ architecture:
     - core
     - runtime
     - orchestrator
+    - domains
     - departments
     - roles
+    - teams
+    - agents
     - providers
     - knowledge-packs
     - plugins
     - memory-engine
     - workflow-engine
     - delivery-engine
+    - team-engine
+    - agent-engine
+    - upgrade-engine
     - localization-engine
     - configuration-engine
     - event-bus
@@ -113,6 +119,8 @@ memory:
     - project
     - department
     - role
+    - team
+    - agent
     - decision
     - coding-standards
     - architecture
@@ -142,6 +150,55 @@ delivery:
     method: pert-three-point
     calibration_scope: decision
 
+domains:
+  enabled: true
+  registry: domains/domains.json
+  engine: domains/domain-registry.mjs
+  detection: keyword-scoring
+  languages:
+    - fa
+    - en
+
+teams:
+  enabled: true
+  engine: team-engine/team-engine.mjs
+  storage: .astack/teams
+  assembly: domain-blueprint
+  statuses:
+    - forming
+    - active
+    - paused
+    - disbanded
+
+agents:
+  enabled: true
+  engine: agent-engine/agent-engine.mjs
+  leadership: agent-engine/leadership.mjs
+  storage: .astack/agents
+  provider_default: claude-code
+  scheduling:
+    intervals:
+      - 30m
+      - 1h
+      - 4h
+      - 1d
+      - 1w
+    dispatch: work-order
+    outbox: .astack/agents/<agent>/outbox
+  supervision:
+    standup: astack lead standup
+    review: astack lead review
+
+upgrade:
+  enabled: true
+  engine: upgrade-engine/upgrade-engine.mjs
+  manifest: upgrade-engine/manifest.json
+  source: https://github.com/ARaminco/AStack.git
+  cache: .astack/cache/upstream
+  backups: .astack/backups
+  standalone: scripts/astack-upgrade.mjs
+  keep: []
+
 plugins:
   enabled: true
   directory: plugins
@@ -165,8 +222,14 @@ cli:
     - init
     - install
     - doctor
+    - upgrade
     - update
     - review
+    - domain
+    - team
+    - agent
+    - lead
+    - project
     - workflow
     - provider
     - plugin

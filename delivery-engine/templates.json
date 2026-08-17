@@ -4,14 +4,38 @@
       "id": "software-delivery",
       "name": "Software Delivery",
       "milestones": [
-        { "title": "Architecture approved", "dueInDays": 14 },
-        { "title": "Feature complete", "dueInDays": 45 },
-        { "title": "Production release", "dueInDays": 60 }
+        {
+          "title": "Architecture approved",
+          "dueInDays": 14
+        },
+        {
+          "title": "Feature complete",
+          "dueInDays": 45
+        },
+        {
+          "title": "Production release",
+          "dueInDays": 60
+        }
       ],
       "risks": [
-        { "title": "Scope grows after baseline", "probability": 4, "impact": 3, "mitigation": "Weekly scope review against baseline; rebaseline decisions recorded" },
-        { "title": "Key dependency delivered late", "probability": 3, "impact": 4, "mitigation": "Track critical-path items daily; keep a fallback vendor or stub" },
-        { "title": "Quality debt discovered in review", "probability": 3, "impact": 3, "mitigation": "Definition of done enforced on every item; review capacity reserved" }
+        {
+          "title": "Scope grows after baseline",
+          "probability": 4,
+          "impact": 3,
+          "mitigation": "Weekly scope review against baseline; rebaseline decisions recorded"
+        },
+        {
+          "title": "Key dependency delivered late",
+          "probability": 3,
+          "impact": 4,
+          "mitigation": "Track critical-path items daily; keep a fallback vendor or stub"
+        },
+        {
+          "title": "Quality debt discovered in review",
+          "probability": 3,
+          "impact": 3,
+          "mitigation": "Definition of done enforced on every item; review capacity reserved"
+        }
       ],
       "epics": [
         {
@@ -19,8 +43,39 @@
           "department": "architecture",
           "moscow": "must",
           "stories": [
-            { "title": "Define module boundaries and contracts", "points": 5, "moscow": "must", "estimate": { "optimistic": 2, "likely": 4, "pessimistic": 8 }, "wsjf": { "businessValue": 8, "timeCriticality": 8, "riskReduction": 8, "jobSize": 5 } },
-            { "title": "Set up delivery pipeline", "points": 3, "moscow": "must", "department": "devops", "estimate": { "optimistic": 1, "likely": 2, "pessimistic": 5 }, "wsjf": { "businessValue": 5, "timeCriticality": 8, "riskReduction": 5, "jobSize": 3 } }
+            {
+              "title": "Define module boundaries and contracts",
+              "points": 5,
+              "moscow": "must",
+              "estimate": {
+                "optimistic": 2,
+                "likely": 4,
+                "pessimistic": 8
+              },
+              "wsjf": {
+                "businessValue": 8,
+                "timeCriticality": 8,
+                "riskReduction": 8,
+                "jobSize": 5
+              }
+            },
+            {
+              "title": "Set up delivery pipeline",
+              "points": 3,
+              "moscow": "must",
+              "department": "devops",
+              "estimate": {
+                "optimistic": 1,
+                "likely": 2,
+                "pessimistic": 5
+              },
+              "wsjf": {
+                "businessValue": 5,
+                "timeCriticality": 8,
+                "riskReduction": 5,
+                "jobSize": 3
+              }
+            }
           ]
         },
         {
@@ -28,9 +83,55 @@
           "department": "engineering",
           "moscow": "must",
           "stories": [
-            { "title": "Implement domain model and services", "points": 8, "moscow": "must", "estimate": { "optimistic": 4, "likely": 7, "pessimistic": 14 }, "wsjf": { "businessValue": 10, "timeCriticality": 6, "riskReduction": 4, "jobSize": 8 } },
-            { "title": "Implement API surface", "points": 5, "moscow": "must", "estimate": { "optimistic": 2, "likely": 4, "pessimistic": 8 }, "wsjf": { "businessValue": 8, "timeCriticality": 5, "riskReduction": 3, "jobSize": 5 } },
-            { "title": "Build user interface", "points": 5, "moscow": "should", "department": "frontend", "estimate": { "optimistic": 3, "likely": 5, "pessimistic": 9 }, "wsjf": { "businessValue": 7, "timeCriticality": 4, "riskReduction": 2, "jobSize": 5 } }
+            {
+              "title": "Implement domain model and services",
+              "points": 8,
+              "moscow": "must",
+              "estimate": {
+                "optimistic": 4,
+                "likely": 7,
+                "pessimistic": 14
+              },
+              "wsjf": {
+                "businessValue": 10,
+                "timeCriticality": 6,
+                "riskReduction": 4,
+                "jobSize": 8
+              }
+            },
+            {
+              "title": "Implement API surface",
+              "points": 5,
+              "moscow": "must",
+              "estimate": {
+                "optimistic": 2,
+                "likely": 4,
+                "pessimistic": 8
+              },
+              "wsjf": {
+                "businessValue": 8,
+                "timeCriticality": 5,
+                "riskReduction": 3,
+                "jobSize": 5
+              }
+            },
+            {
+              "title": "Build user interface",
+              "points": 5,
+              "moscow": "should",
+              "department": "frontend",
+              "estimate": {
+                "optimistic": 3,
+                "likely": 5,
+                "pessimistic": 9
+              },
+              "wsjf": {
+                "businessValue": 7,
+                "timeCriticality": 4,
+                "riskReduction": 2,
+                "jobSize": 5
+              }
+            }
           ]
         },
         {
@@ -38,9 +139,56 @@
           "department": "qa",
           "moscow": "must",
           "stories": [
-            { "title": "Automated test suite", "points": 5, "moscow": "must", "estimate": { "optimistic": 2, "likely": 4, "pessimistic": 7 }, "wsjf": { "businessValue": 6, "timeCriticality": 5, "riskReduction": 9, "jobSize": 5 } },
-            { "title": "Security review", "points": 3, "moscow": "should", "department": "cyber-security", "estimate": { "optimistic": 1, "likely": 2, "pessimistic": 5 }, "wsjf": { "businessValue": 5, "timeCriticality": 3, "riskReduction": 9, "jobSize": 3 } },
-            { "title": "Release and rollout plan", "points": 2, "moscow": "must", "department": "devops", "estimate": { "optimistic": 1, "likely": 2, "pessimistic": 3 }, "wsjf": { "businessValue": 6, "timeCriticality": 7, "riskReduction": 5, "jobSize": 2 } }
+            {
+              "title": "Automated test suite",
+              "points": 5,
+              "moscow": "must",
+              "estimate": {
+                "optimistic": 2,
+                "likely": 4,
+                "pessimistic": 7
+              },
+              "wsjf": {
+                "businessValue": 6,
+                "timeCriticality": 5,
+                "riskReduction": 9,
+                "jobSize": 5
+              }
+            },
+            {
+              "title": "Security review",
+              "points": 3,
+              "moscow": "should",
+              "department": "cyber-security",
+              "estimate": {
+                "optimistic": 1,
+                "likely": 2,
+                "pessimistic": 5
+              },
+              "wsjf": {
+                "businessValue": 5,
+                "timeCriticality": 3,
+                "riskReduction": 9,
+                "jobSize": 3
+              }
+            },
+            {
+              "title": "Release and rollout plan",
+              "points": 2,
+              "moscow": "must",
+              "department": "devops",
+              "estimate": {
+                "optimistic": 1,
+                "likely": 2,
+                "pessimistic": 3
+              },
+              "wsjf": {
+                "businessValue": 6,
+                "timeCriticality": 7,
+                "riskReduction": 5,
+                "jobSize": 2
+              }
+            }
           ]
         }
       ]
@@ -49,13 +197,32 @@
       "id": "ai-feature",
       "name": "AI Feature",
       "milestones": [
-        { "title": "Evaluation baseline established", "dueInDays": 10 },
-        { "title": "Quality bar reached", "dueInDays": 35 },
-        { "title": "Production rollout", "dueInDays": 50 }
+        {
+          "title": "Evaluation baseline established",
+          "dueInDays": 10
+        },
+        {
+          "title": "Quality bar reached",
+          "dueInDays": 35
+        },
+        {
+          "title": "Production rollout",
+          "dueInDays": 50
+        }
       ],
       "risks": [
-        { "title": "Model quality below the target bar", "probability": 4, "impact": 4, "mitigation": "Define the evaluation set before building; iterate on prompts and retrieval, not vibes" },
-        { "title": "Latency or cost exceeds budget", "probability": 3, "impact": 3, "mitigation": "Measure per-request cost early; cache and route to smaller models where quality allows" }
+        {
+          "title": "Model quality below the target bar",
+          "probability": 4,
+          "impact": 4,
+          "mitigation": "Define the evaluation set before building; iterate on prompts and retrieval, not vibes"
+        },
+        {
+          "title": "Latency or cost exceeds budget",
+          "probability": 3,
+          "impact": 3,
+          "mitigation": "Measure per-request cost early; cache and route to smaller models where quality allows"
+        }
       ],
       "epics": [
         {
@@ -63,8 +230,38 @@
           "department": "ai-engineering",
           "moscow": "must",
           "stories": [
-            { "title": "Build golden evaluation set", "points": 3, "moscow": "must", "estimate": { "optimistic": 1, "likely": 3, "pessimistic": 5 }, "wsjf": { "businessValue": 6, "timeCriticality": 8, "riskReduction": 10, "jobSize": 3 } },
-            { "title": "Automate scoring runs", "points": 3, "moscow": "must", "estimate": { "optimistic": 1, "likely": 2, "pessimistic": 4 }, "wsjf": { "businessValue": 5, "timeCriticality": 6, "riskReduction": 8, "jobSize": 3 } }
+            {
+              "title": "Build golden evaluation set",
+              "points": 3,
+              "moscow": "must",
+              "estimate": {
+                "optimistic": 1,
+                "likely": 3,
+                "pessimistic": 5
+              },
+              "wsjf": {
+                "businessValue": 6,
+                "timeCriticality": 8,
+                "riskReduction": 10,
+                "jobSize": 3
+              }
+            },
+            {
+              "title": "Automate scoring runs",
+              "points": 3,
+              "moscow": "must",
+              "estimate": {
+                "optimistic": 1,
+                "likely": 2,
+                "pessimistic": 4
+              },
+              "wsjf": {
+                "businessValue": 5,
+                "timeCriticality": 6,
+                "riskReduction": 8,
+                "jobSize": 3
+              }
+            }
           ]
         },
         {
@@ -72,8 +269,38 @@
           "department": "ai-engineering",
           "moscow": "must",
           "stories": [
-            { "title": "Prompt and context design", "points": 5, "moscow": "must", "estimate": { "optimistic": 2, "likely": 4, "pessimistic": 9 }, "wsjf": { "businessValue": 9, "timeCriticality": 6, "riskReduction": 5, "jobSize": 5 } },
-            { "title": "Provider routing and fallback", "points": 3, "moscow": "should", "estimate": { "optimistic": 1, "likely": 3, "pessimistic": 6 }, "wsjf": { "businessValue": 5, "timeCriticality": 4, "riskReduction": 7, "jobSize": 3 } }
+            {
+              "title": "Prompt and context design",
+              "points": 5,
+              "moscow": "must",
+              "estimate": {
+                "optimistic": 2,
+                "likely": 4,
+                "pessimistic": 9
+              },
+              "wsjf": {
+                "businessValue": 9,
+                "timeCriticality": 6,
+                "riskReduction": 5,
+                "jobSize": 5
+              }
+            },
+            {
+              "title": "Provider routing and fallback",
+              "points": 3,
+              "moscow": "should",
+              "estimate": {
+                "optimistic": 1,
+                "likely": 3,
+                "pessimistic": 6
+              },
+              "wsjf": {
+                "businessValue": 5,
+                "timeCriticality": 4,
+                "riskReduction": 7,
+                "jobSize": 3
+              }
+            }
           ]
         },
         {
@@ -81,8 +308,38 @@
           "department": "engineering",
           "moscow": "should",
           "stories": [
-            { "title": "API and UI integration", "points": 5, "moscow": "should", "estimate": { "optimistic": 2, "likely": 4, "pessimistic": 8 }, "wsjf": { "businessValue": 8, "timeCriticality": 5, "riskReduction": 2, "jobSize": 5 } },
-            { "title": "Usage telemetry and guardrails", "points": 3, "moscow": "should", "estimate": { "optimistic": 1, "likely": 2, "pessimistic": 5 }, "wsjf": { "businessValue": 4, "timeCriticality": 3, "riskReduction": 8, "jobSize": 3 } }
+            {
+              "title": "API and UI integration",
+              "points": 5,
+              "moscow": "should",
+              "estimate": {
+                "optimistic": 2,
+                "likely": 4,
+                "pessimistic": 8
+              },
+              "wsjf": {
+                "businessValue": 8,
+                "timeCriticality": 5,
+                "riskReduction": 2,
+                "jobSize": 5
+              }
+            },
+            {
+              "title": "Usage telemetry and guardrails",
+              "points": 3,
+              "moscow": "should",
+              "estimate": {
+                "optimistic": 1,
+                "likely": 2,
+                "pessimistic": 5
+              },
+              "wsjf": {
+                "businessValue": 4,
+                "timeCriticality": 3,
+                "riskReduction": 8,
+                "jobSize": 3
+              }
+            }
           ]
         }
       ]
@@ -91,13 +348,32 @@
       "id": "startup-mvp",
       "name": "Startup MVP",
       "milestones": [
-        { "title": "Problem interviews complete", "dueInDays": 10 },
-        { "title": "MVP in first users hands", "dueInDays": 30 },
-        { "title": "Go or pivot decision", "dueInDays": 45 }
+        {
+          "title": "Problem interviews complete",
+          "dueInDays": 10
+        },
+        {
+          "title": "MVP in first users hands",
+          "dueInDays": 30
+        },
+        {
+          "title": "Go or pivot decision",
+          "dueInDays": 45
+        }
       ],
       "risks": [
-        { "title": "Building something nobody wants", "probability": 4, "impact": 5, "mitigation": "Ship to real users at every milestone; kill criteria written in the charter" },
-        { "title": "MVP scope inflates into a full product", "probability": 4, "impact": 3, "mitigation": "Must list capped at one core loop; everything else is could" }
+        {
+          "title": "Building something nobody wants",
+          "probability": 4,
+          "impact": 5,
+          "mitigation": "Ship to real users at every milestone; kill criteria written in the charter"
+        },
+        {
+          "title": "MVP scope inflates into a full product",
+          "probability": 4,
+          "impact": 3,
+          "mitigation": "Must list capped at one core loop; everything else is could"
+        }
       ],
       "epics": [
         {
@@ -105,8 +381,40 @@
           "department": "business",
           "moscow": "must",
           "stories": [
-            { "title": "Problem interviews with target users", "points": 3, "moscow": "must", "department": "research", "estimate": { "optimistic": 2, "likely": 3, "pessimistic": 6 }, "wsjf": { "businessValue": 10, "timeCriticality": 10, "riskReduction": 10, "jobSize": 3 } },
-            { "title": "Landing page and demand signal", "points": 2, "moscow": "must", "department": "marketing", "estimate": { "optimistic": 1, "likely": 2, "pessimistic": 3 }, "wsjf": { "businessValue": 7, "timeCriticality": 8, "riskReduction": 8, "jobSize": 2 } }
+            {
+              "title": "Problem interviews with target users",
+              "points": 3,
+              "moscow": "must",
+              "department": "research",
+              "estimate": {
+                "optimistic": 2,
+                "likely": 3,
+                "pessimistic": 6
+              },
+              "wsjf": {
+                "businessValue": 10,
+                "timeCriticality": 10,
+                "riskReduction": 10,
+                "jobSize": 3
+              }
+            },
+            {
+              "title": "Landing page and demand signal",
+              "points": 2,
+              "moscow": "must",
+              "department": "marketing",
+              "estimate": {
+                "optimistic": 1,
+                "likely": 2,
+                "pessimistic": 3
+              },
+              "wsjf": {
+                "businessValue": 7,
+                "timeCriticality": 8,
+                "riskReduction": 8,
+                "jobSize": 2
+              }
+            }
           ]
         },
         {
@@ -114,8 +422,39 @@
           "department": "engineering",
           "moscow": "must",
           "stories": [
-            { "title": "Build the one core user loop", "points": 8, "moscow": "must", "estimate": { "optimistic": 4, "likely": 7, "pessimistic": 13 }, "wsjf": { "businessValue": 10, "timeCriticality": 8, "riskReduction": 5, "jobSize": 8 } },
-            { "title": "Instrument activation funnel", "points": 2, "moscow": "should", "department": "analytics", "estimate": { "optimistic": 1, "likely": 2, "pessimistic": 3 }, "wsjf": { "businessValue": 5, "timeCriticality": 5, "riskReduction": 7, "jobSize": 2 } }
+            {
+              "title": "Build the one core user loop",
+              "points": 8,
+              "moscow": "must",
+              "estimate": {
+                "optimistic": 4,
+                "likely": 7,
+                "pessimistic": 13
+              },
+              "wsjf": {
+                "businessValue": 10,
+                "timeCriticality": 8,
+                "riskReduction": 5,
+                "jobSize": 8
+              }
+            },
+            {
+              "title": "Instrument activation funnel",
+              "points": 2,
+              "moscow": "should",
+              "department": "analytics",
+              "estimate": {
+                "optimistic": 1,
+                "likely": 2,
+                "pessimistic": 3
+              },
+              "wsjf": {
+                "businessValue": 5,
+                "timeCriticality": 5,
+                "riskReduction": 7,
+                "jobSize": 2
+              }
+            }
           ]
         }
       ]
@@ -124,13 +463,32 @@
       "id": "marketing-campaign",
       "name": "Marketing Campaign",
       "milestones": [
-        { "title": "Message and audience locked", "dueInDays": 7 },
-        { "title": "Assets produced", "dueInDays": 21 },
-        { "title": "Campaign live", "dueInDays": 28 }
+        {
+          "title": "Message and audience locked",
+          "dueInDays": 7
+        },
+        {
+          "title": "Assets produced",
+          "dueInDays": 21
+        },
+        {
+          "title": "Campaign live",
+          "dueInDays": 28
+        }
       ],
       "risks": [
-        { "title": "Message does not resonate with the audience", "probability": 3, "impact": 4, "mitigation": "A/B test the message on a small budget before full spend" },
-        { "title": "Channel costs exceed plan", "probability": 3, "impact": 3, "mitigation": "Daily spend caps; weekly unit-economics review" }
+        {
+          "title": "Message does not resonate with the audience",
+          "probability": 3,
+          "impact": 4,
+          "mitigation": "A/B test the message on a small budget before full spend"
+        },
+        {
+          "title": "Channel costs exceed plan",
+          "probability": 3,
+          "impact": 3,
+          "mitigation": "Daily spend caps; weekly unit-economics review"
+        }
       ],
       "epics": [
         {
@@ -138,8 +496,39 @@
           "department": "marketing",
           "moscow": "must",
           "stories": [
-            { "title": "Audience segmentation and positioning", "points": 3, "moscow": "must", "estimate": { "optimistic": 1, "likely": 3, "pessimistic": 5 }, "wsjf": { "businessValue": 9, "timeCriticality": 8, "riskReduction": 7, "jobSize": 3 } },
-            { "title": "Creative concept and copy", "points": 3, "moscow": "must", "department": "content", "estimate": { "optimistic": 2, "likely": 3, "pessimistic": 6 }, "wsjf": { "businessValue": 8, "timeCriticality": 6, "riskReduction": 4, "jobSize": 3 } }
+            {
+              "title": "Audience segmentation and positioning",
+              "points": 3,
+              "moscow": "must",
+              "estimate": {
+                "optimistic": 1,
+                "likely": 3,
+                "pessimistic": 5
+              },
+              "wsjf": {
+                "businessValue": 9,
+                "timeCriticality": 8,
+                "riskReduction": 7,
+                "jobSize": 3
+              }
+            },
+            {
+              "title": "Creative concept and copy",
+              "points": 3,
+              "moscow": "must",
+              "department": "content",
+              "estimate": {
+                "optimistic": 2,
+                "likely": 3,
+                "pessimistic": 6
+              },
+              "wsjf": {
+                "businessValue": 8,
+                "timeCriticality": 6,
+                "riskReduction": 4,
+                "jobSize": 3
+              }
+            }
           ]
         },
         {
@@ -147,8 +536,350 @@
           "department": "marketing",
           "moscow": "must",
           "stories": [
-            { "title": "Channel setup and tracking", "points": 2, "moscow": "must", "department": "analytics", "estimate": { "optimistic": 1, "likely": 2, "pessimistic": 4 }, "wsjf": { "businessValue": 6, "timeCriticality": 7, "riskReduction": 6, "jobSize": 2 } },
-            { "title": "Launch, measure, and iterate", "points": 5, "moscow": "must", "estimate": { "optimistic": 3, "likely": 5, "pessimistic": 8 }, "wsjf": { "businessValue": 9, "timeCriticality": 7, "riskReduction": 3, "jobSize": 5 } }
+            {
+              "title": "Channel setup and tracking",
+              "points": 2,
+              "moscow": "must",
+              "department": "analytics",
+              "estimate": {
+                "optimistic": 1,
+                "likely": 2,
+                "pessimistic": 4
+              },
+              "wsjf": {
+                "businessValue": 6,
+                "timeCriticality": 7,
+                "riskReduction": 6,
+                "jobSize": 2
+              }
+            },
+            {
+              "title": "Launch, measure, and iterate",
+              "points": 5,
+              "moscow": "must",
+              "estimate": {
+                "optimistic": 3,
+                "likely": 5,
+                "pessimistic": 8
+              },
+              "wsjf": {
+                "businessValue": 9,
+                "timeCriticality": 7,
+                "riskReduction": 3,
+                "jobSize": 5
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "legal-case",
+      "name": "Legal Case",
+      "milestones": [
+        {
+          "title": "Intake and conflict check complete",
+          "dueInDays": 7
+        },
+        {
+          "title": "Initial filing submitted",
+          "dueInDays": 21
+        },
+        {
+          "title": "Hearing preparation complete",
+          "dueInDays": 45
+        }
+      ],
+      "risks": [
+        {
+          "title": "Statutory deadline missed",
+          "probability": 2,
+          "impact": 5,
+          "mitigation": "Maintain a compliance calendar with double reminders"
+        },
+        {
+          "title": "Key evidence unavailable",
+          "probability": 3,
+          "impact": 4,
+          "mitigation": "Start evidence collection during intake"
+        }
+      ],
+      "epics": [
+        {
+          "title": "Case intake and research",
+          "department": "legal-practice",
+          "moscow": "must",
+          "stories": [
+            {
+              "title": "Collect client documents and facts",
+              "points": 3,
+              "moscow": "must"
+            },
+            {
+              "title": "Research precedent and statutes",
+              "points": 5,
+              "moscow": "must"
+            },
+            {
+              "title": "Draft case strategy memo",
+              "points": 3,
+              "moscow": "must"
+            }
+          ]
+        },
+        {
+          "title": "Filings and motions",
+          "department": "legal-practice",
+          "moscow": "must",
+          "stories": [
+            {
+              "title": "Draft initial filing",
+              "points": 5,
+              "moscow": "must"
+            },
+            {
+              "title": "Internal review of filing",
+              "points": 2,
+              "moscow": "must"
+            }
+          ]
+        },
+        {
+          "title": "Hearing preparation",
+          "department": "legal-practice",
+          "moscow": "should",
+          "stories": [
+            {
+              "title": "Prepare exhibit bundle",
+              "points": 3,
+              "moscow": "should"
+            },
+            {
+              "title": "Prepare oral argument outline",
+              "points": 3,
+              "moscow": "should"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tax-filing",
+      "name": "Tax Filing",
+      "milestones": [
+        {
+          "title": "Records collected and verified",
+          "dueInDays": 10
+        },
+        {
+          "title": "Return computed and reviewed",
+          "dueInDays": 20
+        },
+        {
+          "title": "Return filed and payment scheduled",
+          "dueInDays": 30
+        }
+      ],
+      "risks": [
+        {
+          "title": "Filing deadline missed",
+          "probability": 2,
+          "impact": 5,
+          "mitigation": "Track statutory deadlines in the compliance calendar"
+        },
+        {
+          "title": "Supporting documents incomplete",
+          "probability": 3,
+          "impact": 3,
+          "mitigation": "Reconcile ledgers before computation starts"
+        }
+      ],
+      "epics": [
+        {
+          "title": "Records collection",
+          "department": "accounting",
+          "moscow": "must",
+          "stories": [
+            {
+              "title": "Gather ledgers and invoices",
+              "points": 3,
+              "moscow": "must"
+            },
+            {
+              "title": "Reconcile bank statements",
+              "points": 3,
+              "moscow": "must"
+            }
+          ]
+        },
+        {
+          "title": "Computation and review",
+          "department": "tax",
+          "moscow": "must",
+          "stories": [
+            {
+              "title": "Compute taxable base and liability",
+              "points": 5,
+              "moscow": "must"
+            },
+            {
+              "title": "Independent review of computation",
+              "points": 2,
+              "moscow": "must"
+            }
+          ]
+        },
+        {
+          "title": "Filing and payment",
+          "department": "tax",
+          "moscow": "must",
+          "stories": [
+            {
+              "title": "Submit return through the portal",
+              "points": 2,
+              "moscow": "must"
+            },
+            {
+              "title": "Schedule payment and archive receipts",
+              "points": 2,
+              "moscow": "should"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "accounting-close",
+      "name": "Accounting Close",
+      "milestones": [
+        {
+          "title": "All ledgers reconciled",
+          "dueInDays": 7
+        },
+        {
+          "title": "Financial statements drafted",
+          "dueInDays": 12
+        },
+        {
+          "title": "Close reviewed and locked",
+          "dueInDays": 15
+        }
+      ],
+      "risks": [
+        {
+          "title": "Unreconciled differences remain",
+          "probability": 3,
+          "impact": 3,
+          "mitigation": "Daily reconciliation during close week"
+        },
+        {
+          "title": "Payroll postings late",
+          "probability": 2,
+          "impact": 3,
+          "mitigation": "Freeze payroll changes before close"
+        }
+      ],
+      "epics": [
+        {
+          "title": "Ledger reconciliation",
+          "department": "accounting",
+          "moscow": "must",
+          "stories": [
+            {
+              "title": "Reconcile bank and cash accounts",
+              "points": 3,
+              "moscow": "must"
+            },
+            {
+              "title": "Reconcile receivables and payables",
+              "points": 3,
+              "moscow": "must"
+            }
+          ]
+        },
+        {
+          "title": "Statements and reporting",
+          "department": "accounting",
+          "moscow": "must",
+          "stories": [
+            {
+              "title": "Draft income statement and balance sheet",
+              "points": 5,
+              "moscow": "must"
+            },
+            {
+              "title": "Management review of statements",
+              "points": 2,
+              "moscow": "must"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "financial-audit",
+      "name": "Financial Audit",
+      "milestones": [
+        {
+          "title": "Audit plan agreed",
+          "dueInDays": 7
+        },
+        {
+          "title": "Fieldwork complete",
+          "dueInDays": 25
+        },
+        {
+          "title": "Final report issued",
+          "dueInDays": 35
+        }
+      ],
+      "risks": [
+        {
+          "title": "Evidence requests delayed",
+          "probability": 3,
+          "impact": 3,
+          "mitigation": "Send the request list at kickoff"
+        },
+        {
+          "title": "Material misstatement found late",
+          "probability": 2,
+          "impact": 5,
+          "mitigation": "Run risk-based sampling early"
+        }
+      ],
+      "epics": [
+        {
+          "title": "Audit preparation",
+          "department": "accounting",
+          "moscow": "must",
+          "stories": [
+            {
+              "title": "Agree scope and request list",
+              "points": 2,
+              "moscow": "must"
+            },
+            {
+              "title": "Collect prior statements and policies",
+              "points": 3,
+              "moscow": "must"
+            }
+          ]
+        },
+        {
+          "title": "Fieldwork and findings",
+          "department": "accounting",
+          "moscow": "must",
+          "stories": [
+            {
+              "title": "Test key balances and transactions",
+              "points": 5,
+              "moscow": "must"
+            },
+            {
+              "title": "Draft findings and remediation plan",
+              "points": 3,
+              "moscow": "must"
+            }
           ]
         }
       ]

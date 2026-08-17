@@ -11,8 +11,32 @@ export class WorkflowEngine {
     return this.manifest.workflows;
   }
 
-  select(intent) {
+  byId(id) {
+    const workflow = this.list().find((entry) => entry.id === id);
+    if (!workflow) {
+      throw new Error("Unknown workflow: " + id);
+    }
+    return workflow;
+  }
+
+  selectStrict(intent) {
     const text = String(intent).toLowerCase();
-    return this.list().find((workflow) => workflow.keywords.some((keyword) => text.includes(keyword))) ?? this.list()[0];
+    let best = null;
+    let bestScore = 0;
+    for (const workflow of this.list()) {
+      const score = workflow.keywords.reduce((sum, keyword) => {
+        const needle = keyword.toLowerCase();
+        return sum + (text.includes(needle) ? (needle.length > 3 ? 2 : 1) : 0);
+      }, 0);
+      if (score > bestScore) {
+        best = workflow;
+        bestScore = score;
+      }
+    }
+    return best;
+  }
+
+  select(intent) {
+    return this.selectStrict(intent) ?? this.list()[0];
   }
 }

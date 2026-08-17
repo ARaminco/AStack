@@ -4,5 +4,8 @@ node_modules/
 !.env.example
 .astack/backups/
 .astack/projects/
+.astack/teams/
+.astack/agents/
+.astack/cache/
 coverage/
 dist/
