@@ -1,16 +1,17 @@
 {
   "name": "astack-enterprise",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "AStack Enterprise AI Engineering Operating System.",
+  "description": "AStack Enterprise AI Operating System for software, legal, finance, tax, accounting, and any other practice.",
   "bin": {
     "astack": "./bin/astack.mjs"
   },
   "scripts": {
     "bootstrap": "node scripts/bootstrap-enterprise.mjs",
     "doctor": "node bin/astack.mjs doctor",
-    "test": "node tests/verify-astack.mjs && node tests/verify-delivery.mjs",
+    "test": "node tests/verify-astack.mjs && node tests/verify-delivery.mjs && node tests/verify-orchestration.mjs",
+    "upgrade": "node bin/astack.mjs upgrade",
     "claude:doctor": "node bin/astack.mjs doctor --claude-code",
     "list:knowledge": "node bin/astack.mjs knowledge list"
   },

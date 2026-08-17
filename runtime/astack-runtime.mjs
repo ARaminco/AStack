@@ -9,6 +9,10 @@ import { KnowledgePackRegistry } from "../knowledge-packs/knowledge-pack-registr
 import { MemoryEngine } from "../memory-engine/memory-engine.mjs";
 import { WorkflowEngine } from "../workflow-engine/workflow-engine.mjs";
 import { ProjectEngine } from "../delivery-engine/project-engine.mjs";
+import { DomainRegistry } from "../domains/domain-registry.mjs";
+import { TeamEngine } from "../team-engine/team-engine.mjs";
+import { AgentEngine } from "../agent-engine/agent-engine.mjs";
+import { Leadership } from "../agent-engine/leadership.mjs";
 import { Orchestrator } from "../orchestrator/orchestrator.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -22,8 +26,29 @@ export function createRuntime() {
   const memory = new MemoryEngine(root);
   const workflows = new WorkflowEngine(root);
   const projects = new ProjectEngine(root, { memory, eventBus });
+  const domains = new DomainRegistry(root);
+  const teams = new TeamEngine(root, { eventBus, domains });
+  const agents = new AgentEngine(root, { memory, eventBus });
+  const leadership = new Leadership({ domains, teams, agents, projects });
   const departments = JSON.parse(readFileSync(join(root, "departments", "departments.json"), "utf8")).departments;
   const providers = providerRegistry.list();
-  const orchestrator = new Orchestrator({ departments, providers, workflows, memory, eventBus, projects });
-  return { root, configuration, eventBus, providerRegistry, pluginRegistry, knowledgePackRegistry, memory, workflows, projects, departments, providers, orchestrator };
+  const orchestrator = new Orchestrator({ departments, providers, workflows, memory, eventBus, projects, domains, teams, agents });
+  return {
+    root,
+    configuration,
+    eventBus,
+    providerRegistry,
+    pluginRegistry,
+    knowledgePackRegistry,
+    memory,
+    workflows,
+    projects,
+    domains,
+    teams,
+    agents,
+    leadership,
+    departments,
+    providers,
+    orchestrator
+  };
 }

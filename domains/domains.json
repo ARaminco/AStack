@@ -1,0 +1,178 @@
+{
+  "domains": [
+    {
+      "id": "software",
+      "name": "Software Delivery",
+      "nameFa": "توسعه نرم‌افزار",
+      "keywords": ["software", "code", "app", "application", "api", "feature", "bug", "deploy", "laravel", "react", "backend", "frontend", "نرم‌افزار", "کد", "اپلیکیشن", "برنامه", "باگ", "استقرار", "سایت", "وب"],
+      "departments": ["engineering", "architecture", "backend", "frontend", "mobile", "devops", "qa", "database", "ai-engineering"],
+      "workflow": "project-delivery",
+      "deliverables": ["release", "architecture-decision-record", "test-report", "runbook"],
+      "blueprint": {
+        "lead": { "role": "program-manager", "department": "delivery" },
+        "members": [
+          { "role": "principal-architect", "department": "architecture" },
+          { "role": "principal-node-engineer", "department": "engineering" },
+          { "role": "qa-engineer", "department": "qa" },
+          { "role": "docker-engineer", "department": "devops" }
+        ]
+      }
+    },
+    {
+      "id": "legal",
+      "name": "Legal Practice",
+      "nameFa": "حقوقی",
+      "keywords": ["legal", "case", "court", "lawsuit", "litigation", "contract", "agreement", "claim", "defense", "حقوقی", "پرونده", "دادگاه", "دعوی", "شکایت", "وکیل", "وکالت", "قرارداد", "لایحه", "دادخواست"],
+      "departments": ["legal-practice", "legal", "documentation", "research"],
+      "workflow": "legal-case",
+      "deliverables": ["case-brief", "contract-draft", "filing", "hearing-preparation"],
+      "blueprint": {
+        "lead": { "role": "case-manager", "department": "legal-practice" },
+        "members": [
+          { "role": "litigation-counsel", "department": "legal-practice" },
+          { "role": "contract-counsel", "department": "legal-practice" },
+          { "role": "legal-researcher", "department": "legal-practice" },
+          { "role": "paralegal", "department": "legal-practice" }
+        ]
+      }
+    },
+    {
+      "id": "finance",
+      "name": "Finance",
+      "nameFa": "مالی",
+      "keywords": ["finance", "financial", "budget", "cash", "cashflow", "investment", "treasury", "forecasting", "مالی", "بودجه", "نقدینگی", "سرمایه", "جریان نقدی", "پیش‌بینی مالی"],
+      "departments": ["finance", "accounting", "analytics", "business"],
+      "workflow": "financial-audit",
+      "deliverables": ["budget-plan", "cashflow-forecast", "investment-brief"],
+      "blueprint": {
+        "lead": { "role": "cost-analyst", "department": "finance" },
+        "members": [
+          { "role": "unit-economics-advisor", "department": "finance" },
+          { "role": "financial-controller", "department": "accounting" },
+          { "role": "auditor", "department": "accounting" }
+        ]
+      }
+    },
+    {
+      "id": "accounting",
+      "name": "Accounting",
+      "nameFa": "حسابداری",
+      "keywords": ["accounting", "bookkeeping", "ledger", "journal", "invoice", "payroll", "reconciliation", "closing", "حسابداری", "دفترداری", "سند", "فاکتور", "تراز", "حقوق و دستمزد", "بستن حساب", "مغایرت"],
+      "departments": ["accounting", "finance", "tax"],
+      "workflow": "accounting-close",
+      "deliverables": ["trial-balance", "financial-statements", "payroll-run", "reconciliation-report"],
+      "blueprint": {
+        "lead": { "role": "chief-accountant", "department": "accounting" },
+        "members": [
+          { "role": "bookkeeper", "department": "accounting" },
+          { "role": "payroll-specialist", "department": "accounting" },
+          { "role": "auditor", "department": "accounting" },
+          { "role": "tax-compliance-officer", "department": "tax" }
+        ]
+      }
+    },
+    {
+      "id": "tax",
+      "name": "Tax",
+      "nameFa": "مالیاتی",
+      "keywords": ["tax", "taxation", "vat", "withholding", "filing", "return", "مالیات", "مالیاتی", "ارزش افزوده", "اظهارنامه", "عوارض", "تکلیفی", "ممیزی مالیاتی"],
+      "departments": ["tax", "accounting", "legal"],
+      "workflow": "tax-filing",
+      "deliverables": ["tax-return", "vat-filing", "objection-letter", "compliance-calendar"],
+      "blueprint": {
+        "lead": { "role": "tax-advisor", "department": "tax" },
+        "members": [
+          { "role": "corporate-tax-specialist", "department": "tax" },
+          { "role": "vat-specialist", "department": "tax" },
+          { "role": "tax-compliance-officer", "department": "tax" },
+          { "role": "chief-accountant", "department": "accounting" }
+        ]
+      }
+    },
+    {
+      "id": "marketing",
+      "name": "Marketing & Growth",
+      "nameFa": "بازاریابی و رشد",
+      "keywords": ["marketing", "campaign", "seo", "growth", "brand", "advertising", "content", "funnel", "بازاریابی", "کمپین", "برند", "تبلیغات", "محتوا", "سئو", "رشد"],
+      "departments": ["marketing", "seo", "content", "analytics", "sales"],
+      "workflow": "marketing",
+      "deliverables": ["campaign-plan", "content-calendar", "performance-report"],
+      "blueprint": {
+        "lead": { "role": "growth-marketer", "department": "marketing" },
+        "members": [
+          { "role": "performance-marketer", "department": "marketing" },
+          { "role": "technical-seo-expert", "department": "seo" },
+          { "role": "seo-copywriter", "department": "content" },
+          { "role": "growth-analytics-engineer", "department": "analytics" }
+        ]
+      }
+    },
+    {
+      "id": "operations",
+      "name": "Operations",
+      "nameFa": "عملیات",
+      "keywords": ["operations", "process", "logistics", "supply", "procurement", "workflow", "sop", "عملیات", "فرایند", "فرآیند", "لجستیک", "تدارکات", "بهبود", "رویه"],
+      "departments": ["operations", "automation", "customer-success"],
+      "workflow": "ops-improvement",
+      "deliverables": ["process-map", "sop-document", "improvement-report"],
+      "blueprint": {
+        "lead": { "role": "operations-manager", "department": "operations" },
+        "members": [
+          { "role": "process-analyst", "department": "operations" },
+          { "role": "logistics-coordinator", "department": "operations" },
+          { "role": "workflow-automation-engineer", "department": "automation" }
+        ]
+      }
+    },
+    {
+      "id": "hr",
+      "name": "People & HR",
+      "nameFa": "منابع انسانی",
+      "keywords": ["hr", "hiring", "recruitment", "recruiting", "onboarding", "talent", "employee", "منابع انسانی", "استخدام", "جذب نیرو", "کارمند", "مصاحبه", "نیروی انسانی"],
+      "departments": ["hr", "operations"],
+      "workflow": "hiring",
+      "deliverables": ["job-description", "interview-plan", "onboarding-plan"],
+      "blueprint": {
+        "lead": { "role": "hr-manager", "department": "hr" },
+        "members": [
+          { "role": "recruiter", "department": "hr" },
+          { "role": "onboarding-specialist", "department": "hr" }
+        ]
+      }
+    },
+    {
+      "id": "research",
+      "name": "Research & Analysis",
+      "nameFa": "تحقیق و تحلیل",
+      "keywords": ["research", "study", "analysis", "market", "survey", "benchmark", "تحقیق", "پژوهش", "تحلیل", "مطالعه", "بررسی بازار", "نظرسنجی"],
+      "departments": ["research", "analytics", "content"],
+      "workflow": "discovery",
+      "deliverables": ["research-report", "market-analysis", "benchmark-study"],
+      "blueprint": {
+        "lead": { "role": "technical-researcher", "department": "research" },
+        "members": [
+          { "role": "market-researcher", "department": "research" },
+          { "role": "product-analytics-engineer", "department": "analytics" },
+          { "role": "technical-writer", "department": "content" }
+        ]
+      }
+    },
+    {
+      "id": "business",
+      "name": "Business & Strategy",
+      "nameFa": "کسب‌وکار و استراتژی",
+      "keywords": ["business", "strategy", "plan", "startup", "revenue", "partnership", "کسب‌وکار", "کسب و کار", "استراتژی", "طرح تجاری", "استارتاپ", "درآمد", "شراکت"],
+      "departments": ["business", "product", "sales", "finance"],
+      "workflow": "startup-validation",
+      "deliverables": ["business-plan", "strategy-brief", "partnership-proposal"],
+      "blueprint": {
+        "lead": { "role": "business-analyst", "department": "business" },
+        "members": [
+          { "role": "product-strategist", "department": "product" },
+          { "role": "sales-strategist", "department": "sales" },
+          { "role": "cost-analyst", "department": "finance" }
+        ]
+      }
+    }
+  ]
+}

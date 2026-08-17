@@ -34,7 +34,12 @@
       "plugin": "Pluginها را فهرست می‌کند.",
       "memory": "Scopeهای حافظه را فهرست می‌کند.",
       "knowledge": "Knowledge Packها را فهرست می‌کند.",
-      "backup": "از memory فایل پشتیبان می‌سازد."
+      "backup": "از memory فایل پشتیبان می‌سازد.",
+      "upgrade": "به‌روزرسانی هسته AStack به آخرین نسخه",
+      "domain": "فهرست یا تشخیص دامنه‌های کاری",
+      "team": "ساخت و مدیریت تیم‌های تخصصی",
+      "agent": "ساخت، زمان‌بندی و نظارت بر ایجنت‌ها",
+      "lead": "رهبری: برنامه‌ریزی، تشکیل تیم، تفویض و بازبینی"
     },
     "project": {
       "usage": "فرمان‌های پروژه: init، demo، list، status، board، backlog، add، move، start، done، block، unblock، charter، milestone، sprint، risk، gate، advance، baseline، critical-path، forecast، next، digest، decision، scaffold، raci، report، templates",
@@ -70,6 +75,61 @@
       "scaffolded": "ساختار کاری از روی هدف ساخته شد: {count} آیتم برای بخش‌های {departments}",
       "raciTitle": "ماتریس RACI پروژه {id}:",
       "unknownAction": "زیرفرمان ناشناخته پروژه: {action}"
+    },
+    "domain": {
+      "listTitle": "دامنه‌های کاری:",
+      "detected": "دامنه تشخیص‌داده‌شده: {name} ({id})",
+      "none": "دامنه‌ای مطابق درخواست پیدا نشد."
+    },
+    "team": {
+      "listTitle": "تیم‌ها:",
+      "created": "تیم ساخته شد: {id} با {members} عضو",
+      "domainRequired": "برای ساخت تیم، گزینه --domain لازم است",
+      "idRequired": "شناسه تیم لازم است",
+      "showTitle": "تیم {id} | {name} | {domain} | {status}",
+      "memberAdded": "عضو اضافه شد: {role}",
+      "memberRemoved": "عضو حذف شد: {role}",
+      "projectLinked": "تیم {id} به پروژه {project} متصل شد",
+      "statusChanged": "وضعیت تیم {id}: {status}",
+      "disbanded": "تیم منحل شد: {id}",
+      "unknownAction": "دستور ناشناخته تیم: {action}"
+    },
+    "agent": {
+      "listTitle": "ایجنت‌ها:",
+      "standupTitle": "گزارش وضعیت ایجنت‌ها:",
+      "nothingDue": "هیچ مأموریتی سررسید نشده است.",
+      "ranDue": "{count} دستور کار صادر شد:",
+      "created": "ایجنت ساخته شد: {id} ({role})",
+      "idRequired": "شناسه ایجنت لازم است",
+      "showTitle": "ایجنت {id} | {role} | {status}",
+      "briefed": "مأموریت ایجنت {id} به‌روزرسانی شد",
+      "assigned": "مأموریت {id} برای ایجنت {agent} زمان‌بندی شد؛ اجرای بعدی: {next}",
+      "reported": "نتیجه مأموریت {id} ثبت شد: {status}",
+      "statusChanged": "وضعیت ایجنت {id}: {status}",
+      "workload": "بار کاری {id}: {total} مأموریت",
+      "unknownAction": "دستور ناشناخته ایجنت: {action}"
+    },
+    "lead": {
+      "planTitle": "برنامه رهبری برای: {goal}",
+      "planDomain": "دامنه: {name} ({id})",
+      "planWorkflow": "ورک‌فلو: {id}",
+      "planLead": "سرپرست تیم: {role} ({department})",
+      "teamFormed": "تیم {id} با {agents} ایجنت تشکیل شد:",
+      "delegateUsage": "روش استفاده: astack lead delegate <projectId> --team <teamId>",
+      "delegated": "{count} آیتم کاری به تیم {team} برای پروژه {project} تفویض شد",
+      "standupTitle": "گزارش رهبری — تیم‌ها: {teams}، سررسید: {due}، در انتظار بازبینی: {review}",
+      "reviewTitle": "صف بازبینی ({count}):",
+      "unknownAction": "دستور ناشناخته رهبری: {action}"
+    },
+    "upgrade": {
+      "checking": "بررسی منبع ارتقا: {source}",
+      "versions": "نسخه نصب‌شده: {current} | نسخه موجود: {latest}",
+      "upToDate": "هسته AStack به‌روز است.",
+      "planLine": "تغییرات برنامه‌ریزی‌شده — افزودن: {add}، به‌روزرسانی: {update}، فایل اولیه: {seed}، محفوظ: {preserved}",
+      "checkDone": "حالت بررسی: هیچ فایلی تغییر نکرد.",
+      "applied": "ارتقا اعمال شد: {count} فایل. پشتیبان: {backup}",
+      "doctorHint": "برای اطمینان، astack doctor را اجرا کنید.",
+      "configAdded": "بخش‌های جدید تنظیمات به astack.config.yaml اضافه شد: {sections}"
     }
   },
   "delivery": {

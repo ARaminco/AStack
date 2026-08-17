@@ -1,15 +1,18 @@
 {
   "id": "astack-core",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "layers": [
+    "agent-engine",
     "bin",
     "browser",
     "cli",
     "config",
     "configuration-engine",
     "core",
+    "delivery-engine",
     "departments",
     "documentation",
+    "domains",
     "event-bus",
     "knowledge-packs",
     "lib",
@@ -25,9 +28,11 @@
     "runtime",
     "scripts",
     "skills",
+    "team-engine",
     "telemetry",
     "templates",
     "tests",
+    "upgrade-engine",
     "workflow-engine",
     "workflows"
   ]

@@ -1559,6 +1559,198 @@
       "specialization": "Sprint Execution",
       "communication": "Persian for owner-facing work, English for software assets",
       "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "legal-case-manager",
+      "department": "legal",
+      "title": "Case Manager",
+      "specialization": "Case Management",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "legal-litigation-counsel",
+      "department": "legal",
+      "title": "Litigation Counsel",
+      "specialization": "Litigation",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "legal-contract-counsel",
+      "department": "legal",
+      "title": "Contract Counsel",
+      "specialization": "Contract Law",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "legal-researcher",
+      "department": "legal",
+      "title": "Legal Researcher",
+      "specialization": "Legal Research",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "legal-paralegal",
+      "department": "legal",
+      "title": "Paralegal",
+      "specialization": "Paralegal Operations",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "legal-ip-counsel",
+      "department": "legal",
+      "title": "IP Counsel",
+      "specialization": "Intellectual Property",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "accounting-chief",
+      "department": "accounting",
+      "title": "Chief Accountant",
+      "specialization": "General Ledger",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "accounting-bookkeeper",
+      "department": "accounting",
+      "title": "Bookkeeper",
+      "specialization": "Bookkeeping",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "accounting-payroll",
+      "department": "accounting",
+      "title": "Payroll Specialist",
+      "specialization": "Payroll",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "accounting-auditor",
+      "department": "accounting",
+      "title": "Auditor",
+      "specialization": "Auditing",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "accounting-controller",
+      "department": "accounting",
+      "title": "Financial Controller",
+      "specialization": "Financial Control",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "accounting-receivables",
+      "department": "accounting",
+      "title": "Receivables Accountant",
+      "specialization": "Accounts Receivable",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "tax-advisor",
+      "department": "tax",
+      "title": "Tax Advisor",
+      "specialization": "Tax Advisory",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "tax-corporate-specialist",
+      "department": "tax",
+      "title": "Corporate Tax Specialist",
+      "specialization": "Corporate Tax",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "tax-vat-specialist",
+      "department": "tax",
+      "title": "VAT Specialist",
+      "specialization": "VAT",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "tax-compliance-officer",
+      "department": "tax",
+      "title": "Tax Compliance Officer",
+      "specialization": "Tax Compliance",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "finance-planner",
+      "department": "finance",
+      "title": "Financial Planner",
+      "specialization": "Financial Planning",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "finance-treasury-analyst",
+      "department": "finance",
+      "title": "Treasury Analyst",
+      "specialization": "Treasury",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "hr-people-manager",
+      "department": "hr",
+      "title": "People Operations Manager",
+      "specialization": "People Operations",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "hr-recruiter",
+      "department": "hr",
+      "title": "Recruiter",
+      "specialization": "Recruitment",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "hr-onboarding-specialist",
+      "department": "hr",
+      "title": "Onboarding Specialist",
+      "specialization": "Onboarding",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "operations-manager",
+      "department": "operations",
+      "title": "Operations Manager",
+      "specialization": "Operations Management",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "operations-process-analyst",
+      "department": "operations",
+      "title": "Process Analyst",
+      "specialization": "Process Improvement",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
+    },
+    {
+      "id": "operations-logistics-coordinator",
+      "department": "operations",
+      "title": "Logistics Coordinator",
+      "specialization": "Logistics",
+      "communication": "Persian for owner-facing work, English for professional assets",
+      "extension": "Add or override roles through plugins without core changes"
     }
   ]
 }
