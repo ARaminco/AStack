@@ -26,13 +26,8 @@
       --shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
     }
 
-    * {
-      box-sizing: border-box;
-    }
-
-    html {
-      scroll-behavior: smooth;
-    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
 
     body {
       margin: 0;
@@ -43,14 +38,8 @@
       font-size: 16px;
     }
 
-    a {
-      color: var(--brand);
-      text-decoration: none;
-    }
-
-    a:hover {
-      text-decoration: underline;
-    }
+    a { color: var(--brand); text-decoration: none; }
+    a:hover { text-decoration: underline; }
 
     .layout {
       display: grid;
@@ -58,184 +47,75 @@
       gap: 28px;
       max-width: 1440px;
       margin: 0 auto;
-      padding: 28px;
+      padding: 28px 22px 60px;
     }
 
-    aside {
+    nav.toc {
       position: sticky;
-      top: 24px;
+      top: 20px;
       align-self: start;
       background: var(--paper);
       border: 1px solid var(--line);
       border-radius: var(--radius);
-      box-shadow: var(--shadow);
       padding: 18px;
-      max-height: calc(100vh - 48px);
-      overflow: auto;
-    }
-
-    aside h2 {
-      font-size: 15px;
-      margin: 0 0 12px;
-      color: var(--muted);
-      font-weight: 700;
-    }
-
-    nav a {
-      display: block;
-      padding: 8px 10px;
-      border-radius: 6px;
-      color: var(--ink);
-      font-size: 14px;
-    }
-
-    nav a:hover {
-      background: var(--brand-soft);
-      text-decoration: none;
-    }
-
-    main {
-      min-width: 0;
-    }
-
-    .hero {
-      background: linear-gradient(135deg, #ffffff 0%, #eef4ff 100%);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding: 42px;
-      margin-bottom: 24px;
     }
 
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--brand-soft);
-      color: var(--brand);
-      border: 1px solid #c7d7fe;
+    nav.toc h2 { margin: 0 0 10px; font-size: 15px; color: var(--muted); }
+    nav.toc ol { margin: 0; padding-inline-start: 18px; }
+    nav.toc li { margin: 6px 0; font-size: 14px; }
+
+    main { min-width: 0; }
+
+    header.hero {
+      background: linear-gradient(135deg, #10285e 0%, #155eef 70%, #3f8cff 100%);
+      color: #fff;
+      border-radius: 12px;
+      padding: 34px 30px;
+      box-shadow: var(--shadow);
+      margin-bottom: 26px;
+    }
+
+    header.hero h1 { margin: 0 0 8px; font-size: 30px; }
+    header.hero p { margin: 4px 0; max-width: 70ch; color: #e7efff; }
+    .badges { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .badge {
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.35);
       border-radius: 999px;
-      padding: 5px 12px;
+      padding: 3px 12px;
       font-size: 13px;
-      font-weight: 700;
-      margin-bottom: 14px;
     }
 
-    h1 {
-      font-size: clamp(30px, 5vw, 54px);
-      line-height: 1.25;
-      margin: 0 0 14px;
-      letter-spacing: 0;
-    }
-
-    .lead {
-      max-width: 860px;
-      color: var(--muted);
-      font-size: 18px;
-      margin: 0;
-    }
-
-    section {
+    section.card {
       background: var(--paper);
       border: 1px solid var(--line);
       border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 30px;
+      padding: 24px 26px;
       margin-bottom: 22px;
+      box-shadow: var(--shadow);
     }
 
-    h2 {
-      font-size: 26px;
-      margin: 0 0 16px;
-      line-height: 1.45;
+    section.card > h2 {
+      margin: 0 0 12px;
+      font-size: 22px;
+      border-bottom: 2px solid var(--brand-soft);
+      padding-bottom: 8px;
     }
 
-    h3 {
-      font-size: 19px;
-      margin: 22px 0 10px;
-    }
-
-    p {
-      margin: 0 0 14px;
-    }
-
-    ul, ol {
-      margin: 0 0 18px;
-      padding-right: 24px;
-    }
-
-    li {
-      margin: 5px 0;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
-      margin-top: 14px;
-    }
-
-    .item {
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      padding: 16px;
-      background: #fcfcfd;
-    }
-
-    .item strong {
-      display: block;
-      margin-bottom: 5px;
-    }
-
-    .pill-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 4px 10px;
-      background: #fff;
-      color: var(--muted);
-      font-size: 13px;
-      white-space: nowrap;
-    }
-
-    .callout {
-      border: 1px solid #fedf89;
-      background: #fffaeb;
-      color: #7a2e0e;
-      border-radius: var(--radius);
-      padding: 16px;
-      margin: 16px 0;
-    }
-
-    .success {
-      border-color: #abefc6;
-      background: #ecfdf3;
-      color: var(--ok);
-    }
-
-    .danger {
-      border-color: #fecdca;
-      background: #fef3f2;
-      color: var(--danger);
-    }
+    h3 { margin: 20px 0 8px; font-size: 17px; }
+    p { margin: 8px 0; }
+    ul, ol { margin: 8px 0; padding-inline-start: 22px; }
+    li { margin: 4px 0; }
 
     code {
       direction: ltr;
-      unicode-bidi: isolate;
-      font-family: Consolas, "Courier New", monospace;
-      background: #eef2f6;
-      color: #344054;
+      unicode-bidi: embed;
+      background: var(--brand-soft);
+      color: #123c9b;
       border-radius: 5px;
-      padding: 2px 6px;
-      font-size: 0.92em;
+      padding: 1px 6px;
+      font-size: 14px;
     }
 
     pre {
@@ -244,544 +124,231 @@
       background: var(--code-bg);
       color: var(--code-ink);
       border-radius: var(--radius);
-      padding: 16px;
-      overflow: auto;
-      line-height: 1.6;
-      margin: 14px 0 18px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-size: 13.5px;
+      line-height: 1.75;
     }
 
-    pre code {
-      background: transparent;
-      color: inherit;
-      padding: 0;
+    pre code { background: transparent; color: inherit; padding: 0; }
+
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14.5px; }
+    th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: right; vertical-align: top; }
+    th { background: var(--brand-soft); color: #123c9b; }
+    td code { white-space: nowrap; }
+
+    .note {
+      background: var(--brand-soft);
+      border-inline-start: 4px solid var(--brand);
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin: 12px 0;
+      font-size: 14.5px;
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 14px 0 18px;
-      overflow: hidden;
-      border-radius: var(--radius);
-    }
+    .ok { color: var(--ok); font-weight: 600; }
+    .steps li { margin: 8px 0; }
+    footer { color: var(--muted); font-size: 13.5px; text-align: center; margin-top: 30px; }
 
-    th, td {
-      border: 1px solid var(--line);
-      padding: 12px;
-      vertical-align: top;
-    }
-
-    th {
-      background: #f2f4f7;
-      text-align: right;
-    }
-
-    .footer {
-      color: var(--muted);
-      text-align: center;
-      padding: 24px 0 4px;
-      font-size: 14px;
-    }
-
-    @media (max-width: 980px) {
-      .layout {
-        display: block;
-        padding: 16px;
-      }
-
-      aside {
-        position: static;
-        max-height: none;
-        margin-bottom: 18px;
-      }
-
-      .hero, section {
-        padding: 22px;
-      }
-
-      .grid {
-        grid-template-columns: 1fr;
-      }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav.toc { position: static; }
     }
   </style>
 </head>
 <body>
   <div class="layout">
-    <aside>
+    <nav class="toc" aria-label="فهرست">
       <h2>فهرست راهنما</h2>
-      <nav>
-        <a href="#intro">معرفی</a>
-        <a href="#principles">اصول محصول</a>
-        <a href="#quick-start">شروع سریع</a>
-        <a href="#project-adoption">استفاده در پروژه‌های واقعی</a>
-        <a href="#claude-code">اجرای داخل Claude Code</a>
-        <a href="#architecture">معماری Enterprise</a>
-        <a href="#cli">دستورهای CLI</a>
-        <a href="#orchestrator">Orchestrator</a>
-        <a href="#departments">Departmentها و Roleها</a>
-        <a href="#providers">Providerها</a>
-        <a href="#knowledge">Knowledge Packها</a>
-        <a href="#memory">Memory Engine</a>
-        <a href="#workflows">Workflow Engine</a>
-        <a href="#plugins">Plugin System</a>
-        <a href="#localization">Localization</a>
-        <a href="#installers">Installerها</a>
-        <a href="#github">GitHub و Release</a>
-        <a href="#testing">تست و سلامت سیستم</a>
-        <a href="#commit">چک‌لیست commit نهایی</a>
-      </nav>
-    </aside>
+      <ol>
+        <li><a href="#intro">AStack چیست؟</a></li>
+        <li><a href="#quickstart">شروع سریع</a></li>
+        <li><a href="#domains">دامنه‌های کاری</a></li>
+        <li><a href="#leadership">چرخه رهبری</a></li>
+        <li><a href="#teams">تیم‌ها</a></li>
+        <li><a href="#agents">ایجنت‌ها و زمان‌بندی</a></li>
+        <li><a href="#projects">مدیریت و تحویل پروژه</a></li>
+        <li><a href="#upgrade">ارتقای هسته</a></li>
+        <li><a href="#memory">حافظه و زبان‌ها</a></li>
+        <li><a href="#commands">مرجع سریع فرمان‌ها</a></li>
+        <li><a href="#docs">مستندات کامل</a></li>
+      </ol>
+    </nav>
 
     <main>
-      <header class="hero" id="intro">
-        <div class="eyebrow">راهنمای فارسی AStack Enterprise</div>
-        <h1>AStack Enterprise؛ سیستم‌عامل مهندسی نرم‌افزار مبتنی بر AI</h1>
-        <p class="lead">
-          این سند راهنمای فارسی کامل پروژه است. هدف آن این است که مالک پروژه، Claude Code و هر agent آینده بتوانند ساختار، دستورها، قراردادها، مسیر توسعه و استانداردهای عملیاتی AStack Enterprise را سریع و دقیق بفهمند.
-        </p>
+      <header class="hero">
+        <h1>راهنمای فارسی AStack Enterprise</h1>
+        <p>سیستم‌عامل هوش مصنوعی برای هر نوع کار: نرم‌افزار، پرونده حقوقی، مالی، مالیاتی، حسابداری، بازاریابی، عملیات، منابع انسانی، تحقیق و کسب‌وکار.</p>
+        <p>نسخه ۲ — با تشخیص دامنه، تشکیل تیم، ایجنت‌های زمان‌بندی‌شده و لایه رهبری.</p>
+        <div class="badges">
+          <span class="badge">۱۰ دامنه کاری</span>
+          <span class="badge">۳۳ دپارتمان</span>
+          <span class="badge">۲۱۹ نقش تخصصی</span>
+          <span class="badge">۲۷ ورک‌فلو</span>
+          <span class="badge">رانتایم اصلی: Claude Code</span>
+        </div>
       </header>
 
-      <section id="principles">
-        <h2>اصول محصول</h2>
-        <p>
-          AStack Enterprise یک prompt collection یا skill repository ساده نیست. این پروژه به‌عنوان یک پلتفرم بلندمدت برای مدیریت کار مهندسی، معماری، بازبینی، توسعه، مستندسازی، memory و orchestration ساخته شده است.
-        </p>
-        <div class="grid">
-          <div class="item">
-            <strong>محور اصلی</strong>
-            اجرای عملی داخل <code>Claude Code</code> و آماده بودن برای توسعه‌ی چندساله.
-          </div>
-          <div class="item">
-            <strong>اصل معماری</strong>
-            هر subsystem باید decoupled، قابل‌تست، قابل‌جایگزینی و قابل‌گسترش باشد.
-          </div>
-          <div class="item">
-            <strong>زبان ارتباط با مالک</strong>
-            تمام پیام‌ها، گزارش‌ها، سوال‌ها، هشدارها و تحلیل‌ها فارسی هستند.
-          </div>
-          <div class="item">
-            <strong>زبان دارایی‌های نرم‌افزاری</strong>
-            کد، command، identifier، API route، database name، commit message و documentation پیش‌فرض انگلیسی می‌مانند.
-          </div>
-        </div>
+      <section class="card" id="intro">
+        <h2>AStack چیست؟</h2>
+        <p>AStack یک سیستم‌عامل ماژولار برای کارِ اداره‌شده با هوش مصنوعی است. شما هدف را به زبان خودتان می‌گویید؛ سیستم دامنه کار را تشخیص می‌دهد، تیم متخصص می‌سازد، برای هر نقش یک ایجنت ایجاد می‌کند، کارها را به صورت مأموریت‌های زمان‌بندی‌شده تفویض می‌کند و پیشرفت را با معیارهای واقعی مدیریت پروژه (اسپرینت، ریسک، پیش‌بینی، سلامت) گزارش می‌دهد.</p>
+        <ul>
+          <li><strong>ارتباط با شما:</strong> فارسی. <strong>کد و داده‌ها:</strong> انگلیسی.</li>
+          <li><strong>همه‌چیز محلی است:</strong> هیچ سرور یا API شبکه‌ای وجود ندارد؛ وضعیت در فایل‌های <code>.astack/</code> و حافظه در <code>memory/</code> نگهداری می‌شود.</li>
+          <li><strong>قانون هماهنگی:</strong> دپارتمان‌ها و ایجنت‌ها هرگز مستقیم با هم صحبت نمی‌کنند؛ ارکستریتور و لایه رهبری همه‌چیز را هماهنگ می‌کنند.</li>
+        </ul>
       </section>
 
-      <section id="quick-start">
+      <section class="card" id="quickstart">
         <h2>شروع سریع</h2>
-        <p>بعد از clone کردن repo، از ریشه‌ی پروژه این دستورها را اجرا کنید:</p>
         <pre><code>npm test
 node bin/astack.mjs doctor
-node bin/astack.mjs review "Laravel security deployment"</code></pre>
-        <div class="callout success">
-          اگر خروجی <code>AStack Enterprise verification passed.</code> و پیام سلامت فارسی را دیدید، runtime اصلی آماده است.
-        </div>
+node bin/astack.mjs domain detect "اظهارنامه مالیات ارزش افزوده"
+node bin/astack.mjs lead plan "پرونده حقوقی قرارداد ملکی"
+node bin/astack.mjs lead team "پرونده حقوقی قرارداد ملکی" --name legal-case-team
+node bin/astack.mjs project init "Contract Dispute" --template legal-case
+node bin/astack.mjs lead delegate contract-dispute --team legal-case-team
+node bin/astack.mjs agent run-due
+node bin/astack.mjs lead standup</code></pre>
+        <p class="note">پیش‌نیازها فقط Node.js نسخه ۲۰ به بالا و git است؛ هیچ وابستگی npm نصب نمی‌شود.</p>
       </section>
 
-      <section id="project-adoption">
-        <h2>استفاده در پروژه‌های واقعی</h2>
-        <p>
-          AStack Enterprise را می‌توانید به دو شکل استفاده کنید: یا به‌عنوان یک لایه‌ی راهنمایی و orchestration کنار پروژه‌های قدیمی، یا به‌عنوان نقطه‌ی شروع فکری برای ساخت یک پروژه‌ی جدید. در نسخه‌ی فعلی، AStack خودش کد پروژه‌ی مقصد را خودکار تغییر نمی‌دهد؛ نقش آن این است که context، workflow، role، memory، checklist و استاندارد تصمیم‌گیری را برای agent آماده کند.
-        </p>
+      <section class="card" id="domains">
+        <h2>دامنه‌های کاری</h2>
+        <p>هر درخواست — فارسی یا انگلیسی — با امتیازدهی کلیدواژه‌ای به یکی از ده دامنه نگاشت می‌شود. هر دامنه دپارتمان‌ها، ورک‌فلوی پیش‌فرض، خروجی‌های مورد انتظار و نقشه تیم خودش را دارد.</p>
+        <table>
+          <thead><tr><th>دامنه</th><th>شناسه</th><th>نمونه درخواست</th><th>ورک‌فلو پیش‌فرض</th></tr></thead>
+          <tbody>
+            <tr><td>توسعه نرم‌افزار</td><td><code>software</code></td><td>«باگ استقرار را رفع کن»</td><td><code>project-delivery</code></td></tr>
+            <tr><td>حقوقی</td><td><code>legal</code></td><td>«پرونده دادگاه، لایحه، قرارداد»</td><td><code>legal-case</code></td></tr>
+            <tr><td>مالی</td><td><code>finance</code></td><td>«بودجه و جریان نقدی»</td><td><code>financial-audit</code></td></tr>
+            <tr><td>حسابداری</td><td><code>accounting</code></td><td>«بستن حساب ماه، تراز، حقوق و دستمزد»</td><td><code>accounting-close</code></td></tr>
+            <tr><td>مالیاتی</td><td><code>tax</code></td><td>«اظهارنامه ارزش افزوده»</td><td><code>tax-filing</code></td></tr>
+            <tr><td>بازاریابی و رشد</td><td><code>marketing</code></td><td>«کمپین و سئو»</td><td><code>marketing</code></td></tr>
+            <tr><td>عملیات</td><td><code>operations</code></td><td>«بهبود فرایند و لجستیک»</td><td><code>ops-improvement</code></td></tr>
+            <tr><td>منابع انسانی</td><td><code>hr</code></td><td>«استخدام و جذب نیرو»</td><td><code>hiring</code></td></tr>
+            <tr><td>تحقیق و تحلیل</td><td><code>research</code></td><td>«بررسی بازار»</td><td><code>discovery</code></td></tr>
+            <tr><td>کسب‌وکار و استراتژی</td><td><code>business</code></td><td>«طرح تجاری استارتاپ»</td><td><code>startup-validation</code></td></tr>
+          </tbody>
+        </table>
+        <pre><code>node bin/astack.mjs domain              # فهرست دامنه‌ها
+node bin/astack.mjs domain detect "..." # تشخیص دامنه یک درخواست</code></pre>
+      </section>
 
-        <h3>فعال‌سازی در پروژه‌های قدیمی</h3>
-        <p>
-          برای پروژه‌ای که از قبل وجود دارد، لازم نیست ساختار آن را به هم بزنید. AStack را کنار پروژه نگه دارید و از Claude Code یا agent بخواهید هم پروژه‌ی مقصد را بخواند و هم این مخزن را به‌عنوان operating guide لود کند.
-        </p>
-        <ol>
-          <li>اول داخل همین مخزن سلامت AStack را بررسی کنید: <code>npm test</code> و <code>node bin/astack.mjs doctor</code>.</li>
-          <li>در پروژه‌ی قدیمی یک branch جدا بسازید، مثل <code>agent/astack-review</code> یا <code>agent/security-audit</code>.</li>
-          <li>از agent بخواهید فایل‌های <code>CLAUDE.md</code>، <code>astack.config.yaml</code>، <code>system/language-policy.md</code>، workflow مرتبط و knowledge pack مرتبط را از AStack بخواند.</li>
-          <li>برای پروژه‌ی مقصد یک خلاصه‌ی کوتاه بسازید: زبان، framework، مسیرهای مهم، دیتابیس، سرویس‌های خارجی، محدودیت‌های deployment و ریسک‌های شناخته‌شده.</li>
-          <li>به جای درخواست کلی، کار را با یک intent مشخص شروع کنید: audit امنیتی، refactor، migration، performance، تست، مستندسازی یا اضافه‌کردن feature.</li>
-          <li>قبل از هر تغییر، از agent بخواهید plan فارسی بدهد و فایل‌هایی را که قرار است لمس کند مشخص کند.</li>
-          <li>بعد از تغییر، تست‌های پروژه‌ی مقصد را اجرا کنید و نتیجه را داخل memory یا گزارش تغییرات ثبت کنید.</li>
+      <section class="card" id="leadership">
+        <h2>چرخه رهبری</h2>
+        <p>لایه رهبری همان چیزی است که AStack را از یک مشاور به یک مدیر تبدیل می‌کند. چرخه استاندارد:</p>
+        <ol class="steps">
+          <li><code>lead plan</code> — تشخیص دامنه و پیشنهاد ورک‌فلو و ترکیب تیم.</li>
+          <li><code>lead team</code> — تشکیل تیم و ساخت یک ایجنت برای هر نقش.</li>
+          <li><code>project init --template ...</code> — تبدیل هدف به پروژه مرحله‌بندی‌شده.</li>
+          <li><code>lead delegate</code> — تبدیل آیتم‌های آماده پروژه به مأموریت ایجنت‌ها (توزیع چرخشی بین هم‌تخصص‌ها؛ آیتم‌های must با اولویت بالا).</li>
+          <li><code>agent run-due</code> — صدور «دستور کار» برای مأموریت‌های سررسیدشده در outbox هر ایجنت.</li>
+          <li>اجرای هر دستور کار توسط رانتایم (Claude Code در نقش همان ایجنت) و ثبت نتیجه با <code>agent report</code>.</li>
+          <li><code>lead standup</code> و <code>lead review</code> — نظارت، پیگیری سررسیدها و بازبینی خروجی‌ها قبل از ارائه به شما.</li>
         </ol>
-        <pre><code># داخل مخزن AStack
-npm test
-node bin/astack.mjs doctor
-node bin/astack.mjs knowledge
-node bin/astack.mjs review "Review an existing Laravel project for security, deployment, and database risks"</code></pre>
-        <div class="callout">
-          برای پروژه‌های قدیمی، بهترین الگو «کم‌ریسک و مرحله‌ای» است: اول read-only review، بعد plan، بعد یک PR کوچک. AStack باید کمک کند تغییرات قابل‌ردیابی، قابل‌تست و قابل‌برگشت باشند.
-        </div>
+      </section>
 
-        <h3>نمونه prompt برای پروژه قدیمی</h3>
-        <pre><code>این پروژه قدیمی Laravel را با کمک AStack بررسی کن.
-اول context زیر را از AStack بخوان:
-- CLAUDE.md
-- astack.config.yaml
-- system/language-policy.md
-- workflow-engine/workflows.json
-- knowledge-packs/laravel/README.md
-- skills/security-review/SKILL.md
+      <section class="card" id="teams">
+        <h2>تیم‌ها</h2>
+        <p>تیم‌ها از نقشه دامنه ساخته می‌شوند (یک سرپرست + اعضای متخصص) و در <code>.astack/teams/</code> نگهداری می‌شوند. وضعیت‌ها: <code>forming</code>، <code>active</code>، <code>paused</code>، <code>disbanded</code>.</p>
+        <pre><code>node bin/astack.mjs team create "Legal Case Team" --domain legal --mission "..."
+node bin/astack.mjs team list
+node bin/astack.mjs team show legal-case-team
+node bin/astack.mjs team add legal-case-team --role vat-specialist --dept tax
+node bin/astack.mjs team project legal-case-team contract-dispute
+node bin/astack.mjs team disband legal-case-team</code></pre>
+        <p class="note">نام تیم‌ها (و پروژه‌ها و ایجنت‌ها) باید حروف لاتین داشته باشد چون شناسه ذخیره‌سازی می‌شود؛ مأموریت و توضیحات می‌تواند کاملاً فارسی باشد.</p>
+      </section>
 
-بعد فقط گزارش بده:
-1. ریسک‌های فوری
-2. پیشنهادهای کم‌ریسک برای اولین PR
-3. تست‌هایی که قبل از تغییر باید اجرا شوند
-فعلا هیچ فایلی را تغییر نده.</code></pre>
-
-        <h3>شروع یک پروژه جدید با کمک AStack</h3>
-        <p>
-          برای پروژه‌ی جدید، AStack را مثل اتاق فرمان محصول و مهندسی استفاده کنید. ابتدا مسئله، دامنه، stack، محدودیت‌ها و کیفیت مورد انتظار را روشن کنید؛ بعد از workflowهای AStack برای تبدیل ایده به معماری، backlog، پیاده‌سازی و release استفاده کنید.
-        </p>
-        <ol>
-          <li>ایده و هدف محصول را در چند جمله بنویسید: کاربر کیست، مشکل چیست، خروجی MVP چیست.</li>
-          <li>از workflow مناسب شروع کنید؛ برای نمونه <code>idea-to-release</code>، <code>feature</code>، <code>laravel-feature</code>، <code>bug-fix</code> یا <code>startup-validation</code>.</li>
-          <li>departmentهای لازم را مشخص کنید: Product، Architecture، Backend، Frontend، DevOps، Security، QA، SEO یا Marketing.</li>
-          <li>knowledge packهای مرتبط را انتخاب کنید؛ مثلا <code>laravel</code>، <code>nextjs</code>، <code>react</code>، <code>docker</code>، <code>postgresql</code> یا <code>seo</code>.</li>
-          <li>قبل از تولید کد، از agent بخواهید architecture brief، folder structure، migration plan، test plan و release checklist بسازد.</li>
-          <li>پیاده‌سازی را به PRهای کوچک تقسیم کنید: scaffold، auth، data model، API، UI، tests، deployment.</li>
-          <li>بعد از هر مرحله، تصمیم‌های مهم را در memory یا ADR ثبت کنید تا agentهای بعدی context را از دست ندهند.</li>
-        </ol>
-        <pre><code>node bin/astack.mjs review "Plan a new SaaS MVP with Laravel, PostgreSQL, Docker, security baseline, tests, and release workflow"</code></pre>
-
-        <h3>نمونه prompt برای پروژه جدید</h3>
-        <pre><code>با کمک AStack برای یک پروژه جدید برنامه بده.
-محصول: سیستم مدیریت نوبت آنلاین برای کلینیک‌ها
-Stack پیشنهادی: Laravel, PostgreSQL, Redis, Docker
-هدف: MVP قابل deploy در کمتر از ۴ هفته
-
-از workflow ایده تا release استفاده کن و خروجی را فارسی بده:
-1. معماری پیشنهادی
-2. ماژول‌های MVP
-3. ساختار پوشه‌ها
-4. مدل‌های دیتابیس
-5. APIهای اصلی
-6. تست‌های ضروری
-7. برنامه PRهای کوچک
-8. ریسک‌های امنیتی و عملیاتی</code></pre>
-
-        <h3>قانون طلایی استفاده</h3>
+      <section class="card" id="agents">
+        <h2>ایجنت‌ها و زمان‌بندی</h2>
+        <p>هر ایجنت یک همکار پایدار است: نقش، دپارتمان، تیم، مأموریت و فهرست مأموریت‌های زمان‌بندی‌شده دارد. وضعیت ایجنت: <code>idle → active → paused → retired</code>.</p>
+        <h3>زمان‌بندی مأموریت</h3>
         <ul>
-          <li>برای گفتگو، تحلیل، گزارش، هشدار و تصمیم‌سازی از فارسی استفاده کنید.</li>
-          <li>برای کد، نام branch، commit message، API route، migration، database و identifierها انگلیسی بمانید.</li>
-          <li>هر درخواست بزرگ را به plan، تغییر کوچک، تست و گزارش نهایی تقسیم کنید.</li>
-          <li>در پروژه‌های production، هیچ تغییر پرریسکی بدون branch، backup، تست و توضیح اثر انجام نشود.</li>
+          <li><strong>تکرارشونده:</strong> <code>--every 30m | 1h | 4h | 1d | 1w</code> — بعد از هر گزارش، اجرای بعدی خودکار تنظیم می‌شود.</li>
+          <li><strong>یک‌باره:</strong> بدون <code>--every</code> (فوری) یا با <code>--at</code> برای زمان مشخص.</li>
         </ul>
+        <pre><code>node bin/astack.mjs agent create "case researcher" --role legal-researcher --team legal-case-team
+node bin/astack.mjs agent assign case-researcher "خلاصه پرونده‌های جدید" --every 1d --deliverable "گزارش روزانه"
+node bin/astack.mjs agent run-due
+node bin/astack.mjs agent report case-researcher A-1 --summary "گزارش آماده شد"
+node bin/astack.mjs agent standup
+node bin/astack.mjs agent pause case-researcher</code></pre>
+        <h3>دستور کار (Work Order)</h3>
+        <p>هر اجرا یک فایل Markdown در <code dir="ltr">.astack/agents/&lt;agent&gt;/outbox/</code> می‌سازد: نقش، تیم، اولویت، مأموریت، هدف، خروجی مورد انتظار و روش گزارش‌دهی. رانتایم این فایل را در نقش همان ایجنت اجرا می‌کند و نتیجه با <code>agent report</code> ثبت می‌شود. هر صدور و گزارش در حافظه <code>agent</code> نیز ثبت می‌شود تا رد کامل کارها باقی بماند.</p>
       </section>
 
-      <section id="claude-code">
-        <h2>اجرای داخل Claude Code</h2>
-        <p>
-          فایل اصلی راه‌اندازی Claude Code در ریشه‌ی پروژه قرار دارد:
-          <code>CLAUDE.md</code>
-        </p>
-        <p>ترتیب پیشنهادی load شدن context در Claude Code:</p>
-        <ol>
-          <li><code>CLAUDE.md</code> برای قوانین عملیاتی پروژه.</li>
-          <li><code>astack.config.yaml</code> برای configuration مرکزی.</li>
-          <li><code>system/language-policy.md</code> برای سیاست زبان فارسی/انگلیسی.</li>
-          <li><code>runtime/astack-runtime.mjs</code> برای نقشه‌ی runtime.</li>
-          <li><code>orchestrator/orchestrator.mjs</code> برای routing درخواست‌ها.</li>
-          <li><code>departments/departments.json</code> و <code>roles/enterprise-roles.json</code> برای انتخاب تیم و نقش‌ها.</li>
-          <li><code>workflow-engine/workflows.json</code> برای انتخاب workflow.</li>
-          <li><code>memory-engine/memory-engine.mjs</code> برای حافظه‌ی پایدار.</li>
-        </ol>
-        <div class="callout">
-          قانون مهم: Departmentها مستقیم با هم صحبت نمی‌کنند. هماهنگی فقط از طریق Orchestrator انجام می‌شود.
-        </div>
-      </section>
-
-      <section id="architecture">
-        <h2>معماری Enterprise</h2>
-        <p>
-          ساختار پروژه layered است و هر لایه مسئولیت مشخص دارد. این طراحی باعث می‌شود اضافه کردن provider، plugin، department، workflow یا knowledge pack بدون تغییر core انجام شود.
-        </p>
-        <table>
-          <thead>
-            <tr>
-              <th>لایه</th>
-              <th>مسیر</th>
-              <th>مسئولیت</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>Core</td><td><code>core/</code></td><td>قراردادهای پایه و manifest اصلی پلتفرم.</td></tr>
-            <tr><td>Runtime</td><td><code>runtime/</code></td><td>composition root و اتصال subsystemها.</td></tr>
-            <tr><td>Orchestrator</td><td><code>orchestrator/</code></td><td>تحلیل intent، انتخاب workflow، فعال‌سازی departmentها و merge خروجی‌ها.</td></tr>
-            <tr><td>Departments</td><td><code>departments/</code></td><td>تعریف تیم‌های تخصصی مثل Engineering، DevOps، SEO و Security.</td></tr>
-            <tr><td>Roles</td><td><code>roles/</code></td><td>catalog نقش‌های تخصصی Enterprise.</td></tr>
-            <tr><td>Providers</td><td><code>providers/</code></td><td>manifestهای provider مثل <code>claude-code</code>، <code>openai</code> و <code>ollama</code>.</td></tr>
-            <tr><td>Knowledge Packs</td><td><code>knowledge-packs/</code></td><td>بسته‌های تخصصی مستقل مثل Laravel، Docker، RAG و SEO.</td></tr>
-            <tr><td>Plugins</td><td><code>plugins/</code></td><td>افزونه‌های جداگانه که بدون تغییر core اضافه می‌شوند.</td></tr>
-            <tr><td>Memory Engine</td><td><code>memory-engine/</code></td><td>مدیریت memory scopeهای پایدار.</td></tr>
-            <tr><td>Workflow Engine</td><td><code>workflow-engine/</code></td><td>تعریف و انتخاب workflowهای Enterprise.</td></tr>
-            <tr><td>Localization Engine</td><td><code>localization-engine/</code></td><td>مدیریت locale، fallback و ترجمه‌ی پیام‌های CLI.</td></tr>
-            <tr><td>Configuration Engine</td><td><code>configuration-engine/</code></td><td>خواندن و اعتبارسنجی configuration مرکزی.</td></tr>
-            <tr><td>Event Bus</td><td><code>event-bus/</code></td><td>ثبت eventهای داخلی و اتصال loosely coupled subsystemها.</td></tr>
-            <tr><td>Permission System</td><td><code>permission-system/</code></td><td>سیاست least privilege و محافظت از secrets.</td></tr>
-          </tbody>
-        </table>
-      </section>
-
-      <section id="cli">
-        <h2>دستورهای CLI</h2>
-        <p>
-          CLI اصلی در <code>bin/astack.mjs</code> قرار دارد. خروجی کاربرمحور آن فارسی است، اما خود commandها انگلیسی می‌مانند.
-        </p>
-        <table>
-          <thead>
-            <tr>
-              <th>دستور</th>
-              <th>کاربرد</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td><code>astack init</code></td><td>پروژه را برای استفاده داخل Claude Code آماده می‌کند.</td></tr>
-            <tr><td><code>astack install</code></td><td>نصب محلی و بررسی فایل‌های ضروری را انجام می‌دهد.</td></tr>
-            <tr><td><code>astack doctor</code></td><td>سلامت معماری، providerها، pluginها، localization و Claude Code را بررسی می‌کند.</td></tr>
-            <tr><td><code>astack update</code></td><td>ساختار Enterprise را دوباره bootstrap می‌کند.</td></tr>
-            <tr><td><code>astack review</code></td><td>درخواست را به Orchestrator می‌دهد و گزارش فارسی برمی‌گرداند.</td></tr>
-            <tr><td><code>astack workflow</code></td><td>Workflowهای نصب‌شده را فهرست می‌کند.</td></tr>
-            <tr><td><code>astack provider</code></td><td>Providerهای فعال را نمایش می‌دهد.</td></tr>
-            <tr><td><code>astack plugin</code></td><td>Pluginهای قابل‌بارگذاری را نمایش می‌دهد.</td></tr>
-            <tr><td><code>astack memory</code></td><td>Scopeهای memory را فهرست می‌کند.</td></tr>
-            <tr><td><code>astack knowledge</code></td><td>Knowledge Packهای نصب‌شده را نمایش می‌دهد.</td></tr>
-            <tr><td><code>astack backup</code></td><td>از memory یک backup محلی می‌سازد.</td></tr>
-          </tbody>
-        </table>
-        <pre><code>node bin/astack.mjs doctor
-node bin/astack.mjs provider
-node bin/astack.mjs knowledge
-node bin/astack.mjs review "RAG performance and security"</code></pre>
-      </section>
-
-      <section id="orchestrator">
-        <h2>Orchestrator</h2>
-        <p>
-          Orchestrator مغز هماهنگی AStack Enterprise است. وظیفه‌ی آن این است که درخواست مالک را بفهمد، workflow مناسب را انتخاب کند، departmentهای مرتبط را فعال کند، provider مناسب را انتخاب کند و خروجی نهایی را به شکل فارسی و قابل‌اقدام برگرداند.
-        </p>
-        <h3>مسیر فعلی اجرا</h3>
-        <ol>
-          <li>دریافت request از CLI یا agent runtime.</li>
-          <li>تحلیل intent با توجه به متن درخواست.</li>
-          <li>انتخاب workflow از <code>workflow-engine/workflows.json</code>.</li>
-          <li>انتخاب departmentها از <code>departments/departments.json</code>.</li>
-          <li>انتخاب provider پیش‌فرض، در حال حاضر <code>claude-code</code>.</li>
-          <li>ساخت پاسخ نهایی فارسی و ثبت event در Event Bus.</li>
-        </ol>
-      </section>
-
-      <section id="departments">
-        <h2>Departmentها و Roleها</h2>
-        <p>
-          پروژه شامل ۲۷ department و ۱۹۰ role تخصصی است. این roleها در <code>roles/enterprise-roles.json</code> ثبت شده‌اند و برای توسعه‌ی تخصصی Enterprise استفاده می‌شوند.
-        </p>
-        <div class="pill-row">
-          <span class="pill">Engineering</span>
-          <span class="pill">AI Engineering</span>
-          <span class="pill">Backend</span>
-          <span class="pill">Frontend</span>
-          <span class="pill">Mobile</span>
-          <span class="pill">DevOps</span>
-          <span class="pill">Infrastructure</span>
-          <span class="pill">Cyber Security</span>
-          <span class="pill">Database</span>
-          <span class="pill">SEO</span>
-          <span class="pill">Marketing</span>
-          <span class="pill">QA</span>
-        </div>
-        <p>
-          نمونه roleها: <code>Principal Laravel Engineer</code>، <code>Principal TypeScript Engineer</code>، <code>RAG Specialist</code>، <code>Kubernetes Specialist</code>، <code>VMware ESXi Specialist</code> و <code>Technical SEO Specialist</code>.
-        </p>
-      </section>
-
-      <section id="providers">
-        <h2>Providerها</h2>
-        <p>
-          Providerها abstract هستند و از مسیر <code>providers/</code> بارگذاری می‌شوند. اضافه کردن provider جدید باید فقط با ساخت یک directory و <code>manifest.json</code> انجام شود و نیازی به تغییر core نداشته باشد.
-        </p>
-        <div class="pill-row">
-          <span class="pill">claude-code</span>
-          <span class="pill">openai</span>
-          <span class="pill">codex</span>
-          <span class="pill">gemini</span>
-          <span class="pill">openrouter</span>
-          <span class="pill">ollama</span>
-          <span class="pill">local-models</span>
-          <span class="pill">deepseek</span>
-        </div>
-      </section>
-
-      <section id="knowledge">
-        <h2>Knowledge Packها</h2>
-        <p>
-          Knowledge Packها بسته‌های تخصصی مستقل هستند. هر pack شامل best practices، coding standards، architecture rules، review rules، templates، examples، checklists، common mistakes و latest recommendations است.
-        </p>
-        <pre><code>node bin/astack.mjs knowledge</code></pre>
-        <div class="pill-row">
-          <span class="pill">laravel</span>
-          <span class="pill">flutter</span>
-          <span class="pill">node</span>
-          <span class="pill">express</span>
-          <span class="pill">nextjs</span>
-          <span class="pill">react</span>
-          <span class="pill">docker</span>
-          <span class="pill">vmware</span>
-          <span class="pill">mikrotik</span>
-          <span class="pill">cloudflare</span>
-          <span class="pill">seo</span>
-          <span class="pill">marketing</span>
-          <span class="pill">rag</span>
-          <span class="pill">prompt-engineering</span>
-          <span class="pill">whmcs</span>
-          <span class="pill">filament</span>
-          <span class="pill">postgresql</span>
-          <span class="pill">redis</span>
-        </div>
-      </section>
-
-      <section id="memory">
-        <h2>Memory Engine</h2>
-        <p>
-          Memory Engine برای نگهداری context پایدار استفاده می‌شود. Scopeهای فعلی در مسیر <code>memory/</code> قرار دارند.
-        </p>
+      <section class="card" id="projects">
+        <h2>مدیریت و تحویل پروژه</h2>
+        <p>موتور تحویل هر کار جدی را به یک پروژه مرحله‌بندی‌شده تبدیل می‌کند: <code>initiation → planning → execution → closing → closed</code> با دروازه‌هایی که بدون احراز شرایط اجازه عبور نمی‌دهند.</p>
         <ul>
-          <li><code>global</code>: حافظه‌ی عمومی AStack.</li>
-          <li><code>project</code>: تصمیم‌ها و اطلاعات همین پروژه.</li>
-          <li><code>department</code>: حافظه‌ی مرتبط با departmentها.</li>
-          <li><code>role</code>: حافظه‌ی roleهای تخصصی.</li>
-          <li><code>decision</code>: تصمیم‌های معماری و محصول.</li>
-          <li><code>coding-standards</code>: استانداردهای کدنویسی.</li>
-          <li><code>architecture</code>: حافظه‌ی معماری.</li>
-          <li><code>business</code>: قوانین و جهت کسب‌وکار.</li>
-          <li><code>user-preferences</code>: ترجیحات مالک پروژه.</li>
+          <li>تخمین سه‌نقطه‌ای PERT و مسیر بحرانی با احتمال تحویل به‌موقع</li>
+          <li>بک‌لاگ رتبه‌بندی‌شده با MoSCoW و WSJF، بورد کانبان با محدودیت WIP</li>
+          <li>اسپرینت با ظرفیت مبتنی بر سرعت واقعی، دفتر ریسک امتیازدهی‌شده</li>
+          <li>پیش‌بینی مونت‌کارلو (p50/p85/p95)، مدیریت ارزش کسب‌شده (EVM)، امتیاز سلامت شفاف</li>
+          <li>پیشنهاد «اقدام بعدی» و گزارش وضعیت فارسی با <code>project status</code> و <code>project report</code></li>
         </ul>
-        <pre><code>node bin/astack.mjs memory
-node bin/astack.mjs backup</code></pre>
+        <h3>قالب‌های آماده</h3>
+        <p><code>software-delivery</code>، <code>ai-feature</code>، <code>startup-mvp</code>، <code>marketing-campaign</code>، <code>legal-case</code>، <code>tax-filing</code>، <code>accounting-close</code>، <code>financial-audit</code></p>
+        <p>مرجع کامل: <a href="Project-Management.md">Project-Management.md</a></p>
       </section>
 
-      <section id="workflows">
-        <h2>Workflow Engine</h2>
-        <p>
-          Workflowها در <code>workflow-engine/workflows.json</code> تعریف شده‌اند. Orchestrator با توجه به intent درخواست، workflow مناسب را انتخاب می‌کند.
-        </p>
-        <div class="pill-row">
-          <span class="pill">idea</span>
-          <span class="pill">discovery</span>
-          <span class="pill">architecture</span>
-          <span class="pill">planning</span>
-          <span class="pill">implementation</span>
-          <span class="pill">review</span>
-          <span class="pill">qa</span>
-          <span class="pill">security</span>
-          <span class="pill">deployment</span>
-          <span class="pill">seo</span>
-          <span class="pill">marketing</span>
-          <span class="pill">release</span>
-          <span class="pill">maintenance</span>
-          <span class="pill">bug-fix</span>
-          <span class="pill">refactor</span>
-          <span class="pill">feature</span>
-          <span class="pill">mvp</span>
-          <span class="pill">startup-validation</span>
-          <span class="pill">documentation</span>
-        </div>
-      </section>
-
-      <section id="plugins">
-        <h2>Plugin System</h2>
-        <p>
-          مسیر <code>plugins/</code> برای extension pointهاست. هر plugin باید فایل <code>plugin.json</code> داشته باشد و خودش را به‌صورت مستقل معرفی کند.
-        </p>
-        <p>نمونه‌ی ساختار plugin:</p>
-        <pre><code>plugins/my-plugin/
-  plugin.json
-  plugin.mjs
-  README.md</code></pre>
-        <p>
-          اصل طراحی این است که اضافه کردن language، framework، department، provider، workflow یا role جدید بدون تغییر core انجام شود.
-        </p>
-      </section>
-
-      <section id="localization">
-        <h2>Localization</h2>
-        <p>
-          مالک AStack فارسی‌زبان است؛ بنابراین تمام ارتباطات کاربرمحور فارسی هستند. در عین حال دارایی‌های نرم‌افزاری برای production و همکاری بین‌المللی انگلیسی باقی می‌مانند.
-        </p>
-        <table>
-          <thead>
-            <tr>
-              <th>فارسی</th>
-              <th>انگلیسی</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>سوال‌ها، هشدارها، گزارش‌ها، تحلیل‌ها، توضیح معماری، progress و errorها</td><td>کد، command، function، class، variable، API route، database table، migration، Dockerfile، YAML key و JSON key</td></tr>
-          </tbody>
-        </table>
-        <p>
-          سرویس localization در <code>localization-engine/service.mjs</code> قرار دارد و localeهای فعلی شامل <code>fa</code>، <code>en</code>، <code>ar</code> و <code>tr</code> هستند.
-        </p>
-      </section>
-
-      <section id="installers">
-        <h2>Installerها</h2>
-        <p>مسیر <code>installer/</code> شامل entry pointهای نصب و آماده‌سازی است.</p>
-        <table>
-          <thead>
-            <tr>
-              <th>فایل</th>
-              <th>کاربرد</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td><code>installer/install.ps1</code></td><td>نصب و بررسی سلامت در Windows.</td></tr>
-            <tr><td><code>installer/install.sh</code></td><td>نصب و بررسی سلامت در Linux یا macOS.</td></tr>
-            <tr><td><code>installer/update.sh</code></td><td>اجرای bootstrap و doctor برای update.</td></tr>
-            <tr><td><code>installer/claude-code/install-claude-code.ps1</code></td><td>بررسی آماده بودن integration با Claude Code.</td></tr>
-          </tbody>
-        </table>
-      </section>
-
-      <section id="github">
-        <h2>GitHub و Release</h2>
-        <p>
-          پروژه برای push شدن به private GitHub repository آماده شده است. مسیر <code>.github/</code> شامل workflowها، issue templateها، PR template، labels و CODEOWNERS است.
-        </p>
+      <section class="card" id="upgrade">
+        <h2>ارتقای هسته</h2>
+        <p>هر پروژه‌ای که AStack درون آن است با یک فرمان به آخرین نسخه می‌رسد:</p>
+        <pre><code>node bin/astack.mjs upgrade --check   # پیش‌نمایش بدون تغییر
+node bin/astack.mjs upgrade           # دریافت، پشتیبان‌گیری، اعمال
+node bin/astack.mjs doctor            # تأیید سلامت بعد از ارتقا</code></pre>
         <ul>
-          <li><code>.github/workflows/verify.yml</code>: اجرای تست‌ها روی push و pull request.</li>
-          <li><code>.github/workflows/release.yml</code>: بررسی release هنگام tag semantic version.</li>
-          <li><code>.github/pull_request_template.md</code>: قالب pull request.</li>
-          <li><code>.github/ISSUE_TEMPLATE/</code>: قالب‌های issue.</li>
-          <li><code>.github/CODEOWNERS</code>: مالکیت فایل‌ها.</li>
+          <li>فایل‌های موتورها جایگزین می‌شوند؛ از هر فایلِ تغییرکرده اول نسخه پشتیبان در <code dir="ltr">.astack/backups/upgrade-*/</code> گرفته می‌شود.</li>
+          <li><code>astack.config.yaml</code> و <code>CLAUDE.md</code> شما بازنویسی نمی‌شوند؛ فقط سکشن‌های جدید کانفیگ به انتها اضافه می‌شوند.</li>
+          <li><code>.astack/</code>، <code>memory/</code>، پلاگین‌ها و knowledge packها هرگز لمس نمی‌شوند. مسیرهای سفارشی را در <code>upgrade.keep</code> ثبت کنید.</li>
         </ul>
+        <h3>پروژه‌های خیلی قدیمی</h3>
+        <p>اگر نسخه قدیمی موتور ارتقا را ندارد، فقط فایل <code dir="ltr">scripts/astack-upgrade.mjs</code> را داخل پروژه کپی کنید و اجرا کنید: <code dir="ltr">node astack-upgrade.mjs</code>. این اسکریپت آخرین هسته را دریافت می‌کند و منطق ارتقای «جدید» را اجرا می‌کند؛ بنابراین همه امکانات نسخه ۲ (دامنه‌ها، تیم‌ها، ایجنت‌ها، رهبری) یک‌جا وارد پروژه قدیمی می‌شود. جزئیات: <a href="Upgrade.md">Upgrade.md</a></p>
       </section>
 
-      <section id="testing">
-        <h2>تست و سلامت سیستم</h2>
-        <p>
-          تست اصلی در <code>tests/verify-astack.mjs</code> قرار دارد و وجود لایه‌های Enterprise، Claude Code readiness، providerها، role catalog، knowledge packها، workflowها، memory scopeها و policyهای امنیتی را بررسی می‌کند.
-        </p>
-        <pre><code>npm test
-node bin/astack.mjs doctor --claude-code</code></pre>
-        <div class="callout success">
-          خروجی موفق باید شامل <code>AStack Enterprise verification passed.</code> و گزارش سلامت فارسی باشد.
-        </div>
+      <section class="card" id="memory">
+        <h2>حافظه و زبان‌ها</h2>
+        <p><strong>حافظه:</strong> یازده اسکوپ پایدار در <code>memory/</code> شامل اسکوپ‌های جدید <code>team</code> و <code>agent</code>. اسکوپ <code>decision</code> خوراک کالیبراسیون است: با بستن هر پروژه، نسبت تخمین به واقعیت ثبت می‌شود و تخمین‌های بعدی دقیق‌تر می‌شوند. با <code>astack backup</code> از همه اسکوپ‌ها نسخه پشتیبان بگیرید.</p>
+        <p><strong>زبان‌ها:</strong> رابط کاربری چهار زبان دارد — فارسی (پیش‌فرض)، انگلیسی، عربی و ترکی — با فالبک خودکار به انگلیسی. تشخیص دامنه و ورک‌فلو از پایه دوزبانه (فارسی/انگلیسی) است. صفحه اول مخزن نیز به چهار زبان موجود است: <span dir="ltr">README.md · README.fa.md · README.ar.md · README.tr.md</span></p>
       </section>
 
-      <section id="commit">
-        <h2>چک‌لیست commit نهایی</h2>
-        <ol>
-          <li>اجرای تست کامل: <code>npm test</code></li>
-          <li>اجرای doctor: <code>node bin/astack.mjs doctor --claude-code</code></li>
-          <li>بررسی فایل‌های تغییرکرده: <code>git status --short</code></li>
-          <li>ساخت اولین commit با پیام انگلیسی، مثل: <code>feat: initialize AStack Enterprise platform</code></li>
-          <li>ساخت private repository در GitHub.</li>
-          <li>اتصال remote و push کردن branch اصلی.</li>
-        </ol>
-        <pre><code>git add .
-git commit -m "feat: initialize AStack Enterprise platform"
-git remote add origin git@github.com:YOUR_USERNAME/YOUR_PRIVATE_REPO.git
-git push -u origin main</code></pre>
-        <div class="callout danger">
-          قبل از push مطمئن شوید هیچ secret، token یا API key داخل repo قرار نگرفته است.
-        </div>
+      <section class="card" id="commands">
+        <h2>مرجع سریع فرمان‌ها</h2>
+        <table>
+          <thead><tr><th>فرمان</th><th>کار</th></tr></thead>
+          <tbody>
+            <tr><td><code>astack doctor</code></td><td>بررسی سلامت کامل نصب</td></tr>
+            <tr><td><code>astack review "..."</code></td><td>تحلیل ارکستریتور: دامنه، ورک‌فلو، دپارتمان‌ها و بریفینگ‌ها</td></tr>
+            <tr><td><code>astack domain / detect</code></td><td>فهرست یا تشخیص دامنه</td></tr>
+            <tr><td><code>astack lead plan / team / delegate / standup / review</code></td><td>چرخه کامل رهبری</td></tr>
+            <tr><td><code>astack team ...</code></td><td>ساخت و مدیریت تیم‌ها</td></tr>
+            <tr><td><code>astack agent ...</code></td><td>ایجنت‌ها، زمان‌بندی، دستور کار و گزارش</td></tr>
+            <tr><td><code>astack project ...</code></td><td>چرخه کامل تحویل پروژه</td></tr>
+            <tr><td><code>astack upgrade</code></td><td>ارتقای هسته با پشتیبان‌گیری</td></tr>
+            <tr><td><code>astack workflow / provider / plugin / memory / knowledge</code></td><td>فهرست‌های سیستم</td></tr>
+            <tr><td><code>astack backup</code></td><td>پشتیبان‌گیری حافظه</td></tr>
+          </tbody>
+        </table>
+        <p>مرجع کامل با همه فلگ‌ها: <a href="API.md">API.md</a></p>
       </section>
 
-      <p class="footer">
-        AStack Enterprise Persian Guide · Designed for Persian owner-facing operation and Claude Code readiness
-      </p>
+      <section class="card" id="docs">
+        <h2>مستندات کامل</h2>
+        <p>مستندات فنی (انگلیسی) در پوشه <code>documentation/</code>:</p>
+        <ul>
+          <li><a href="Architecture.md">معماری</a> · <a href="Orchestration.md">دامنه‌ها، تیم‌ها، ایجنت‌ها و رهبری</a> · <a href="Project-Management.md">مدیریت پروژه</a></li>
+          <li><a href="API.md">مرجع فرمان‌ها</a> · <a href="Configuration.md">پیکربندی</a> · <a href="Upgrade.md">ارتقای هسته</a> · <a href="Migration-Guide.md">راهنمای مهاجرت</a></li>
+          <li><a href="Departments.md">دپارتمان‌ها</a> · <a href="Roles.md">نقش‌ها</a> · <a href="Memory.md">حافظه</a> · <a href="Localization.md">بومی‌سازی</a></li>
+          <li><a href="Development.md">توسعه</a> · <a href="Providers.md">پرووایدرها</a> · <a href="Plugins.md">پلاگین‌ها</a> · <a href="Knowledge-Packs.md">Knowledge Packs</a></li>
+          <li><a href="Troubleshooting.md">عیب‌یابی</a> · <a href="FAQ.md">پرسش‌های پرتکرار</a> · <a href="SECURITY.md">امنیت</a> · <a href="Enterprise-Audit.md">ممیزی</a></li>
+        </ul>
+        <p>فهرست اصلی: <a href="README.md">documentation/README.md</a></p>
+      </section>
+
+      <footer>AStack Enterprise · نسخه ۲ · رانتایم اصلی: Claude Code · ارتباط مالک: فارسی، دارایی‌های نرم‌افزاری: انگلیسی</footer>
     </main>
   </div>
 </body>

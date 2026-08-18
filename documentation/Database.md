@@ -1,5 +1,11 @@
 # Database
 
-AStack does not require a database for its own metadata. Project memory is stored as Markdown in `memory/`.
+AStack itself requires no database. All platform state is plain files, versionable and inspectable:
 
-For applications built with AStack guidance, PostgreSQL is preferred. Database reviews check schema design, migrations, indexes, constraints, query plans, transactions, backups, restore paths, and data lifecycle choices.
+- Durable memory: Markdown under `memory/` (eleven scopes).
+- Operational state: JSON under `.astack/` — projects, teams, agents, backups, upgrade cache.
+
+This is deliberate: an agent runtime can read, diff, and repair every byte of state with ordinary file tools, and backups are simple copies.
+
+## For Applications Built With AStack
+PostgreSQL is the preferred default for owner projects. Database reviews (the `database` department and `database-review` skill) check schema design, migrations, indexes, constraints, query plans, transactions, backup and restore paths, and data lifecycle choices. Database names, tables, and columns follow the English-assets language policy.
