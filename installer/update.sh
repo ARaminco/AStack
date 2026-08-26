@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 set -eu
-node scripts/bootstrap-enterprise.mjs
-node bin/astack.mjs doctor
+node bin/astack.mjs upgrade
+node bin/astack.mjs init
