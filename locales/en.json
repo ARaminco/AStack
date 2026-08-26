@@ -150,7 +150,7 @@
       "migrationsPending": "{count} data migrations are pending:",
       "migrationsApplied": "{count} data migrations applied:",
       "migrationsFailed": "{count} migrations failed and need a manual look:",
-      "rollbackHint": "If anything breaks, the previous version is kept in {backup}.",
+      "rollbackHint": "Replaced files are kept in {backup}; newly added files have no backup counterpart.",
       "migrationsHint": "Run `astack init` once to apply them; owner data is left untouched."
     },
     "context": {

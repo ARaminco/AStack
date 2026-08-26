@@ -236,6 +236,25 @@ export class BrowserEngine {
         return { ok: false, summary: "blocked by automation policy: " + verdict.reason, plan, artifacts: [], metrics: {} };
       }
     }
+    // A per site ceiling has to gate a direct browser run too, not only a run
+    // that happens to arrive through a mission.
+    if (this.authority) {
+      const highest = plan.steps.reduce((level, step) => (step.authority > level ? step.authority : level), "L1");
+      const decision = this.authority.evaluate({ action: "browser.run", level: highest, tool: "browser", site: url, mission });
+      if (decision.blocked) {
+        return { ok: false, summary: "blocked by the authority policy: " + decision.reason, plan, artifacts: [], metrics: {} };
+      }
+      if (decision.requiresApproval && !approvalGranted && !plan.requiresApproval) {
+        return {
+          ok: false,
+          requiresApproval: true,
+          summary: "this flow needs owner approval: " + decision.reason,
+          plan,
+          artifacts: [],
+          metrics: {}
+        };
+      }
+    }
     const profileRecord = this.sessions.exists(profile) ? this.sessions.get(profile) : this.sessions.create({ id: profile });
     const bundle = evidence ?? profileRecord.id;
     const started = Date.now();

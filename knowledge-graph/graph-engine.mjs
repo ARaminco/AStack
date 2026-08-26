@@ -174,12 +174,21 @@ export class GraphEngine {
     const at = validFrom ?? this.now();
     let superseded = null;
     if (exclusive) {
-      const current = this.edges().find((edge) => edge.from === from && edge.type === type && !edge.validTo);
-      if (current && current.to !== to) {
-        this.writeEdge({ ...current, validTo: at, supersededBy: null, updatedAt: this.now() });
+      // Exclusive means exactly one live object, so every open edge closes, not
+      // just the first one found.
+      const open = this.edges().filter((edge) => edge.from === from && edge.type === type && !edge.validTo);
+      const unchanged = open.find((edge) => edge.to === to);
+      for (const current of open.filter((edge) => edge.to !== to)) {
+        // A back-dated correction must not close an edge before it opened, or
+        // it would have been valid at no point in time.
+        const closedAt = new Date(Math.max(new Date(at).getTime(), new Date(current.validFrom ?? current.createdAt).getTime())).toISOString();
+        this.writeEdge({ ...current, validTo: closedAt, updatedAt: this.now() });
         superseded = current.id;
-      } else if (current && current.to === to) {
-        return current;
+      }
+      if (unchanged) {
+        // Already pointing at the right object: the duplicates above are closed,
+        // and the live edge keeps its original validity window.
+        return unchanged;
       }
     }
     const id = "e:" + shortHash(from, type, to, at);

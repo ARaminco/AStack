@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -165,27 +166,34 @@ export class SignalEngine {
     if (!hook.enabled) {
       return { ok: false, reason: "hook is disabled" };
     }
-    if (hook.token && token !== hook.token && !signature) {
-      return { ok: false, reason: "invalid token" };
-    }
-    if (hook.requireSignature && signature) {
-      const expected = createHmac("sha256", hook.secret).update(String(timestamp ?? "") + "." + rawBody).digest("hex");
-      const provided = String(signature).replace(/^sha256=/, "");
-      const left = Buffer.from(expected);
-      const right = Buffer.from(provided.padEnd(expected.length, "0").slice(0, expected.length));
-      if (!timingSafeEqual(left, right)) {
+
+    // A hook that requires a signature is satisfied by nothing else. A token,
+    // which travels in a URL and lands in access logs, can never stand in for
+    // it, and a signature is only meaningful with the timestamp it covers.
+    if (hook.requireSignature) {
+      if (!signature) {
+        return { ok: false, reason: "signature required" };
+      }
+      if (!timestamp) {
+        return { ok: false, reason: "timestamp required with a signature" };
+      }
+      const expected = createHmac("sha256", hook.secret).update(String(timestamp) + "." + rawBody).digest("hex");
+      const provided = String(signature).replace(/^sha256=/, "").toLowerCase();
+      if (provided.length !== expected.length || !timingSafeEqual(Buffer.from(expected), Buffer.from(provided))) {
         return { ok: false, reason: "signature mismatch" };
       }
-    } else if (hook.requireSignature && !signature && token !== hook.token) {
-      return { ok: false, reason: "signature required" };
+    } else if (!constantTimeEquals(token, hook.token)) {
+      return { ok: false, reason: "invalid token" };
     }
+
     if (timestamp) {
-      const drift = Math.abs(this.clock().getTime() - Number(timestamp) * (String(timestamp).length <= 10 ? 1000 : 1));
-      if (drift > 5 * 60 * 1000) {
+      const millis = Number(timestamp) * (String(timestamp).length <= 10 ? 1000 : 1);
+      if (!Number.isFinite(millis) || Math.abs(this.clock().getTime() - millis) > 5 * 60 * 1000) {
         return { ok: false, reason: "timestamp outside the accepted window" };
       }
     }
-    const nonce = shortHash(hook.id, rawBody, String(timestamp ?? ""));
+
+    const nonce = shortHash(hook.id, rawBody, String(timestamp ?? ""), String(signature ?? ""));
     const seenAt = this.seenNonces.get(nonce);
     if (seenAt && this.clock().getTime() - seenAt < 10 * 60 * 1000) {
       return { ok: false, reason: "replayed request" };
@@ -493,6 +501,15 @@ export class SignalEngine {
       lastAt: hooks.map((hook) => hook.state.lastAt).filter(Boolean).sort().pop() ?? null
     };
   }
+}
+
+function constantTimeEquals(left, right) {
+  const a = Buffer.from(String(left ?? ""));
+  const b = Buffer.from(String(right ?? ""));
+  if (!a.length || a.length !== b.length) {
+    return false;
+  }
+  return timingSafeEqual(a, b);
 }
 
 function truncateRaw(payload) {

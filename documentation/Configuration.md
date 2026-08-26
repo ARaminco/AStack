@@ -65,9 +65,15 @@ learning:                # experience to skills
 runtime:                 # runtime providers
   default: claude-code
   providers:
-    claude-code: { enabled: true }
-    mock: { enabled: true }
-    # codex: { command: "codex", args: ["--prompt-file", "{promptFile}"] }
+    claude-code:
+      enabled: true
+    mock:
+      enabled: true
+    # codex:
+    #   command: codex
+    #   args:
+    #     - --prompt-file
+    #     - "{promptFile}"
 
 scheduler:               # background jobs
   tick_interval: 60s
@@ -75,7 +81,11 @@ scheduler:               # background jobs
   default_retries: 1
 
 signals:                 # inbound hooks
-  server: { host: 127.0.0.1, port: 8787, require_signature: true, rate_limit_per_minute: 60 }
+  server:
+    host: 127.0.0.1
+    port: 8787
+    require_signature: true
+    rate_limit_per_minute: 60
 
 browser:                 # internal browser
   preferred_driver: cdp
@@ -85,16 +95,37 @@ browser:                 # internal browser
 
 authority:               # what may run without the owner
   default_level: L2
-  autonomous: [L0, L1, L2]
-  require_approval: [L4]
+  autonomous:
+    - L0
+    - L1
+    - L2
+  require_approval:
+    - L4
 
-audit: { enabled: true }
-secrets: { source: environment_variables, reference_scheme: "credential://<provider>/<name>" }
+audit:
+  enabled: true
+
+secrets:
+  source: environment_variables
+  reference_scheme: "credential://<provider>/<name>"
 ```
 
 Owner overrides that live outside the config file, under `.astack/security/`:
 `authority.json` (ceilings and deny lists), `automation.json` (command and host
 allowlists), `credentials.json` (credential references, never values).
+
+Block style only. The bundled parser reads nested maps, lists of scalars and
+lists of maps; a flow value such as `{ enabled: true }` is refused with a named
+error rather than being read as a string. Empty collections (`keep: []`) are
+fine.
+
+Values that are also code defaults — the authority ceiling, the learning
+thresholds, the budgets — are read from this file where an engine consumes
+them and fall back to the same defaults when a section is absent, so a partial
+file is always safe. The live authority and automation policies are the files
+under `.astack/security/`, edited through `astack authority` and
+`astack schedule policy`; this section states the intent a fresh install
+starts from.
 
 Existing installs need no edits: every new section has a default, and
 `astack upgrade` appends missing sections without touching owner values.

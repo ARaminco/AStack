@@ -105,7 +105,7 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
   const modelRouter = new ModelRouter(workspaceRoot, { registry: runtimes, clock, config: configuration.section("routing", {}) });
 
   const services = { memory, graph, context, learning, projects, agents, teams, browser, skills };
-  const tools = new ToolRegistry(root, { workspaceRoot, services, policy: automationPolicy, authority, audit, secrets });
+  const tools = new ToolRegistry(root, { workspaceRoot, clock, services, policy: automationPolicy, authority, audit, secrets, approvals });
 
   const missions = new MissionEngine(workspaceRoot, {
     clock,
@@ -165,7 +165,6 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
     domains,
     teams,
     agents,
-    chief,
     missions,
     approvals,
     scheduler,

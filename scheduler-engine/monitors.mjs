@@ -109,7 +109,9 @@ async function runCommand(job, context) {
   if (!payload.command) {
     return failed("command job needs payload.command");
   }
-  const verdict = context.policy?.allowCommand(payload.command) ?? { allowed: true };
+  const verdict = context.policy?.allowInvocation
+    ? context.policy.allowInvocation(payload.command, payload.args ?? [])
+    : { allowed: true };
   if (!verdict.allowed) {
     return failed("blocked by automation policy: " + verdict.reason);
   }

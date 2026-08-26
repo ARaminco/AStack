@@ -96,13 +96,13 @@ Work does not have to start in a conversation.
 | Skill catalog with progressive disclosure and versions | implemented |
 | Scheduler, monitors, incidents, daemon | implemented |
 | Signal engine and HTTP receiver | implemented |
-| Browser operator (CDP, persistent profiles, evidence) | implemented |
+| Browser operator (CDP, persistent profiles, evidence) | implemented, needs Node 22+ |
 | Missions with approval checkpoints and replay | implemented |
 | Authority, approvals, audit, secret broker | implemented |
 | Tool registry and policy gated invocation | implemented |
 | Claude Code runtime adapter | implemented |
 | CLI runtime adapter (codex, local models, others) | experimental, needs a configured command |
-| Model router with performance history | implemented |
+| Model router; history recorded from finished missions | implemented |
 | Email, messaging, database, SSH, document tools | adapter-ready, no live adapter shipped |
 | Computer operator (desktop control) | future, interface only |
 | Graph backends other than the file store | adapter-ready |

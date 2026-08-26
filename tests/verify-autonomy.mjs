@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHmac } from "node:crypto";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { createServer } from "node:http";
 import { join } from "node:path";
+import { parseArgs } from "../delivery-engine/cli.mjs";
 import { DomainRegistry } from "../domains/domain-registry.mjs";
 import { MemoryEngine } from "../memory-engine/memory-engine.mjs";
 import { GraphEngine } from "../knowledge-graph/graph-engine.mjs";
@@ -37,6 +40,10 @@ const repoRoot = process.cwd();
 const domains = new DomainRegistry(repoRoot);
 const lenses = JSON.parse(readFileSync(join(repoRoot, "context-engine", "lenses.json"), "utf8"));
 const sandboxes = [];
+process.on("uncaughtException", (error) => {
+  cleanup();
+  throw error;
+});
 
 function sandbox(prefix) {
   const directory = mkdtempSync(join(tmpdir(), "astack-" + prefix + "-"));
@@ -49,6 +56,16 @@ const clock = () => new Date(clockValue);
 const advance = (milliseconds) => {
   clockValue += milliseconds;
 };
+
+// -------------------------------------------------------------- cli parsing
+// Regression: --dry-run was stored under its literal name while every consumer
+// read flags.dryRun, so the documented safe preview performed the live action.
+const parsed = parseArgs(["--url", "https://example.com", "--dry-run", "--expect-status", "200", "--as-of", "2026-01-01"]);
+assert.equal(parsed.flags.dryRun, true, "a kebab case flag reaches its camel case reader");
+assert.equal(parsed.flags["dry-run"], true, "and stays available under the name that was typed");
+assert.equal(parsed.flags.expectStatus, "200");
+assert.equal(parsed.flags["as-of"], "2026-01-01", "existing kebab readers keep working");
+assert.equal(parsed.flags.asOf, "2026-01-01");
 
 // ------------------------------------------------------------------ authority
 const trustRoot = sandbox("trust");
@@ -130,6 +147,26 @@ assert.equal(policy.allowCommand("rm").allowed, false);
 assert.equal(policy.allowCommand("node").allowed, true);
 assert.equal(policy.allowHost("http://127.0.0.1:9000").allowed, false, "private targets are denied by default");
 assert.equal(policy.allowHost("https://example.com").allowed, true);
+// Regression: the allowlist read the last token of the string, so anything
+// ending in an allowlisted name was allowed.
+assert.equal(policy.allowCommand("rm -rf / && node").allowed, false, "a chained command is not an allowlisted command");
+assert.equal(policy.allowCommand("powershell -c calc; node").allowed, false);
+assert.equal(policy.allowCommand("npm test").allowed, true, "the binary is judged, not the last argument");
+assert.equal(policy.allowInvocation("node", ["-e", "process.exit(1)"]).allowed, false, "an inline script is not a program");
+assert.equal(policy.allowInvocation("node", ["scripts/task.mjs"]).allowed, true);
+assert.equal(policy.allowInvocation("node", ["a; rm -rf /"]).allowed, false, "arguments are inspected too");
+// Regression: the network filter missed cloud metadata and every IPv6 form.
+for (const target of [
+  "http://169.254.169.254/latest/meta-data/",
+  "http://[fd00::1]/",
+  "http://[fe80::1]/",
+  "http://[::1]/",
+  "http://[::ffff:127.0.0.1]/",
+  "http://100.64.0.1/",
+  "http://metadata.google.internal/"
+]) {
+  assert.equal(policy.allowHost(target).allowed, false, "must refuse internal target " + target);
+}
 
 const workspace = sandbox("workspace");
 const memory = new MemoryEngine(workspace, { clock });
@@ -142,7 +179,7 @@ const teams = new TeamEngine(workspace, { domains, clock });
 const agents = new AgentEngine(workspace, { memory, clock });
 const browser = new BrowserEngine(workspace, { clock, eventBus, policy, audit, authority, memory });
 
-const tools = new ToolRegistry(repoRoot, { workspaceRoot: workspace, services: { memory, graph, context, learning, projects, agents, teams, browser }, policy, authority, audit, secrets });
+const tools = new ToolRegistry(repoRoot, { workspaceRoot: workspace, clock, services: { memory, graph, context, learning, projects, agents, teams, browser }, policy, authority, audit, secrets, approvals });
 const catalog = tools.catalog({ budget: 200 });
 assert.ok(catalog.tokens <= 200, "the tool catalog is token bounded");
 assert.ok(catalog.total > catalog.tools, "progressive disclosure: the catalog is a subset");
@@ -156,6 +193,40 @@ const readResult = await tools.invoke("memory", "recall", { query: "vat" });
 assert.equal(readResult.ok, true);
 const escape = await tools.invoke("filesystem", "read", { path: "../../etc/passwd" });
 assert.equal(escape.ok, false, "the filesystem tool refuses to leave the workspace");
+// Regression: a relative path was the only check, so another drive or a UNC
+// share walked straight out of the workspace on Windows.
+for (const path of ["D:/secrets.txt", "C:/Windows/win.ini", "//server/share/secret", ".astack/security/credentials.json", ".env"]) {
+  const attempt = await tools.invoke("filesystem", "read", { path });
+  assert.equal(attempt.ok, false, "filesystem tool must refuse " + path);
+}
+
+// Regression: the approval gate was a truthiness check on a string, so any
+// value at all ran an action the owner never saw.
+const forged = await tools.invoke("shell", "run", { command: "node", args: ["--version"] }, { approvalId: "AP-not-a-real-approval" });
+assert.equal(forged.ok, false, "a made up approval id does not authorize anything");
+assert.match(forged.summary, /unknown approval/i);
+const unapproved = await tools.invoke("shell", "run", { command: "node", args: ["--version"] });
+assert.equal(unapproved.requiresApproval, true, "an L4 action without an approval asks for one");
+const shellApproval = approvals.request({ action: "shell.run", summary: "check the node version", parameters: { command: "node" }, level: "L4" });
+const stillPending = await tools.invoke("shell", "run", { command: "node", args: ["--version"] }, { approvalId: shellApproval.id });
+assert.equal(stillPending.ok, false, "a pending approval is not an approval");
+approvals.approve(shellApproval.id, { by: "owner" });
+const otherApproval = approvals.request({ action: "portal.submit", summary: "file the return", level: "L4" });
+approvals.approve(otherApproval.id, { by: "owner" });
+const wrongAction = await tools.invoke("shell", "run", { command: "node", args: ["--version"] }, { approvalId: otherApproval.id });
+assert.equal(wrongAction.ok, false, "an approval authorizes the action it names, not another one");
+assert.match(wrongAction.summary, /authorizes portal.submit/);
+const mismatchedParams = await tools.invoke("shell", "run", { command: "npm", args: ["--version"] }, { approvalId: shellApproval.id });
+assert.equal(mismatchedParams.ok, false, "an approval authorizes the parameters the owner saw");
+const authorized = await tools.invoke("shell", "run", { command: "node", args: ["--version"] }, { approvalId: shellApproval.id });
+assert.equal(authorized.ok, true, "the matching approval runs it once");
+assert.equal(approvals.get(shellApproval.id).state, "consumed", "using an approval consumes it");
+const replayed = await tools.invoke("shell", "run", { command: "node", args: ["--version"] }, { approvalId: shellApproval.id });
+assert.equal(replayed.ok, false, "a consumed approval cannot be replayed");
+assert.ok(
+  audit.list({ action: "run", limit: 5 }).every((entry) => entry.approval !== "granted" || entry.approval.startsWith("granted:")),
+  "the audit trail records which receipt authorized a call, not merely that something was passed"
+);
 
 // ------------------------------------------------------------------- runtimes
 const runtimes = new RuntimeRegistry(workspace, { clock, eventBus });
@@ -172,7 +243,11 @@ assert.equal(finished.state, "completed");
 assert.equal(finished.report.outcome, "done");
 const handoff = mock.handoff(session.id, { to: "reviewer", task: "check the numbers", whatWasDone: "summarised", recommendedNextStep: "verify totals" });
 assert.equal(handoff.to, "reviewer");
-assert.ok(!JSON.stringify(handoff).includes("transcript"), "handoffs are structured packets, never transcripts");
+assert.deepEqual(
+  Object.keys(handoff).sort(),
+  ["artifacts", "at", "findings", "from", "openQuestions", "recommendedNextStep", "task", "to", "whatWasDone"],
+  "a handoff carries exactly the structured fields, with no conversation attached"
+);
 const claude = runtimes.get("claude-code");
 const claudeSession = claude.start({ role: "engineer", objective: "fix the failing test", brief: { contextLines: ["- src/billing.mjs"], toolCatalog: ["- context"] } });
 const claudeRun = await claude.run(claudeSession.id);
@@ -260,6 +335,54 @@ const replay = await missions.replay(mission.id);
 assert.notEqual(replay.replay, replay.original);
 assert.equal(JSON.parse(readFileSync(portalFile, "utf8")).state, "submitted", "a replay never repeats the side effect");
 
+// Regression: a dry run reset every completed step and rewound the mission, so
+// the next real run repeated work that had already happened.
+const partial = missions.create({
+  title: "partially completed mission",
+  domain: "tax",
+  steps: [
+    { title: "fill", tool: "portal", action: "fill", params: { period: "Q2-2026", amount: "10" } },
+    { title: "verify", tool: "portal", action: "receipt" }
+  ]
+});
+await missions.run(partial.id);
+const beforeDryRun = missions.get(partial.id);
+const dryRunProjection = await missions.run(partial.id, { dryRun: true });
+const afterDryRun = missions.get(partial.id);
+assert.deepEqual(
+  afterDryRun.steps.map((step) => step.state),
+  beforeDryRun.steps.map((step) => step.state),
+  "a dry run leaves the stored mission exactly as it was"
+);
+assert.equal(afterDryRun.currentStep, beforeDryRun.currentStep);
+assert.equal(afterDryRun.metrics.done, beforeDryRun.metrics.done);
+assert.ok(dryRunProjection.mission, "a dry run still returns the projected plan");
+
+// Regression: a consumed approval fell through the mission's state check and
+// re-authorized the same irreversible step on every later run.
+const repeat = missions.create({
+  title: "second filing attempt",
+  domain: "tax",
+  steps: [{ title: "submit again", tool: "portal", action: "submit", authority: "L4" }]
+});
+const repeatFirst = await missions.run(repeat.id);
+approvals.approve(repeatFirst.approval.id, { by: "owner" });
+missions.resume(repeat.id);
+await missions.run(repeat.id);
+assert.equal(approvals.get(repeatFirst.approval.id).state, "consumed");
+const replayAttempt = missions.create({
+  title: "third filing attempt",
+  domain: "tax",
+  steps: [{ title: "submit again", tool: "portal", action: "submit", authority: "L4" }]
+});
+missions.addStep(replayAttempt.id, { title: "noop", tool: "portal", action: "receipt" });
+const stolen = missions.get(replayAttempt.id);
+stolen.steps[0].approvalId = repeatFirst.approval.id;
+missions.save(stolen);
+const stolenRun = await missions.run(replayAttempt.id);
+assert.equal(stolenRun.mission.state, "blocked", "a spent receipt cannot carry another mission's step");
+assert.match(stolenRun.summary, /already used/);
+
 const blocked = missions.create({
   title: "delete last year filings",
   steps: [{ title: "delete", tool: "shell", action: "run", params: { command: "rm", args: ["-rf", "/"] } }]
@@ -283,7 +406,7 @@ const flaky = scheduler.create({
   name: "watch the portal",
   kind: "http-check",
   schedule: { every: "10m" },
-  payload: { url: "https://example.com" },
+  payload: { url: "https://astack.invalid/health" },
   policy: { retries: 0 },
   alert: { failuresBefore: 2 }
 });
@@ -309,7 +432,51 @@ const recovered = scheduler.read(flaky.id);
 assert.equal(recovered.state.consecutiveFailures, 0);
 assert.equal(recovered.state.incident, null, "recovery closes the incident");
 assert.ok(scheduler.runLog(flaky.id).length >= 3, "every run is logged");
+// The suite never reaches the network: disable the watcher before the real
+// handler is restored.
+scheduler.setEnabled(flaky.id, false);
 (await import("../scheduler-engine/monitors.mjs")).handlers["http-check"] = handlerBackup;
+
+// The real handler is exercised against a local server instead.
+const localServer = createServer((request, response) => {
+  if (request.url === "/slow") {
+    setTimeout(() => {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ status: "ok" }));
+    }, 60);
+    return;
+  }
+  response.writeHead(request.url === "/bad" ? 500 : 200, { "content-type": "application/json" });
+  response.end(JSON.stringify({ status: request.url === "/bad" ? "down" : "ok", token: "secret-value" }));
+});
+await new Promise((resolve) => localServer.listen(0, "127.0.0.1", resolve));
+const localPort = localServer.address().port;
+const localUrl = "http://127.0.0.1:" + localPort;
+policy.policy.network.allowPrivateNetworks = true;
+const checkJob = scheduler.create({
+  name: "local health",
+  kind: "http-check",
+  schedule: { every: "5m" },
+  payload: { url: localUrl + "/health", expect: { status: 200, contains: "ok", json: { path: "status", equals: "ok" } } }
+});
+const healthy = await scheduler.runJob(checkJob.id, { manual: true });
+assert.equal(healthy.run.status, "ok", healthy.run.summary);
+assert.equal(healthy.run.metrics.status, 200);
+scheduler.update(checkJob.id, { payload: { url: localUrl + "/bad", expect: { status: 200 } } });
+const unhealthy = await scheduler.runJob(checkJob.id, { manual: true });
+assert.equal(unhealthy.run.status, "failed");
+assert.match(unhealthy.run.summary, /status 500/);
+assert.ok(!String(unhealthy.run.output).includes("secret-value"), "a response body is redacted before it is stored");
+scheduler.update(checkJob.id, { payload: { url: localUrl + "/slow", expect: { maxLatencyMs: 1 } } });
+const slow = await scheduler.runJob(checkJob.id, { manual: true });
+assert.equal(slow.run.status, "failed");
+assert.match(slow.run.summary, /latency/);
+policy.policy.network.allowPrivateNetworks = false;
+const blockedTarget = await scheduler.runJob(checkJob.id, { manual: true });
+assert.equal(blockedTarget.run.status, "failed");
+assert.match(blockedTarget.run.summary, /automation policy/);
+scheduler.setEnabled(checkJob.id, false);
+await new Promise((resolve) => localServer.close(resolve));
 
 const retrying = scheduler.create({
   name: "retrying job",
@@ -322,7 +489,8 @@ advance(31 * 60 * 1000);
 await scheduler.tick();
 const retried = scheduler.read(retrying.id);
 assert.equal(retried.state.attempt, 1, "a failed job backs off and retries before giving up");
-assert.ok(new Date(retried.state.next).getTime() - clockValue <= 60000 + 1000);
+const backoff = new Date(retried.state.next).getTime() - clockValue;
+assert.ok(backoff > 0 && backoff <= 61000, "the retry is delayed by the configured backoff, not scheduled immediately: " + backoff);
 assert.match(retried.history[0].summary, /automation policy/);
 
 const defaults = scheduler.installDefaults();
@@ -353,6 +521,36 @@ assert.equal(signals.verify(hook, { token: "wrong" }).ok, false);
 assert.equal(signals.verify(hook, { token: hook.token, rawBody: "{}" }).ok, true);
 assert.equal(signals.verify(hook, { token: hook.token, rawBody: "{}" }).ok, false, "a replayed request is rejected");
 assert.equal(signals.verify(hook, { token: hook.token, rawBody: "{}", timestamp: 1 }).ok, false, "an old timestamp is rejected");
+// Regression: any non-empty signature used to skip the token check entirely.
+assert.equal(
+  signals.verify(hook, { token: "wrong", signature: "sha256=deadbeef", rawBody: "{}" }).ok,
+  false,
+  "a bogus signature does not excuse a wrong token"
+);
+
+// A hook that requires a signature is satisfied by nothing else.
+const signedHook = signals.create({ name: "monitoring", source: "monitoring" });
+assert.equal(signedHook.requireSignature, true, "signatures are required by default");
+const payload = JSON.stringify({ text: "disk is full" });
+const stamp = Math.floor(clockValue / 1000);
+const signature = createHmac("sha256", signedHook.secret).update(stamp + "." + payload).digest("hex");
+assert.equal(
+  signals.verify(signedHook, { token: signedHook.token, rawBody: payload }).ok,
+  false,
+  "a matching token cannot stand in for a required signature"
+);
+assert.equal(signals.verify(signedHook, { signature, rawBody: payload }).ok, false, "a signature without its timestamp is refused");
+assert.equal(signals.verify(signedHook, { signature, rawBody: payload, timestamp: stamp }).ok, true, "a correct signature is accepted");
+assert.equal(
+  signals.verify(signedHook, { signature, rawBody: JSON.stringify({ text: "tampered" }), timestamp: stamp }).ok,
+  false,
+  "a tampered body breaks the signature"
+);
+assert.equal(
+  signals.verify(signedHook, { signature: signature.slice(0, 20), rawBody: payload, timestamp: stamp }).ok,
+  false,
+  "a truncated signature is refused"
+);
 
 const legalEvent = signals.emit(hook.id, { message: { text: "جلسه دادگاه پرونده 1402/1188 هفته بعد است", from: "+971500000000" } });
 assert.equal(legalEvent.domain, "legal", "an inbound message is classified into a practice domain");
@@ -372,9 +570,11 @@ assert.deepEqual(
   "a hostile message only triggers the rule the owner configured, nothing more"
 );
 
-const server = new SignalServer(signals, { port: 8799, log: () => {} });
+// Port 0 lets the operating system choose, so two runs never collide.
+const server = new SignalServer(signals, { port: 0, log: () => {} });
 await server.start();
-const posted = await fetch("http://127.0.0.1:8799/hooks/" + hook.id + "?token=" + hook.token, {
+const servedPort = server.server.address().port;
+const posted = await fetch("http://127.0.0.1:" + servedPort + "/hooks/" + hook.id + "?token=" + hook.token, {
   method: "POST",
   headers: { "content-type": "application/json" },
   body: JSON.stringify({ message: { text: "فاکتور جدید برای شرکت آکمه", from: "+9715551111" } })
@@ -382,9 +582,9 @@ const posted = await fetch("http://127.0.0.1:8799/hooks/" + hook.id + "?token=" 
 assert.equal(posted.status, 200);
 const postedBody = await posted.json();
 assert.equal(postedBody.ok, true);
-const unauthorized = await fetch("http://127.0.0.1:8799/hooks/" + hook.id + "?token=nope", { method: "POST", body: "{}" });
+const unauthorized = await fetch("http://127.0.0.1:" + servedPort + "/hooks/" + hook.id + "?token=nope", { method: "POST", body: "{}" });
 assert.equal(unauthorized.status, 401, "an unsigned request is refused");
-const unknownHook = await fetch("http://127.0.0.1:8799/hooks/does-not-exist?token=x", { method: "POST", body: "{}" });
+const unknownHook = await fetch("http://127.0.0.1:" + servedPort + "/hooks/does-not-exist?token=x", { method: "POST", body: "{}" });
 assert.equal(unknownHook.status, 404);
 await server.stop();
 
@@ -456,6 +656,29 @@ const chief = new ChiefOfStaff(workspace, {
 graph.upsertNode({ type: "Company", name: "Company A" });
 graph.upsertNode({ type: "Person", name: "John Miller" });
 graph.relate({ from: "company:company-a", type: "works_with", to: "person:john-miller", attributes: { role: "accountant" }, exclusive: true });
+// Regression: exclusive closed only the first open edge, so a predicate could
+// end up holding two live objects at once.
+graph.upsertNode({ type: "Person", name: "Duplicate Accountant" });
+graph.writeEdge({
+  id: "e:manual-duplicate",
+  from: "company:company-a",
+  type: "works_with",
+  to: "person:duplicate-accountant",
+  attributes: {},
+  confidence: 0.5,
+  source: "test",
+  createdAt: clock().toISOString(),
+  updatedAt: clock().toISOString(),
+  validFrom: clock().toISOString(),
+  validTo: null,
+  supersedes: null
+});
+graph.relate({ from: "company:company-a", type: "works_with", to: "person:john-miller", attributes: { role: "accountant" }, exclusive: true });
+assert.equal(
+  graph.activeEdges().filter((edge) => edge.from === "company:company-a" && edge.type === "works_with").length,
+  1,
+  "an exclusive relationship holds exactly one live object"
+);
 memory.remember("relationship", { title: "John Miller is the accountant of Company A", entities: ["company:company-a", "person:john-miller"], domain: "accounting" });
 const referenceBrief = chief.brief("از حسابدار Company A بخواه این را بررسی کند", { includeRepoMap: false });
 assert.ok(referenceBrief.entities.some((entity) => entity.name === "Company A"), "the entity is resolved without any chat history");
@@ -530,12 +753,35 @@ assert.ok(migrated.some((entry) => entry.id === "2026.2-owner-profile" && entry.
 assert.ok(existsSync(join(legacy, ".astack", "owner", "profile.json")));
 assert.ok(existsSync(join(legacy, ".astack", "security", "authority.json")));
 assert.ok(existsSync(join(legacy, "skills", "learned")));
-assert.equal(runMigrations(legacy).length, 0, "migrations are idempotent");
+const migrationSecondPass = runMigrations(legacy);
+assert.equal(migrationSecondPass.filter((entry) => entry.status === "applied").length, 0, "migrations are idempotent");
 assert.equal(pendingMigrations(legacy).length, 0);
+// A migration that did not apply yet must stay available for when it does.
+mkdirSync(join(legacy, "memory"), { recursive: true });
+writeFileSync(join(legacy, "memory", "decision.md"), "# decision\n\n- keep the file backed storage\n", "utf8");
+assert.ok(
+  pendingMigrations(legacy).some((migration) => migration.id === "2026.5-legacy-memory-import"),
+  "a migration that was not applicable earlier is not latched off"
+);
+const lateRun = runMigrations(legacy);
+assert.ok(lateRun.some((entry) => entry.id === "2026.5-legacy-memory-import" && entry.status === "applied"));
+assert.ok(existsSync(join(legacy, ".astack", "memory", "decision.jsonl")));
 assert.ok(migrations.length >= 5);
 
-for (const directory of sandboxes) {
-  rmSync(directory, { recursive: true, force: true, maxRetries: 3 });
+cleanup();
+
+/**
+ * Cleanup runs whether the suite passed or threw, so a failing assertion never
+ * leaves temporary workspaces, an open port or a patched module behind.
+ */
+function cleanup() {
+  for (const directory of sandboxes) {
+    try {
+      rmSync(directory, { recursive: true, force: true, maxRetries: 3 });
+    } catch {
+      // A held file lock must not mask the assertion that actually failed.
+    }
+  }
 }
 
 console.log("AStack autonomy verification passed.");

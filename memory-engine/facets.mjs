@@ -135,7 +135,17 @@ export class FacetMemory {
     if (!title && !body) {
       throw new Error("A memory record needs a title or a body");
     }
-    const digest = shortHash(facet, title, body, entry.scope ?? "", entry.project ?? "");
+    const digest = shortHash(
+      facet,
+      title,
+      body,
+      entry.scope ?? "",
+      entry.project ?? "",
+      // A correction carries the record it replaces, so it can never be folded
+      // into that record as a duplicate observation.
+      entry.supersedes ?? "",
+      entry.supersedes ? at : ""
+    );
     const existing = this.all(facet).find((record) => record.digest === digest);
     if (existing) {
       return this.reinforce(existing.id, { delta: 0.15, note: "duplicate observation" });
@@ -147,6 +157,7 @@ export class FacetMemory {
       type: facet,
       at,
       updatedAt: at,
+      decayedAt: at,
       scope: entry.scope ?? null,
       domain: entry.domain ?? null,
       project: entry.project ?? entry.projectId ?? null,
@@ -224,12 +235,20 @@ export class FacetMemory {
     const at = entry.at ?? this.now();
     const replacement = this.append(entry.facet ?? previous.facet, {
       ...entry,
+      at,
       validFrom: entry.validFrom ?? at,
       supersedes: previous.id,
       domain: entry.domain ?? previous.domain,
       project: entry.project ?? previous.project,
       scope: entry.scope ?? previous.scope
     });
+    if (replacement.id === previous.id) {
+      // Nothing distinguishes the correction from the record it was meant to
+      // replace. Hiding the only copy would lose the fact entirely, so refuse.
+      throw new Error(
+        "The replacement is identical to " + previous.id + ". Give the corrected fact a different title, body or object."
+      );
+    }
     this.write(previous.facet, { ...previous, validTo: at, supersededBy: replacement.id, updatedAt: at });
     return { previous: { ...previous, validTo: at, supersededBy: replacement.id }, replacement };
   }
@@ -266,9 +285,17 @@ export class FacetMemory {
       .filter((record) => !project || !record.project || record.project === project)
       .filter((record) => !tags.length || tags.every((tag) => record.tags.includes(tag)))
       .filter((record) => !entities.length || (record.entities ?? []).some((entity) => entities.includes(entity)))
-      .filter((record) => includeSuperseded || !record.supersededBy)
+      .filter((record) => includeSuperseded || !record.supersededBy || !this.exists(record.facet, record.supersededBy))
       .filter((record) => !record.validFrom || new Date(record.validFrom).getTime() <= moment)
-      .filter((record) => includeSuperseded || !record.validTo || new Date(record.validTo).getTime() > moment)
+      .filter((record) => {
+        if (includeSuperseded || !record.validTo) {
+          return true;
+        }
+        if (record.supersededBy && !this.exists(record.facet, record.supersededBy)) {
+          return true;
+        }
+        return new Date(record.validTo).getTime() > moment;
+      })
       .filter((record) => !record.expiresAt || new Date(record.expiresAt).getTime() > moment);
     if (!pool.length) {
       return [];
@@ -335,8 +362,8 @@ export class FacetMemory {
   /**
    * Merge near duplicates, decay stale weights and compact the JSONL files.
    */
-  consolidate({ similarity = 0.82, minWeight = 0.12 } = {}) {
-    const report = { merged: 0, decayed: 0, dropped: 0, kept: 0 };
+  consolidate({ similarity = 0.82, minWeight = 0.12, minAgeDays = 30 } = {}) {
+    const report = { merged: 0, decayed: 0, dropped: 0, kept: 0, protected: 0 };
     const nowMs = this.clock().getTime();
     for (const facet of memoryFacets) {
       const records = this.all(facet);
@@ -346,33 +373,77 @@ export class FacetMemory {
       const halfLife = FACET_DEFAULTS[facet].halfLifeDays;
       const survivors = [];
       for (const record of [...records].sort((a, b) => new Date(a.at) - new Date(b.at))) {
+        // A record that takes part in a supersede chain is history, not noise:
+        // merging it would destroy both the correction and what it corrected.
+        if (record.supersededBy || record.supersedes) {
+          survivors.push({ record: { ...record }, tokens: uniqueTokens(record.title + " " + record.body), chained: true });
+          continue;
+        }
         const tokens = uniqueTokens(record.title + " " + record.body);
-        const twin = survivors.find((entry) => jaccard(entry.tokens, tokens) >= similarity);
+        const twin = survivors.find((entry) => !entry.chained && jaccard(entry.tokens, tokens) >= similarity);
         if (twin) {
+          // The newer observation wins on content; the older one contributes
+          // its evidence.
           twin.record.hits += record.hits + 1;
           twin.record.confidence = clamp(Math.max(twin.record.confidence, record.confidence) + 0.05, 0, 1);
           twin.record.refs = [...new Set([...twin.record.refs, ...record.refs])];
           twin.record.tags = [...new Set([...twin.record.tags, ...record.tags])];
+          twin.record.entities = [...new Set([...(twin.record.entities ?? []), ...(record.entities ?? [])])];
+          twin.record.importance = Math.max(twin.record.importance ?? 0.5, record.importance ?? 0.5);
+          twin.record.weight = Math.max(twin.record.weight, record.weight);
+          twin.record.title = record.title || twin.record.title;
+          twin.record.body = record.body || twin.record.body;
+          twin.record.at = record.at;
           twin.record.updatedAt = this.now();
           report.merged += 1;
           continue;
         }
-        survivors.push({ record: { ...record }, tokens });
+        survivors.push({ record: { ...record }, tokens, chained: false });
       }
-      const kept = [];
+
+      // Anything a survivor still points at has to stay reachable, or the chain
+      // it belongs to becomes a dangling pointer.
+      const referenced = new Set();
       for (const { record } of survivors) {
-        const ageDays = Math.max(0, (nowMs - new Date(record.updatedAt ?? record.at).getTime()) / DAY);
-        const decayed = record.weight * Math.pow(0.5, ageDays / (halfLife * 3));
-        if (decayed !== record.weight) {
-          record.weight = Number(decayed.toFixed(4));
-          report.decayed += 1;
+        for (const id of [record.supersededBy, record.supersedes, ...(record.refs ?? [])]) {
+          if (id) {
+            referenced.add(id);
+          }
         }
+      }
+
+      const kept = [];
+      let droppedHere = 0;
+      for (const { record } of survivors) {
+        // Decay measures the time since the last pass, not the age of the
+        // record, so running nightly and running once a month agree.
+        const since = new Date(record.decayedAt ?? record.updatedAt ?? record.at).getTime();
+        const elapsedDays = Math.max(0, (nowMs - since) / DAY);
+        if (elapsedDays > 0) {
+          const decayed = record.weight * Math.pow(0.5, elapsedDays / (halfLife * 3));
+          if (decayed !== record.weight) {
+            record.weight = Number(decayed.toFixed(4));
+            report.decayed += 1;
+          }
+          record.decayedAt = new Date(nowMs).toISOString();
+        }
+        const ageDays = Math.max(0, (nowMs - new Date(record.at).getTime()) / DAY);
         const expired = record.expiresAt && new Date(record.expiresAt).getTime() <= nowMs;
-        if (expired || (record.weight < minWeight && record.hits === 0)) {
-          report.dropped += 1;
-          continue;
+        const faded = record.weight < minWeight && record.hits === 0 && ageDays >= minAgeDays;
+        if (expired || faded) {
+          if (referenced.has(record.id)) {
+            report.protected += 1;
+          } else {
+            report.dropped += 1;
+            droppedHere += 1;
+            continue;
+          }
         }
         kept.push(record);
+      }
+
+      if (droppedHere > 0) {
+        this.backup(facet, records);
       }
       mkdirSync(this.directory, { recursive: true });
       writeFileSync(this.path(facet), kept.map((record) => JSON.stringify(record)).join("\n") + (kept.length ? "\n" : ""), "utf8");
@@ -380,6 +451,23 @@ export class FacetMemory {
       report.kept += kept.length;
     }
     return report;
+  }
+
+  /**
+   * Nothing is deleted from a facet without a copy of what it looked like
+   * first.
+   */
+  backup(facet, records) {
+    const directory = join(this.root, ".astack", "backups", "memory");
+    mkdirSync(directory, { recursive: true });
+    const stamp = this.now().replace(/[:.]/g, "-");
+    const path = join(directory, facet + "-" + stamp + ".jsonl");
+    writeFileSync(path, records.map((record) => JSON.stringify(record)).join("\n") + (records.length ? "\n" : ""), "utf8");
+    return path;
+  }
+
+  exists(facet, id) {
+    return this.all(facet).some((record) => record.id === id);
   }
 
   stats() {
