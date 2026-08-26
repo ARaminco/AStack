@@ -1,5 +1,9 @@
 # Memory Engine
 
+> This page covers the owner facing markdown scopes. The structured,
+> temporal side — twelve facets, supersede semantics, ranked recall and
+> consolidation — is documented in [Memory OS](Memory-OS.md).
+
 The Memory Engine (`memory-engine/memory-engine.mjs`) persists durable context as Markdown files under `memory/`, one file per scope. Memory survives upgrades — the directory is on the upgrade engine's preserve list.
 
 ## Scopes

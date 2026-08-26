@@ -37,3 +37,64 @@ upgrade:
 - `ASTACK_LOCALE` overrides `cli.default_locale`.
 - `ASTACK_SOURCE` and `--from` override `upgrade.source`.
 - CLI flags override configuration defaults for a single invocation.
+
+## Autonomy sections (2.1)
+
+```yaml
+context:                 # token budgets and the workspace index
+  owner_capsule_budget: 800
+  memory_budget: 2500
+  project_budget: 3500
+  repo_map_budget: 2000
+  skill_budget: 3000
+  tool_catalog_budget: 500
+  retrieval_budget: 12000
+  refresh: auto          # auto | always | never
+
+graph:                   # temporal knowledge graph
+  backend: file          # file today; the adapter shape allows others
+  temporal: true
+
+learning:                # experience to skills
+  auto_create_skill_candidates: true
+  auto_promote_skills: false
+  min_occurrences: 3
+  min_distinct_days: 2
+  min_success_rate: 0.6
+
+runtime:                 # runtime providers
+  default: claude-code
+  providers:
+    claude-code: { enabled: true }
+    mock: { enabled: true }
+    # codex: { command: "codex", args: ["--prompt-file", "{promptFile}"] }
+
+scheduler:               # background jobs
+  tick_interval: 60s
+  default_timeout_ms: 30000
+  default_retries: 1
+
+signals:                 # inbound hooks
+  server: { host: 127.0.0.1, port: 8787, require_signature: true, rate_limit_per_minute: 60 }
+
+browser:                 # internal browser
+  preferred_driver: cdp
+  persistent_profiles: true
+  headless_default: true
+  stop_before_commit: true
+
+authority:               # what may run without the owner
+  default_level: L2
+  autonomous: [L0, L1, L2]
+  require_approval: [L4]
+
+audit: { enabled: true }
+secrets: { source: environment_variables, reference_scheme: "credential://<provider>/<name>" }
+```
+
+Owner overrides that live outside the config file, under `.astack/security/`:
+`authority.json` (ceilings and deny lists), `automation.json` (command and host
+allowlists), `credentials.json` (credential references, never values).
+
+Existing installs need no edits: every new section has a default, and
+`astack upgrade` appends missing sections without touching owner values.
