@@ -26,3 +26,58 @@ After upgrading run `node bin/astack.mjs doctor` — expect 33 departments, 10 d
 
 ## Claude Code Migration
 Claude Code starts from the root `CLAUDE.md`, then loads `astack.config.yaml`, the language policy, runtime, orchestrator, domains, departments, workflows, providers, memory, and the team/agent/upgrade engines. The full operating loop is described in [Claude-Code.md](Claude-Code.md).
+
+## 2.0 → 2.1 (the autonomy layer)
+
+Nothing breaks. Every 2.0 command, project, team, agent and memory file keeps
+working; the new layer is additive.
+
+```bash
+astack upgrade --check     # see the plan and the pending data migrations
+astack upgrade             # replace the core, append the new config sections
+astack init                # apply the data migrations (see the note below)
+astack doctor --verbose
+```
+
+> **Why `astack init` after the first upgrade.** An install upgrades itself by running its own
+> command, so a 2.0 install runs the 2.0 upgrade code, which predates data migrations. The new
+> core lands during that run but its migration step does not execute in the same process.
+> `astack doctor` therefore reports what is still pending, and `astack init` applies it. From
+> 2.1 onward `astack upgrade` runs migrations itself and this step is no longer needed.
+> Migrations are idempotent, so running either command twice changes nothing.
+
+### What the upgrade does
+
+1. Replaces managed engine files after backing them up to `.astack/backups/`.
+2. Appends the new configuration sections, leaving your values untouched.
+3. Runs the data migrations in `upgrade-engine/migrations.mjs`:
+
+| Migration | Effect |
+| --- | --- |
+| 2026.1-structured-memory | creates `.astack/memory` beside the markdown scopes |
+| 2026.2-owner-profile | seeds the owner capsule from your configuration |
+| 2026.3-authority-defaults | installs the default authority policy |
+| 2026.4-learned-skills-directory | creates `skills/learned` |
+| 2026.5-legacy-memory-import | imports `memory/decision.md` into the decision facet |
+
+Migrations are idempotent and recorded in `.astack/upgrade-state.json`. None of them destroy
+anything: they create the scaffolding the new engines expect and copy existing decisions into the
+structured memory, leaving `memory/decision.md` exactly as it was.
+
+Every engine also degrades gracefully without them — the memory store, owner profile and authority
+policy fall back to their defaults and are created on first write — so an install that never runs
+them still works. The one thing that would be lost is the import of existing decisions.
+
+### What is never touched
+
+`.astack/`, `memory/`, `plugins/`, `knowledge-packs/`, `skills/learned/`, and any
+path listed under `upgrade.keep`.
+
+### After upgrading
+
+```bash
+astack context build              # first index of the workspace
+astack schedule defaults          # install the maintenance jobs
+astack owner set --name "<you>" --company "<a>,<b>"
+astack authority show             # confirm what may run without you
+```

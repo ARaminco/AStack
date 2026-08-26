@@ -5,9 +5,22 @@ import { createLocalization } from "../localization-engine/service.mjs";
 import { createRuntime } from "../runtime/astack-runtime.mjs";
 import { runProjectCommand } from "../delivery-engine/cli.mjs";
 import { runAgentCommand, runDomainCommand, runLeadCommand, runTeamCommand, runUpgradeCommand } from "../cli/orchestration-cli.mjs";
+import { runContextCommand, runGraphCommand, runLearningCommand, runMemoryCommand, runSkillCommand } from "../cli/intelligence-cli.mjs";
+import { runBrowserCommand, runMissionCommand, runScheduleCommand, runSignalCommand } from "../cli/operations-cli.mjs";
+import { runApprovalCommand, runAuditCommand, runAuthorityCommand, runRuntimeCommand, runSecretCommand, runToolCommand } from "../cli/trust-cli.mjs";
+import { runAskCommand, runOwnerCommand, runStandupCommand } from "../cli/chief-cli.mjs";
+import { pendingMigrations, runMigrations } from "../upgrade-engine/migrations.mjs";
 
 const i18n = createLocalization();
 const runtime = createRuntime();
+
+const COMMANDS = [
+  "init", "install", "doctor", "upgrade", "review", "ask", "standup", "owner",
+  "context", "memory", "graph", "learn", "skill",
+  "mission", "schedule", "signal", "browser",
+  "authority", "approval", "audit", "secret", "tool", "runtime",
+  "domain", "team", "agent", "lead", "project", "workflow", "provider", "plugin", "knowledge", "backup"
+];
 
 function printHelp() {
   console.log(i18n.t("cli.title"));
@@ -16,15 +29,24 @@ function printHelp() {
   console.log("  astack <command> [args]");
   console.log("");
   console.log(i18n.t("cli.commands"));
-  for (const command of ["init", "install", "doctor", "upgrade", "review", "domain", "team", "agent", "lead", "project", "workflow", "provider", "plugin", "memory", "knowledge", "backup"]) {
+  for (const command of COMMANDS) {
     console.log("  " + command.padEnd(12) + i18n.t("cli.help." + command));
   }
 }
 
-function doctor() {
-  const required = ["core", "runtime", "orchestrator", "departments", "domains", "providers", "knowledge-packs", "plugins", "memory-engine", "workflow-engine", "delivery-engine", "team-engine", "agent-engine", "upgrade-engine", "localization-engine", "configuration-engine", "event-bus", "permission-system", "installer", "documentation", "tests", "CLAUDE.md"];
+function doctor({ verbose = false } = {}) {
+  const required = [
+    "core", "runtime", "orchestrator", "departments", "domains", "providers", "knowledge-packs", "plugins",
+    "memory-engine", "workflow-engine", "delivery-engine", "team-engine", "agent-engine", "upgrade-engine",
+    "localization-engine", "configuration-engine", "event-bus", "permission-system", "installer", "documentation",
+    "tests", "context-engine", "knowledge-graph", "learning-engine", "scheduler-engine", "browser-engine",
+    "signal-engine", "mission-engine", "trust-engine", "tool-registry", "runtime-providers", "chief-of-staff", "CLAUDE.md"
+  ];
   const missing = required.filter((item) => !existsSync(join(runtime.root, item)));
-  const config = runtime.configuration.requireSections(["project", "language", "architecture", "models", "memory", "plugins", "telemetry", "security", "delivery", "domains", "teams", "agents", "upgrade", "cli"]);
+  const config = runtime.configuration.requireSections([
+    "project", "language", "architecture", "models", "memory", "plugins", "telemetry", "security", "delivery",
+    "domains", "teams", "agents", "upgrade", "cli", "context", "learning", "runtime", "browser", "authority", "audit"
+  ]);
   if (missing.length || !config.ok) {
     throw new Error("missing=" + missing.join(",") + " config=" + config.missing.join(","));
   }
@@ -39,7 +61,32 @@ function doctor() {
   console.log("Projects: " + runtime.projects.list().length);
   console.log("Teams: " + runtime.teams.list().length);
   console.log("Agents: " + runtime.agents.list().length);
+  console.log("Memory facets: " + runtime.memory.facetNames().length);
+  console.log("Skills: " + runtime.skills.stats().skills);
+  console.log("Tools: " + runtime.tools.stats().tools);
+  console.log("Runtimes: " + runtime.runtimes.list().map((entry) => entry.id).join(", "));
+  console.log("Jobs: " + runtime.scheduler.list().length);
+  console.log("Hooks: " + runtime.signals.list().length);
+  console.log("Missions: " + runtime.missions.list().length);
+  console.log("Browser: " + runtime.browser.status().driver);
+  console.log("Authority default: " + runtime.authority.describe().defaultLevel);
   console.log("Telemetry: disabled");
+  // An install that upgraded from an older core ran the previous upgrade command,
+  // which had no migration step. Report what is still waiting rather than letting
+  // it be missed.
+  const pending = pendingMigrations(runtime.workspaceRoot);
+  if (pending.length) {
+    console.log(i18n.t("cli.upgrade.migrationsPending", { count: pending.length }));
+    for (const migration of pending) {
+      console.log("- " + migration.id + ": " + migration.description);
+    }
+    console.log(i18n.t("cli.upgrade.migrationsHint"));
+  }
+  if (verbose) {
+    const context = runtime.context.stats();
+    console.log("Context index: " + (context.built ? context.files + " files, " + context.symbols + " symbols" : "not built"));
+    console.log("Context savings: " + Math.round(context.savingsRatio * 100) + "%");
+  }
 }
 
 function list(title, items) {
@@ -49,83 +96,136 @@ function list(title, items) {
   }
 }
 
-function run() {
+async function run() {
   const [command, ...rest] = process.argv.slice(2);
   const tokens = rest.filter(Boolean);
   if (!command || command === "help" || command === "--help" || command === "-h") {
     printHelp();
     return;
   }
-  if (command === "init" || command === "install") {
-    doctor();
-    console.log(command === "init" ? i18n.t("cli.initDone") : i18n.t("cli.installed"));
-    return;
-  }
-  if (command === "doctor") {
-    doctor();
-    return;
-  }
-  if (command === "update" || command === "upgrade") {
-    runUpgradeCommand({ runtime, i18n, tokens });
-    return;
-  }
-  if (command === "review") {
-    const result = runtime.orchestrator.run(tokens.join(" "));
-    console.log(i18n.t("cli.reviewIntro"));
-    for (const line of result.answer) {
-      console.log("- " + line);
+  const context = { runtime, i18n, tokens };
+  switch (command) {
+    case "init":
+    case "install": {
+      doctor();
+      const migrated = runMigrations(runtime.workspaceRoot).filter((entry) => entry.status === "applied");
+      if (migrated.length) {
+        console.log(i18n.t("cli.upgrade.migrationsApplied", { count: migrated.length }));
+        for (const entry of migrated) {
+          console.log("- " + entry.id + ": " + entry.detail);
+        }
+      }
+      console.log(command === "init" ? i18n.t("cli.initDone") : i18n.t("cli.installed"));
+      return;
     }
-    return;
+    case "doctor":
+      doctor({ verbose: tokens.includes("--verbose") });
+      return;
+    case "update":
+    case "upgrade":
+      runUpgradeCommand(context);
+      return;
+    case "review": {
+      const result = runtime.orchestrator.run(tokens.join(" "));
+      console.log(i18n.t("cli.reviewIntro"));
+      for (const line of result.answer) {
+        console.log("- " + line);
+      }
+      return;
+    }
+    case "ask":
+    case "brief":
+      await runAskCommand(context);
+      return;
+    case "standup":
+      runStandupCommand(context);
+      return;
+    case "owner":
+      runOwnerCommand(context);
+      return;
+    case "context":
+      runContextCommand(context);
+      return;
+    case "memory":
+      runMemoryCommand(context);
+      return;
+    case "graph":
+      runGraphCommand(context);
+      return;
+    case "learn":
+    case "learning":
+      runLearningCommand(context);
+      return;
+    case "skill":
+      runSkillCommand(context);
+      return;
+    case "mission":
+      await runMissionCommand(context);
+      return;
+    case "schedule":
+      await runScheduleCommand(context);
+      return;
+    case "signal":
+      await runSignalCommand(context);
+      return;
+    case "browser":
+      await runBrowserCommand(context);
+      return;
+    case "authority":
+      runAuthorityCommand(context);
+      return;
+    case "approval":
+      runApprovalCommand(context);
+      return;
+    case "audit":
+      runAuditCommand(context);
+      return;
+    case "secret":
+      runSecretCommand(context);
+      return;
+    case "tool":
+      runToolCommand(context);
+      return;
+    case "runtime":
+      await runRuntimeCommand(context);
+      return;
+    case "domain":
+      runDomainCommand(context);
+      return;
+    case "team":
+      runTeamCommand(context);
+      return;
+    case "agent":
+      runAgentCommand(context);
+      return;
+    case "lead":
+      runLeadCommand(context);
+      return;
+    case "project":
+      runProjectCommand(context);
+      return;
+    case "workflow":
+      list(i18n.t("cli.workflowList"), runtime.workflows.list());
+      return;
+    case "provider":
+      list(i18n.t("cli.providerList"), runtime.providers);
+      return;
+    case "plugin":
+      list(i18n.t("cli.pluginList"), runtime.pluginRegistry.list());
+      return;
+    case "knowledge":
+      list(i18n.t("cli.knowledgeList"), runtime.knowledgePackRegistry.list());
+      return;
+    case "backup":
+      console.log(i18n.t("cli.backupCreated", { path: runtime.memory.backup() }));
+      return;
+    default:
+      throw new Error(i18n.t("cli.unknownCommand", { command }));
   }
-  if (command === "domain") {
-    runDomainCommand({ runtime, i18n, tokens });
-    return;
-  }
-  if (command === "team") {
-    runTeamCommand({ runtime, i18n, tokens });
-    return;
-  }
-  if (command === "agent") {
-    runAgentCommand({ runtime, i18n, tokens });
-    return;
-  }
-  if (command === "lead") {
-    runLeadCommand({ runtime, i18n, tokens });
-    return;
-  }
-  if (command === "project") {
-    runProjectCommand({ runtime, i18n, tokens });
-    return;
-  }
-  if (command === "workflow") {
-    list(i18n.t("cli.workflowList"), runtime.workflows.list());
-    return;
-  }
-  if (command === "provider") {
-    list(i18n.t("cli.providerList"), runtime.providers);
-    return;
-  }
-  if (command === "plugin") {
-    list(i18n.t("cli.pluginList"), runtime.pluginRegistry.list());
-    return;
-  }
-  if (command === "memory") {
-    list(i18n.t("cli.memoryList"), runtime.memory.scopes());
-    return;
-  }
-  if (command === "knowledge") {
-    list(i18n.t("cli.knowledgeList"), runtime.knowledgePackRegistry.list());
-    return;
-  }
-  if (command === "backup") {
-    console.log(i18n.t("cli.backupCreated", { path: runtime.memory.backup() }));
-    return;
-  }
-  throw new Error(i18n.t("cli.unknownCommand", { command }));
 }
 
 try {
-  run();
+  await run();
 } catch (error) {
   console.error(i18n.t("cli.errorPrefix") + ": " + error.message);
   process.exitCode = 1;

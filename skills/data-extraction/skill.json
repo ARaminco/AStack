@@ -1,0 +1,96 @@
+{
+  "id": "data-extraction",
+  "name": "Structured Data Extraction",
+  "nameFa": "استخراج داده ساخت‌یافته",
+  "source": "builtin",
+  "status": "trusted",
+  "version": 1,
+  "confidence": 0.85,
+  "domains": [
+    "accounting",
+    "finance",
+    "operations",
+    "research"
+  ],
+  "keywords": [
+    "extract",
+    "table",
+    "csv",
+    "json",
+    "fields",
+    "استخراج",
+    "جدول",
+    "داده",
+    "فیلد"
+  ],
+  "description": "تبدیل اسناد و صفحه‌ها به داده ساخت‌یافته قابل اتکا، با اعتبارسنجی و راستی‌آزمایی هر مقدار.",
+  "capabilities": [
+    "extract",
+    "validate",
+    "reconcile"
+  ],
+  "requiredTools": [
+    "documents",
+    "filesystem",
+    "context"
+  ],
+  "requiredCredentials": [],
+  "riskLevel": "L1",
+  "approvalLevel": "none",
+  "compatibleRuntimes": [
+    "claude-code",
+    "cli"
+  ],
+  "procedure": [
+    {
+      "order": 1,
+      "label": "طرح داده را اول تعریف کن: نام فیلد، نوع، واحد، الزامی‌بودن و قاعده اعتبارسنجی.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 2,
+      "label": "یک نمونه را دستی استخراج کن و با مالک تأیید بگیر، سپس روی کل مجموعه اجرا کن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 3,
+      "label": "برای هر رکورد منبع را ثبت کن: فایل، صفحه و ناحیه.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 4,
+      "label": "قواعد اعتبارسنجی را اجرا کن: جمع جزءها با کل، تاریخ در بازه معتبر، شناسه‌ها با الگوی درست، مبلغ منفی/مثبت.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 5,
+      "label": "رکوردهای مشکوک را جدا کن و هرگز آن‌ها را با مقدار حدسی پر نکن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 6,
+      "label": "خروجی را در CSV با کدگذاری UTF-8 و جداکننده اعلام‌شده بنویس و نسخه JSON را برای مصرف ماشینی کنار آن بگذار.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 7,
+      "label": "برای مغایرت‌گیری، کلید تطبیق را مشخص کن و تفاوت‌ها را در سه دسته گزارش کن: فقط در منبع الف، فقط در منبع ب، مقدار متفاوت.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 8,
+      "label": "گزارش پوشش را بده: چند رکورد پردازش شد، چند تأیید شد، چند نیاز به بررسی دارد.",
+      "required": true,
+      "share": 1
+    }
+  ],
+  "createdAt": "2026-08-25T00:00:00.000Z",
+  "updatedAt": "2026-08-25T00:00:00.000Z"
+}

@@ -23,3 +23,43 @@ Owner-facing output: Persian by default, with English, Arabic, and Turkish local
 
 ## Where is my data?
 Everything is local: project, team, and agent state under `.astack/`, durable memory under `memory/`. Telemetry is disabled by default and there is no network API.
+
+# Does AStack remember me between conversations?
+
+Yes. A new session starts from the owner identity capsule plus what the request
+needs, not from a replayed history. Facts live in the memory facets and the
+knowledge graph, and change through supersede so history stays answerable.
+
+# Can it really use a browser?
+
+Yes, through a persistent Chromium profile driven over the DevTools protocol.
+You log in once with `astack browser login`, and later automated runs reuse that
+session. Any step that commits — submit, pay, delete — stops and waits for your
+approval, then resumes from the same point. Run `npm run test:browser` to see it
+work end to end.
+
+# Will it do something irreversible on its own?
+
+Not by default. The authority ceiling is L2 (drafts). L4 actions always require
+an approval receipt, which authorizes exactly one action, and every external
+action lands in the audit trail with its evidence.
+
+# How does it learn?
+
+Every substantial task is recorded as an episode. When the same job appears at
+least three times, on at least two different days, with a good success rate, the
+learning engine forges a skill package with its evidence and guardrails. Use it,
+report the outcome, and it is promoted or retired on the numbers.
+
+# Can I trigger it from WhatsApp or another tool?
+
+Yes. `astack signal create` gives you a webhook URL and a signing secret to
+register in any tool. Incoming messages are verified, classified by domain and
+matched against your rules, which can open a mission, assign an agent, run a job
+or write to memory.
+
+# How much context does a request cost?
+
+The budgets are configurable and enforced: about 800 tokens for the owner
+capsule, 2000 for the workspace map, 2500 for memory, 500 for the tool catalog.
+`astack context stats` reports the tokens rendered and avoided from real usage.

@@ -1,0 +1,307 @@
+{
+  "version": 1,
+  "tools": [
+    {
+      "id": "browser",
+      "name": "Internal Browser Operator",
+      "nameFa": "مرورگر داخلی",
+      "description": "Drives a persistent Chromium profile: navigate, fill forms, extract data, capture evidence, stop before commits.",
+      "capabilities": ["browse", "login", "form-fill", "extract", "screenshot", "pdf", "download", "session"],
+      "status": "implemented",
+      "riskLevel": "L3",
+      "permissions": ["network", "filesystem-workspace"],
+      "requiredCredentials": [],
+      "costClass": "medium",
+      "latencyClass": "slow",
+      "supportsDryRun": true,
+      "supportsRollback": false,
+      "actions": [
+        { "name": "plan", "risk": "L0", "params": ["profile", "url", "steps"] },
+        { "name": "run", "risk": "L3", "params": ["profile", "url", "steps", "capture", "evidence", "mission"] },
+        { "name": "login", "risk": "L2", "params": ["profile", "url"] },
+        { "name": "resume", "risk": "L4", "params": ["mission", "approve"] },
+        { "name": "health", "risk": "L1", "params": ["profile"] }
+      ]
+    },
+    {
+      "id": "context",
+      "name": "Context Engine",
+      "nameFa": "موتور زمینه",
+      "description": "Workspace map, symbol index, dependency graph and budgeted retrieval over code and documents.",
+      "capabilities": ["map", "search", "expand", "related", "stats"],
+      "status": "implemented",
+      "riskLevel": "L1",
+      "permissions": ["filesystem-workspace"],
+      "requiredCredentials": [],
+      "costClass": "low",
+      "latencyClass": "fast",
+      "supportsDryRun": true,
+      "supportsRollback": false,
+      "actions": [
+        { "name": "map", "risk": "L1", "params": ["query", "budget", "domain"] },
+        { "name": "query", "risk": "L1", "params": ["text", "limit"] },
+        { "name": "expand", "risk": "L1", "params": ["path"] },
+        { "name": "build", "risk": "L1", "params": ["force"] }
+      ]
+    },
+    {
+      "id": "memory",
+      "name": "Memory OS",
+      "nameFa": "حافظه",
+      "description": "Multi-faceted temporal memory: recall, remember, supersede, consolidate.",
+      "capabilities": ["recall", "remember", "supersede", "consolidate", "stats"],
+      "status": "implemented",
+      "riskLevel": "L1",
+      "permissions": ["filesystem-workspace"],
+      "requiredCredentials": [],
+      "costClass": "low",
+      "latencyClass": "fast",
+      "supportsDryRun": false,
+      "supportsRollback": false,
+      "actions": [
+        { "name": "recall", "risk": "L1", "params": ["query", "facets", "limit"] },
+        { "name": "remember", "risk": "L2", "params": ["facet", "title", "body"] },
+        { "name": "consolidate", "risk": "L2", "params": [] }
+      ]
+    },
+    {
+      "id": "graph",
+      "name": "Knowledge Graph",
+      "nameFa": "گراف دانش",
+      "description": "Temporal entity and relationship graph for people, companies, cases, documents and accounts.",
+      "capabilities": ["entities", "relationships", "resolve", "history"],
+      "status": "implemented",
+      "riskLevel": "L1",
+      "permissions": ["filesystem-workspace"],
+      "requiredCredentials": [],
+      "costClass": "low",
+      "latencyClass": "fast",
+      "supportsDryRun": false,
+      "supportsRollback": false,
+      "actions": [
+        { "name": "resolve", "risk": "L1", "params": ["text", "type"] },
+        { "name": "neighbours", "risk": "L1", "params": ["id", "asOf"] },
+        { "name": "upsert", "risk": "L2", "params": ["type", "name", "attributes"] },
+        { "name": "relate", "risk": "L2", "params": ["from", "type", "to"] }
+      ]
+    },
+    {
+      "id": "scheduler",
+      "name": "Scheduler",
+      "nameFa": "زمان‌بند",
+      "description": "Durable background jobs: web service checks, agent dispatch, maintenance, webhooks processing.",
+      "capabilities": ["schedule", "monitor", "tick", "incidents"],
+      "status": "implemented",
+      "riskLevel": "L2",
+      "permissions": ["network", "filesystem-workspace"],
+      "requiredCredentials": [],
+      "costClass": "low",
+      "latencyClass": "fast",
+      "supportsDryRun": true,
+      "supportsRollback": true,
+      "actions": [
+        { "name": "add", "risk": "L2", "params": ["name", "kind", "schedule", "payload"] },
+        { "name": "run", "risk": "L3", "params": ["id"] },
+        { "name": "tick", "risk": "L3", "params": [] },
+        { "name": "list", "risk": "L1", "params": [] }
+      ]
+    },
+    {
+      "id": "http",
+      "name": "HTTP Client",
+      "nameFa": "کلاینت HTTP",
+      "description": "Policy-gated HTTP requests with host allowlisting and secret-free headers.",
+      "capabilities": ["get", "post", "api-call"],
+      "status": "implemented",
+      "riskLevel": "L3",
+      "permissions": ["network"],
+      "requiredCredentials": [],
+      "costClass": "low",
+      "latencyClass": "fast",
+      "supportsDryRun": true,
+      "supportsRollback": false,
+      "actions": [
+        { "name": "request", "risk": "L3", "params": ["url", "method", "headers", "body", "credential"] }
+      ]
+    },
+    {
+      "id": "filesystem",
+      "name": "Workspace Filesystem",
+      "nameFa": "فایل‌های فضای کاری",
+      "description": "Scoped read and write inside the workspace root, with path escape protection.",
+      "capabilities": ["read", "list", "write", "hash"],
+      "status": "implemented",
+      "riskLevel": "L3",
+      "permissions": ["filesystem-workspace"],
+      "requiredCredentials": [],
+      "costClass": "low",
+      "latencyClass": "fast",
+      "supportsDryRun": true,
+      "supportsRollback": false,
+      "actions": [
+        { "name": "read", "risk": "L1", "params": ["path", "maxBytes"] },
+        { "name": "list", "risk": "L1", "params": ["path"] },
+        { "name": "write", "risk": "L3", "params": ["path", "content"] }
+      ]
+    },
+    {
+      "id": "shell",
+      "name": "Shell",
+      "nameFa": "پوسته فرمان",
+      "description": "Allowlisted command execution for background jobs and missions.",
+      "capabilities": ["execute"],
+      "status": "implemented",
+      "riskLevel": "L4",
+      "permissions": ["shell"],
+      "requiredCredentials": [],
+      "costClass": "low",
+      "latencyClass": "medium",
+      "supportsDryRun": true,
+      "supportsRollback": false,
+      "actions": [{ "name": "run", "risk": "L4", "params": ["command", "args", "cwd"] }]
+    },
+    {
+      "id": "project",
+      "name": "Delivery Engine",
+      "nameFa": "موتور تحویل",
+      "description": "Projects, work items, sprints, risks, forecasts and status reports.",
+      "capabilities": ["plan", "track", "forecast", "report"],
+      "status": "implemented",
+      "riskLevel": "L2",
+      "permissions": ["filesystem-workspace"],
+      "requiredCredentials": [],
+      "costClass": "low",
+      "latencyClass": "fast",
+      "supportsDryRun": false,
+      "supportsRollback": false,
+      "actions": [
+        { "name": "status", "risk": "L1", "params": ["projectId"] },
+        { "name": "addWorkItem", "risk": "L2", "params": ["projectId", "title", "department"] }
+      ]
+    },
+    {
+      "id": "agents",
+      "name": "Agent Engine",
+      "nameFa": "موتور ایجنت",
+      "description": "Create agents, assign scheduled missions, dispatch work orders and collect reports.",
+      "capabilities": ["assign", "dispatch", "report", "standup"],
+      "status": "implemented",
+      "riskLevel": "L2",
+      "permissions": ["filesystem-workspace"],
+      "requiredCredentials": [],
+      "costClass": "low",
+      "latencyClass": "fast",
+      "supportsDryRun": false,
+      "supportsRollback": false,
+      "actions": [
+        { "name": "assign", "risk": "L2", "params": ["agentId", "objective", "every"] },
+        { "name": "runDue", "risk": "L3", "params": [] }
+      ]
+    },
+    {
+      "id": "documents",
+      "name": "Document Intelligence",
+      "nameFa": "هوش اسناد",
+      "description": "Document maps, section extraction and citation for PDFs, office files and scans through the document skills.",
+      "capabilities": ["map", "section", "extract", "ocr", "transcribe"],
+      "status": "adapter-ready",
+      "riskLevel": "L1",
+      "permissions": ["filesystem-workspace"],
+      "requiredCredentials": [],
+      "costClass": "medium",
+      "latencyClass": "medium",
+      "supportsDryRun": true,
+      "supportsRollback": false,
+      "actions": [
+        { "name": "map", "risk": "L1", "params": ["path"] },
+        { "name": "section", "risk": "L1", "params": ["path", "sectionId"] }
+      ]
+    },
+    {
+      "id": "email",
+      "name": "Email",
+      "nameFa": "ایمیل",
+      "description": "Mailbox search, read and draft through an owner-configured provider adapter.",
+      "capabilities": ["search", "read", "draft", "send"],
+      "status": "adapter-ready",
+      "riskLevel": "L4",
+      "permissions": ["network"],
+      "requiredCredentials": ["credential://email/default"],
+      "costClass": "low",
+      "latencyClass": "medium",
+      "supportsDryRun": true,
+      "supportsRollback": false,
+      "actions": [
+        { "name": "search", "risk": "L1", "params": ["query"] },
+        { "name": "send", "risk": "L4", "params": ["to", "subject", "body"] }
+      ]
+    },
+    {
+      "id": "messaging",
+      "name": "Messaging",
+      "nameFa": "پیام‌رسان",
+      "description": "Inbound and outbound messages over WhatsApp, Telegram or Slack adapters, wired to the signal engine.",
+      "capabilities": ["receive", "send", "notify"],
+      "status": "adapter-ready",
+      "riskLevel": "L4",
+      "permissions": ["network"],
+      "requiredCredentials": ["credential://messaging/default"],
+      "costClass": "low",
+      "latencyClass": "fast",
+      "supportsDryRun": true,
+      "supportsRollback": false,
+      "actions": [
+        { "name": "notify", "risk": "L3", "params": ["channel", "text"] },
+        { "name": "send", "risk": "L4", "params": ["to", "text"] }
+      ]
+    },
+    {
+      "id": "database",
+      "name": "Database",
+      "nameFa": "پایگاه داده",
+      "description": "Read-only and transactional access to owner databases through a connection adapter.",
+      "capabilities": ["query", "migrate"],
+      "status": "adapter-ready",
+      "riskLevel": "L4",
+      "permissions": ["network"],
+      "requiredCredentials": ["credential://database/default"],
+      "costClass": "low",
+      "latencyClass": "fast",
+      "supportsDryRun": true,
+      "supportsRollback": true,
+      "actions": [{ "name": "query", "risk": "L2", "params": ["connection", "sql"] }]
+    },
+    {
+      "id": "ssh",
+      "name": "SSH",
+      "nameFa": "دسترسی SSH",
+      "description": "Remote command execution on owner servers through an SSH adapter.",
+      "capabilities": ["execute", "upload", "download"],
+      "status": "adapter-ready",
+      "riskLevel": "L4",
+      "permissions": ["network", "shell"],
+      "requiredCredentials": ["credential://ssh/default"],
+      "costClass": "low",
+      "latencyClass": "medium",
+      "supportsDryRun": true,
+      "supportsRollback": false,
+      "actions": [{ "name": "run", "risk": "L4", "params": ["host", "command"] }]
+    },
+    {
+      "id": "computer",
+      "name": "Computer Operator",
+      "nameFa": "اپراتور رایانه",
+      "description": "Desktop control surface: focus a window, click, type, manage files and take screenshots.",
+      "capabilities": ["screen", "click", "type", "files", "clipboard"],
+      "status": "future",
+      "riskLevel": "L4",
+      "permissions": ["desktop"],
+      "requiredCredentials": [],
+      "costClass": "high",
+      "latencyClass": "slow",
+      "supportsDryRun": true,
+      "supportsRollback": false,
+      "actions": [{ "name": "screenshot", "risk": "L1", "params": [] }]
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+{
+  "id": "speech-to-text",
+  "name": "Speech To Text",
+  "nameFa": "تبدیل گفتار به متن",
+  "source": "builtin",
+  "status": "trusted",
+  "version": 1,
+  "confidence": 0.85,
+  "domains": [
+    "operations",
+    "legal",
+    "research"
+  ],
+  "keywords": [
+    "audio",
+    "voice",
+    "transcribe",
+    "meeting",
+    "call",
+    "صوت",
+    "صدا",
+    "پیاده‌سازی",
+    "جلسه",
+    "مکالمه"
+  ],
+  "description": "تبدیل هر فایل صوتی یا تصویری به متن دقیق، زمان‌دار و قابل استناد، همراه با تفکیک گوینده و خلاصه اجرایی.",
+  "capabilities": [
+    "transcribe",
+    "diarize",
+    "summarize"
+  ],
+  "requiredTools": [
+    "filesystem",
+    "shell",
+    "documents"
+  ],
+  "requiredCredentials": [],
+  "riskLevel": "L1",
+  "approvalLevel": "none",
+  "compatibleRuntimes": [
+    "claude-code",
+    "cli"
+  ],
+  "procedure": [
+    {
+      "order": 1,
+      "label": "ورودی را شناسایی کن: مسیر فایل، طول، فرمت و نرخ نمونه‌برداری را با `ffprobe` بخوان. اگر ffmpeg نصب نیست، همان ابتدا به م",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 2,
+      "label": "در صورت نیاز نرمال‌سازی کن: `ffmpeg -i <input> -ac 1 -ar 16000 -c:a pcm_s16le <work>.wav`.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 3,
+      "label": "فایل‌های بلند را به قطعه‌های ۱۰ دقیقه‌ای با ۵ ثانیه هم‌پوشانی تقسیم کن تا دقت مرزها حفظ شود.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 4,
+      "label": "موتور رونویسی را به ترتیب اولویت انتخاب کن: whisper.cpp یا faster-whisper نصب‌شده روی همین ماشین، سپس سرویس ابری با مرجع",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 5,
+      "label": "زبان را اعلام کن (fa/ar/en) و برای گفتار دوزبانه، زبان غالب هر قطعه را جداگانه تشخیص بده.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 6,
+      "label": "خروجی خام را با مهر زمانی نگه دار: هر جمله با `[hh:mm:ss]` و شماره قطعه.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 7,
+      "label": "تفکیک گوینده را انجام بده: اگر ابزار diarization در دسترس نیست، بر اساس نوبت‌گیری و الگوی سکوت، گوینده‌ها را با برچسب مو",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 8,
+      "label": "اصطلاحات تخصصی، اسامی خاص و شماره‌ها را با نقشه واژگان پروژه اصلاح کن؛ نام‌های موجود در گراف دانش را با `astack graph re",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 9,
+      "label": "بخش‌های نامفهوم را با `[نامفهوم hh:mm:ss]` علامت بزن. هرگز حدس را به‌جای شنیده گزارش نکن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 10,
+      "label": "خروجی نهایی را بساز: متن کامل زمان‌دار، خلاصه اجرایی، تصمیم‌ها، اقدام‌ها با مسئول، و نقل‌قول‌های کلیدی با مهر زمانی.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 11,
+      "label": "نتیجه را ثبت کن: `astack learn record \"transcribe <subject>\" --domain operations --tools ffmpeg,whisper` تا این کار تکرا",
+      "required": true,
+      "share": 1
+    }
+  ],
+  "createdAt": "2026-08-25T00:00:00.000Z",
+  "updatedAt": "2026-08-25T00:00:00.000Z"
+}

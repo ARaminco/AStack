@@ -1,0 +1,106 @@
+{
+  "id": "legal-case-brief",
+  "name": "Legal Case Brief",
+  "nameFa": "خلاصه پرونده حقوقی",
+  "source": "builtin",
+  "status": "trusted",
+  "version": 1,
+  "confidence": 0.85,
+  "domains": [
+    "legal"
+  ],
+  "keywords": [
+    "case",
+    "court",
+    "hearing",
+    "brief",
+    "پرونده",
+    "دادگاه",
+    "لایحه",
+    "جلسه",
+    "خلاصه"
+  ],
+  "description": "ساخت خلاصه پرونده قابل ارائه به وکیل: وقایع، ادله، مواضع طرفین، ریسک‌ها و اقدام بعدی.",
+  "capabilities": [
+    "intake",
+    "timeline",
+    "brief"
+  ],
+  "requiredTools": [
+    "documents",
+    "memory",
+    "graph",
+    "browser"
+  ],
+  "requiredCredentials": [],
+  "riskLevel": "L2",
+  "approvalLevel": "none",
+  "compatibleRuntimes": [
+    "claude-code",
+    "cli"
+  ],
+  "procedure": [
+    {
+      "order": 1,
+      "label": "مدارک را دریافت و بایگانی کن: هر سند با تاریخ، نوع، منبع و شماره پرونده ثبت شود.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 2,
+      "label": "اسناد اسکن‌شده را با skill او‌سی‌آر به متن تبدیل کن و مقادیر کلیدی را راستی‌آزمایی کن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 3,
+      "label": "شماره پرونده، شعبه، طرفین و وکلا را در گراف دانش ثبت یا به‌روزرسانی کن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 4,
+      "label": "خط زمانی وقایع را بساز؛ هر واقعه با تاریخ، سند مرجع و اثر حقوقی.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 5,
+      "label": "ادله را دسته‌بندی کن: قوی، قابل مناقشه، ناقص. برای هر کدام سند پشتیبان را ذکر کن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 6,
+      "label": "مواضع طرفین و مستندات قانونی مرتبط را کنار هم بگذار.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 7,
+      "label": "ریسک‌ها را با احتمال و اثر بنویس و اقدام‌های کاهش ریسک را پیشنهاد بده.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 8,
+      "label": "وضعیت مهلت‌ها و جلسات را بررسی کن و برای هر مهلت نزدیک یک کار زمان‌بندی‌شده بساز.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 9,
+      "label": "تغییرات نسبت به آخرین خلاصه را جداگانه فهرست کن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 10,
+      "label": "خلاصه را ثبت کن و تجربه را با `astack learn record` بنویس.",
+      "required": true,
+      "share": 1
+    }
+  ],
+  "createdAt": "2026-08-25T00:00:00.000Z",
+  "updatedAt": "2026-08-25T00:00:00.000Z"
+}

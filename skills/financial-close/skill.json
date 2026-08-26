@@ -1,0 +1,100 @@
+{
+  "id": "financial-close",
+  "name": "Financial Close",
+  "nameFa": "بستن دوره مالی",
+  "source": "builtin",
+  "status": "trusted",
+  "version": 1,
+  "confidence": 0.85,
+  "domains": [
+    "accounting",
+    "finance"
+  ],
+  "keywords": [
+    "close",
+    "ledger",
+    "reconcile",
+    "trial balance",
+    "بستن",
+    "تراز",
+    "مغایرت",
+    "دفتر",
+    "حساب"
+  ],
+  "description": "بستن دوره مالی با مغایرت‌گیری کامل، اسناد اصلاحی مستند و گزارش قابل ارائه به مدیریت.",
+  "capabilities": [
+    "reconcile",
+    "close",
+    "report"
+  ],
+  "requiredTools": [
+    "documents",
+    "data",
+    "memory"
+  ],
+  "requiredCredentials": [],
+  "riskLevel": "L2",
+  "approvalLevel": "none",
+  "compatibleRuntimes": [
+    "claude-code",
+    "cli"
+  ],
+  "procedure": [
+    {
+      "order": 1,
+      "label": "دامنه دوره را مشخص کن: تاریخ شروع و پایان، شرکت‌ها و حساب‌های درگیر.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 2,
+      "label": "کامل‌بودن داده را بررسی کن: فاکتورهای ثبت‌نشده، رسیدهای بانکی، حقوق و دستمزد، استهلاک.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 3,
+      "label": "مغایرت‌گیری بانکی را انجام بده و هر تفاوت را به یک علت مشخص نسبت بده.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 4,
+      "label": "حساب‌های دریافتنی و پرداختنی را سن‌بندی کن و اقلام قدیمی را علامت بزن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 5,
+      "label": "اسناد اصلاحی را با شرح، مبلغ، حساب و مستند پشتیبان تنظیم کن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 6,
+      "label": "تراز آزمایشی را بگیر و توازن را بررسی کن؛ هر عدم توازن باید پیش از ادامه رفع شود.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 7,
+      "label": "نسبت‌های کلیدی را با دوره قبل مقایسه کن و انحراف‌های معنادار را توضیح بده.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 8,
+      "label": "گزارش بستن را بنویس و اقلام باز را برای دوره بعد فهرست کن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 9,
+      "label": "تصمیم‌های حسابداری را با `astack memory remember --facet decision` ثبت کن.",
+      "required": true,
+      "share": 1
+    }
+  ],
+  "createdAt": "2026-08-25T00:00:00.000Z",
+  "updatedAt": "2026-08-25T00:00:00.000Z"
+}

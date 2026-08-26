@@ -132,8 +132,27 @@ export class UpgradeEngine {
     this.keep = [...new Set([...(this.manifest.preserve ?? []), ...readKeepList(targetRoot), ...keep])];
   }
 
+  /**
+   * A preserved path is owner territory. Entries are written by hand, so a
+   * trailing slash or a glob has to work the way the owner expects rather
+   * than silently protecting nothing.
+   */
   isProtected(rel) {
-    return this.keep.some((entry) => rel === entry || rel.startsWith(entry + "/"));
+    return this.keep.some((raw) => {
+      const entry = String(raw).trim().replace(/[/\\]+$/, "");
+      if (!entry) {
+        return false;
+      }
+      if (entry.includes("*")) {
+        const pattern = entry
+          .split("*")
+          .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`))
+          .join("[^/]*");
+        const expression = new RegExp("^" + pattern + "$");
+        return expression.test(rel) || expression.test(rel.split("/").pop());
+      }
+      return rel === entry || rel.startsWith(entry + "/");
+    });
   }
 
   plan() {
