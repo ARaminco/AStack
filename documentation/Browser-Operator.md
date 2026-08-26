@@ -70,6 +70,9 @@ found. A page saying "ignore previous instructions" changes nothing.
 ## Requirements and limits
 
 - Needs Chrome, Edge, Brave or Chromium installed, or `ASTACK_BROWSER_PATH`.
+- Needs Node 22 or newer, because the DevTools connection uses the global `WebSocket` that Node
+  ships from that version. Everything else in AStack runs on Node 20; `astack browser status`
+  says which of the two is missing before anything is attempted.
 - `astack browser status` reports the driver honestly; with no browser the
   operator refuses to run instead of pretending.
 - Selector based automation. When a site changes, the failure is recorded as a

@@ -59,23 +59,27 @@ export class BrowserEngine {
   }
 
   available() {
-    return Boolean(findBrowserBinary());
+    return Boolean(findBrowserBinary()) && typeof WebSocket !== "undefined";
   }
 
   status() {
     const binary = findBrowserBinary();
+    const socketSupport = typeof WebSocket !== "undefined";
     return {
-      driver: binary ? "cdp" : "none",
+      driver: binary && socketSupport ? "cdp" : "none",
       binary,
+      socketSupport,
       profiles: this.sessions.list().map((profile) => ({
         id: profile.id,
         sites: profile.sites.length,
         lastUsedAt: profile.lastUsedAt,
         headless: profile.headless
       })),
-      note: binary
-        ? "Chromium based browser found; the internal operator is ready."
-        : "No Chromium based browser found. Install Chrome or Edge, or set ASTACK_BROWSER_PATH."
+      note: !socketSupport
+        ? "This Node.js build has no global WebSocket. Browser sessions need Node 22 or newer; the rest of AStack runs on Node 20."
+        : binary
+          ? "Chromium based browser found; the internal operator is ready."
+          : "No Chromium based browser found. Install Chrome or Edge, or set ASTACK_BROWSER_PATH."
     };
   }
 

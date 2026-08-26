@@ -123,11 +123,16 @@ A separate opt in suite drives a real browser end to end.
 
 ### Upgrade notes
 
-`astack upgrade` replaces managed engine files after a backup, appends the new
-configuration sections without touching owner values, and runs five idempotent
-data migrations that create the structured memory store, seed the owner capsule,
-install the default authority policy, create `skills/learned` and import
-existing decisions into the decision facet.
+`astack upgrade` replaces managed engine files after a backup and appends the new
+configuration sections without touching owner values. Five idempotent data
+migrations create the structured memory store, seed the owner capsule, install
+the default authority policy, create `skills/learned` and import existing
+decisions into the decision facet.
+
+Coming from 2.0, run `astack init` once after the upgrade to apply them: an
+install upgrades itself with its own command, so a 2.0 install runs 2.0 code,
+which predates migrations. `astack doctor` reports whatever is still pending.
+From 2.1 onward `astack upgrade` runs them itself.
 
 `.astack/`, `memory/`, `plugins/`, `knowledge-packs/`, `skills/learned/` and any
 path under `upgrade.keep` are never touched.
@@ -135,6 +140,7 @@ path under `upgrade.keep` are never touched.
 After upgrading:
 
 ```bash
+astack init                # applies any pending data migrations
 astack context build
 astack schedule defaults
 astack owner set --name "<you>"
@@ -146,7 +152,8 @@ astack authority show
 Email, messaging, database, SSH and document tools ship as manifests with no
 live adapter; they refuse honestly rather than fabricating a result. The
 computer operator (desktop control) exists as an interface only. The CLI runtime
-adapter needs a configured command before it can run. Storage is JSON and JSONL;
+adapter needs a configured command before it can run. Browser sessions need Node 22
+or newer for the global WebSocket; the rest of AStack runs on Node 20. Storage is JSON and JSONL;
 the storage surfaces are narrow so another backend can replace them later.
 
 ## 2.0.0

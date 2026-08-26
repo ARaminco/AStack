@@ -14,6 +14,14 @@ export class CdpClient {
   }
 
   connect() {
+    if (typeof WebSocket === "undefined") {
+      return Promise.reject(
+        new Error(
+          "This Node.js build has no global WebSocket, which the browser operator needs. " +
+            "Node 22 or newer is required for browser sessions; everything else in AStack runs on Node 20."
+        )
+      );
+    }
     return new Promise((resolve, reject) => {
       const socket = new WebSocket(this.url);
       const timer = setTimeout(() => reject(new Error("CDP connection timed out: " + this.url)), this.timeoutMs);
