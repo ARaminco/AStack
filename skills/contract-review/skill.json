@@ -1,0 +1,94 @@
+{
+  "id": "contract-review",
+  "name": "Contract Review",
+  "nameFa": "بازبینی قرارداد",
+  "source": "builtin",
+  "status": "trusted",
+  "version": 1,
+  "confidence": 0.85,
+  "domains": [
+    "legal",
+    "business"
+  ],
+  "keywords": [
+    "contract",
+    "clause",
+    "risk",
+    "term",
+    "قرارداد",
+    "بند",
+    "ریسک",
+    "تعهد",
+    "فسخ"
+  ],
+  "description": "بازبینی قرارداد از منظر ریسک، تعهد و اجراپذیری، همراه با پیشنهاد اصلاح بند‌به‌بند.",
+  "capabilities": [
+    "analyze",
+    "redline",
+    "compare"
+  ],
+  "requiredTools": [
+    "documents",
+    "memory",
+    "graph"
+  ],
+  "requiredCredentials": [],
+  "riskLevel": "L2",
+  "approvalLevel": "none",
+  "compatibleRuntimes": [
+    "claude-code",
+    "cli"
+  ],
+  "procedure": [
+    {
+      "order": 1,
+      "label": "نوع قرارداد، طرفین، موضوع، مدت و قانون حاکم را استخراج کن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 2,
+      "label": "تعهدهای هر طرف را با مهلت و شرط اجرا فهرست کن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 3,
+      "label": "بندهای پرریسک را بررسی کن: فسخ، جریمه، مسئولیت، محرمانگی، مالکیت فکری، حل اختلاف، فورس ماژور، تغییر شرایط.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 4,
+      "label": "برای هر ریسک، شدت و احتمال را بنویس و بند جایگزین پیشنهاد بده.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 5,
+      "label": "تناقض‌های داخلی و ارجاع‌های شکسته به پیوست‌ها را پیدا کن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 6,
+      "label": "اگر نسخه قبلی وجود دارد، تفاوت‌های معنایی را جدا از تغییرات نگارشی گزارش کن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 7,
+      "label": "بندهای غیرقابل اجرا یا مغایر با قانون حاکم را علامت بزن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 8,
+      "label": "خلاصه تصمیم را بنویس: امضا، امضا با اصلاح، یا مذاکره مجدد.",
+      "required": true,
+      "share": 1
+    }
+  ],
+  "createdAt": "2026-08-25T00:00:00.000Z",
+  "updatedAt": "2026-08-25T00:00:00.000Z"
+}
