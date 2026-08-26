@@ -5,17 +5,27 @@ import { describeCodes, renderDigest, renderStatusReport, sparkline, writeStatus
 export function parseArgs(tokens) {
   const positionals = [];
   const flags = {};
+  // A flag is stored under the name that was typed and under its camel case
+  // alias, so --dry-run and flags.dryRun are the same switch. Getting this
+  // wrong silently turns a preview into a live action.
+  const set = (name, value) => {
+    flags[name] = value;
+    const camel = name.replace(/-([a-z0-9])/g, (_, character) => character.toUpperCase());
+    if (camel !== name && flags[camel] === undefined) {
+      flags[camel] = value;
+    }
+  };
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index];
     if (token.startsWith("--")) {
       const equals = token.indexOf("=");
       if (equals !== -1) {
-        flags[token.slice(2, equals)] = token.slice(equals + 1);
+        set(token.slice(2, equals), token.slice(equals + 1));
       } else if (index + 1 < tokens.length && !tokens[index + 1].startsWith("--")) {
-        flags[token.slice(2)] = tokens[index + 1];
+        set(token.slice(2), tokens[index + 1]);
         index += 1;
       } else {
-        flags[token.slice(2)] = true;
+        set(token.slice(2), true);
       }
     } else {
       positionals.push(token);

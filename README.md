@@ -23,6 +23,32 @@ node bin/astack.mjs lead standup
 ```
 More in [Installation](documentation/Installation.md) and the [API Reference](documentation/API.md).
 
+## The Autonomous Organization
+AStack remembers its owner across conversations, forms the smallest expert team a request needs, operates websites and software through real tools, stops before anything irreversible, verifies the result, audits it and learns from it.
+
+```bash
+node bin/astack.mjs standup                                   # capsule, missions, approvals, jobs
+node bin/astack.mjs ask "وضعیت پرونده آکمه چیست؟"                # plan a request
+node bin/astack.mjs ask "اظهارنامه را ثبت کن" --dry-run          # explain, touch nothing
+node bin/astack.mjs context map "invoice reconciliation"       # budgeted workspace map
+node bin/astack.mjs memory search "حسابدار شرکت آکمه"            # temporal recall
+node bin/astack.mjs schedule add "portal" --kind http-check --every 10m --url https://example.com
+node bin/astack.mjs signal create "whatsapp inbox" --source whatsapp
+node bin/astack.mjs browser login owner --url https://portal.example.gov
+node bin/astack.mjs approval pending
+```
+
+Read it end to end in [Autonomous Organization](documentation/Autonomous-Organization.md), and see what is implemented versus adapter-ready in its feature status table.
+
+### What it adds
+- **Memory OS** — twelve temporal facets, supersede instead of overwrite, nightly consolidation ([docs](documentation/Memory-OS.md))
+- **Context engine** — repo map, symbol index and domain record graph inside a token budget ([docs](documentation/Context-Engine.md))
+- **Knowledge graph** — people, companies, cases, accounts and how they relate, over time ([docs](documentation/Knowledge-Graph.md))
+- **Learning engine** — repeated work becomes a versioned, evidence backed skill ([docs](documentation/Learning-Engine.md))
+- **Internal browser** — persistent logins, real form work, chained evidence, stop before submit ([docs](documentation/Browser-Operator.md))
+- **Scheduler and hooks** — background monitoring and inbound webhooks that create missions ([docs](documentation/Scheduler-and-Signals.md))
+- **Trust layer** — authority levels, approval receipts, audit trail, secret broker ([docs](documentation/Security-and-Authority.md))
+
 ## Engagement Domains
 The domain registry routes every request — in Persian or English — to the right departments, workflow, and team blueprint: software, legal, finance, accounting, tax, marketing, operations, hr, research, business. See [Departments](documentation/Departments.md) and [Roles](documentation/Roles.md) (33 departments, 219 roles).
 

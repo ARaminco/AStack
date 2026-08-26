@@ -1,0 +1,109 @@
+{
+  "id": "document-ocr",
+  "name": "Advanced OCR",
+  "nameFa": "او‌سی‌آر پیشرفته",
+  "source": "builtin",
+  "status": "trusted",
+  "version": 1,
+  "confidence": 0.85,
+  "domains": [
+    "legal",
+    "accounting",
+    "tax",
+    "operations"
+  ],
+  "keywords": [
+    "ocr",
+    "scan",
+    "pdf",
+    "image",
+    "invoice",
+    "اسکن",
+    "تصویر",
+    "سند",
+    "فاکتور",
+    "متن"
+  ],
+  "description": "استخراج متن دقیق از اسناد اسکن‌شده، عکس‌ها و PDFهای بدون لایه متنی، همراه با اندازه‌گیری اطمینان و راستی‌آزمایی چشمی.",
+  "capabilities": [
+    "ocr",
+    "table-extract",
+    "verify"
+  ],
+  "requiredTools": [
+    "filesystem",
+    "documents",
+    "shell"
+  ],
+  "requiredCredentials": [],
+  "riskLevel": "L1",
+  "approvalLevel": "none",
+  "compatibleRuntimes": [
+    "claude-code",
+    "cli"
+  ],
+  "procedure": [
+    {
+      "order": 1,
+      "label": "اول لایه متنی را بررسی کن: اگر PDF متن انتخاب‌شدنی دارد، از همان استفاده کن و OCR را اجرا نکن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 2,
+      "label": "کیفیت تصویر را بسنج: DPI کمتر از ۲۰۰ را با بازرندر افزایش بده؛ صفحه کج را صاف کن؛ نویز و سایه را حذف کن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 3,
+      "label": "زبان‌ها را اعلام کن (fas+ara+eng) و برای متن فارسی، جهت راست‌به‌چپ و اعداد فارسی را در پس‌پردازش اصلاح کن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 4,
+      "label": "موتور را انتخاب کن: tesseract نصب‌شده روی ماشین، سپس سرویس ابری با `credential://ocr/default`. اگر هیچ‌کدام در دسترس نیس",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 5,
+      "label": "هر صفحه را جداگانه پردازش کن و میانگین اطمینان هر صفحه را ثبت کن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 6,
+      "label": "برای جدول‌ها ابتدا ساختار را تشخیص بده (خطوط، ستون‌ها، سرستون) و سپس سلول‌ها را استخراج کن؛ جدول‌های بدون خط را با تحلیل",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 7,
+      "label": "مقادیر حیاتی — مبلغ، تاریخ، شماره سند، شناسه ملی، شماره پرونده — را با برش تصویری همان ناحیه دوباره راستی‌آزمایی کن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 8,
+      "label": "اعداد فارسی/عربی را به لاتین نرمال کن و تاریخ‌ها را با فرمت مبدأ نگه دار (شمسی یا میلادی) و معادل ISO را کنار آن بنویس.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 9,
+      "label": "خروجی را در کنار سند اصلی ذخیره کن و در گراف دانش به موجودیت مربوط (پرونده، شرکت، فاکتور) وصل کن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 10,
+      "label": "نواحی با اطمینان پایین را فهرست کن و برای هر کدام برش تصویری ضمیمه کن.",
+      "required": true,
+      "share": 1
+    }
+  ],
+  "createdAt": "2026-08-25T00:00:00.000Z",
+  "updatedAt": "2026-08-25T00:00:00.000Z"
+}

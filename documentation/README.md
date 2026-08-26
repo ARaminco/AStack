@@ -10,6 +10,21 @@ AStack is a personal AI operating system for any practice — software, legal, f
 - [FAQ](FAQ.md) — the questions everyone asks first
 - [Troubleshooting](Troubleshooting.md) — diagnostics and common errors
 
+## The Autonomous Organization
+- [Autonomous Organization](Autonomous-Organization.md) — the full lifecycle, architecture and feature status
+- [Memory OS](Memory-OS.md) — twelve temporal memory facets, recall and consolidation
+- [Context Engine](Context-Engine.md) — repo map, symbol index, budgeted retrieval
+- [Knowledge Graph](Knowledge-Graph.md) — temporal entities and relationships
+- [Learning Engine](Learning-Engine.md) — experience to skills, with reinforcement
+- [Skill System](Skill-System.md) — built in and learned skills, progressive disclosure
+- [Agent Runtimes](Agent-Runtimes.md) — the runtime abstraction and model router
+- [Tool System](Tool-System.md) — the tool registry and gated invocation
+- [Browser Operator](Browser-Operator.md) — the internal browser, sessions and evidence
+- [Scheduler and Signals](Scheduler-and-Signals.md) — background jobs and inbound hooks
+- [Security and Authority](Security-and-Authority.md) — authority levels, policy, secrets
+- [Audit and Approvals](Audit-and-Approvals.md) — human in the loop and the audit trail
+- [Token Optimization](Token-Optimization.md) — budgets, progressive disclosure, measurement
+
 ## Concepts
 - [Architecture](Architecture.md) — layers, module map, data flow, design rules
 - [Domains, Teams, Agents, and Leadership](Orchestration.md) — the orchestration stack
@@ -19,6 +34,7 @@ AStack is a personal AI operating system for any practice — software, legal, f
 - [Memory](Memory.md) — durable scopes and the calibration loop
 
 ## Operations
+- [CLI Reference](CLI.md) — every command, grouped by capability
 - [API Reference](API.md) — every CLI command and the programmatic runtime
 - [Configuration](Configuration.md) — every section of `astack.config.yaml`
 - [Core Upgrades](Upgrade.md) — upgrading current and legacy installs

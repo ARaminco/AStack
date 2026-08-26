@@ -10,6 +10,7 @@ import { ProjectEngine } from "../delivery-engine/project-engine.mjs";
 import { UpgradeEngine, compareVersions, findInstallRoot, readVersion } from "../upgrade-engine/upgrade-engine.mjs";
 
 const root = process.cwd();
+const currentVersion = readVersion(root);
 
 // Domain registry
 const domains = new DomainRegistry(root);
@@ -108,7 +109,7 @@ assert.ok(keepAware.plan().changes.some((change) => change.path === "orchestrato
 const upgrader = new UpgradeEngine(legacy, { sourceDir: root });
 const plan = upgrader.plan();
 assert.equal(plan.currentVersion, "1.0.0");
-assert.equal(plan.sourceVersion, "2.0.0");
+assert.equal(plan.sourceVersion, currentVersion, "the plan reports the version of the source core");
 assert.equal(plan.upToDate, false);
 assert.ok(plan.changes.some((change) => change.path === "orchestrator/orchestrator.mjs" && change.action === "update"));
 assert.ok(plan.changes.some((change) => change.path.startsWith("agent-engine/") && change.action === "add"));
@@ -129,7 +130,7 @@ assert.match(upgradedConfig, /upgrade:/, "new config sections must be appended")
 assert.ok(applied.configSectionsAdded.includes("domains"));
 assert.match(readFileSync(join(applied.backupDir, "orchestrator", "orchestrator.mjs"), "utf8"), /legacy = true/);
 assert.ok(existsSync(join(applied.backupDir, "upgrade-report.json")));
-assert.equal(readVersion(legacy), "2.0.0");
+assert.equal(readVersion(legacy), currentVersion, "an upgraded install carries the new version");
 assert.equal(new UpgradeEngine(legacy, { sourceDir: root }).plan().upToDate, true);
 
 rmSync(sandbox, { recursive: true, force: true });

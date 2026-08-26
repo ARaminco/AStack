@@ -1,5 +1,6 @@
 import { parseArgs } from "../delivery-engine/cli.mjs";
 import { DEFAULT_SOURCE, UpgradeEngine, fetchSource } from "../upgrade-engine/upgrade-engine.mjs";
+import { pendingMigrations, runMigrations } from "../upgrade-engine/migrations.mjs";
 
 const out = (line) => console.log(line);
 
@@ -245,6 +246,15 @@ export function runUpgradeCommand({ runtime, i18n, tokens }) {
   out(t("cli.upgrade.versions", { current: plan.currentVersion, latest: plan.sourceVersion }));
   if (plan.upToDate && !flags.force) {
     out(t("cli.upgrade.upToDate"));
+    // The core can be current while owner data still needs a migration, which
+    // is exactly the state an install lands in after upgrading from 2.0.
+    const outstanding = runMigrations(runtime.workspaceRoot ?? runtime.root).filter((entry) => entry.status === "applied");
+    if (outstanding.length) {
+      out(t("cli.upgrade.migrationsApplied", { count: outstanding.length }));
+      for (const entry of outstanding) {
+        out("- " + entry.id + ": " + entry.detail);
+      }
+    }
     return;
   }
   out(t("cli.upgrade.planLine", { add: plan.counts.add, update: plan.counts.update, seed: plan.counts.seed, preserved: plan.counts.preserved }));
@@ -253,6 +263,15 @@ export function runUpgradeCommand({ runtime, i18n, tokens }) {
       out("- " + change.action + " " + change.path);
     }
     out(t("cli.upgrade.checkDone"));
+  }
+  if (flags.check) {
+    const pending = pendingMigrations(runtime.workspaceRoot ?? runtime.root);
+    if (pending.length) {
+      out(t("cli.upgrade.migrationsPending", { count: pending.length }));
+      for (const migration of pending) {
+        out("- " + migration.id + ": " + migration.description);
+      }
+    }
     return;
   }
   const result = engine.apply({ force: Boolean(flags.force) });
@@ -260,5 +279,21 @@ export function runUpgradeCommand({ runtime, i18n, tokens }) {
   if (result.configSectionsAdded?.length) {
     out(t("cli.upgrade.configAdded", { sections: result.configSectionsAdded.join(", ") }));
   }
+  const migrated = runMigrations(runtime.workspaceRoot ?? runtime.root);
+  const applied = migrated.filter((entry) => entry.status === "applied");
+  const failed = migrated.filter((entry) => entry.status === "failed");
+  if (applied.length) {
+    out(t("cli.upgrade.migrationsApplied", { count: applied.length }));
+    for (const entry of applied) {
+      out("- " + entry.id + ": " + entry.detail);
+    }
+  }
+  if (failed.length) {
+    out(t("cli.upgrade.migrationsFailed", { count: failed.length }));
+    for (const entry of failed) {
+      out("- " + entry.id + ": " + entry.detail);
+    }
+  }
+  out(t("cli.upgrade.rollbackHint", { backup: result.backupDir ?? "-" }));
   out(t("cli.upgrade.doctorHint"));
 }

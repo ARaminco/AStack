@@ -1,7 +1,35 @@
 import { mkdir, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 
 const root = process.cwd();
+
+/**
+ * This file scaffolds a brand new AStack project from nothing. It writes the
+ * files it knows about unconditionally, which is correct for an empty directory
+ * and destructive anywhere else: run inside a real install it would replace the
+ * core, the configuration and the owner's operating guide with the versions
+ * embedded here.
+ *
+ * So it refuses to run against an existing install. Upgrading is a different
+ * operation with a different tool: astack upgrade, which backs up what it
+ * replaces and never touches owner data.
+ */
+if (existsSync(join(root, "core", "manifest.json")) && !process.argv.includes("--force")) {
+  console.error(
+    [
+      "AStack: refusing to overwrite an existing install.",
+      "",
+      "This script scaffolds a new project and would replace core files, astack.config.yaml,",
+      "CLAUDE.md, the installers and parts of the documentation with the versions embedded in it.",
+      "",
+      "To update an install:      node bin/astack.mjs upgrade && node bin/astack.mjs init",
+      "To scaffold a new project: run this script in an empty directory",
+      "To override anyway:        node scripts/bootstrap-enterprise.mjs --force"
+    ].join("\n")
+  );
+  process.exit(1);
+}
 
 const dirs = [
   ".github/ISSUE_TEMPLATE",
@@ -1021,9 +1049,9 @@ Windows, Linux, macOS-compatible shell, and Claude Code install entry points ver
   await put("documentation/Migration-Guide.md", "# Migration Guide\n\n## From Prompt Collections To AStack Enterprise\n1. Treat AStack Enterprise as an AI Engineering Operating System, not a prompt library.\n2. Route every task through the Orchestrator.\n3. Add new capabilities through providers, plugins, departments, workflows, or Knowledge Packs.\n4. Keep user-facing communication Persian.\n5. Keep generated software assets English.\n6. Verify every change with `npm test` and `node bin/astack.mjs doctor`.\n\n## Claude Code Migration\nClaude Code should start from the root `CLAUDE.md` file, then load `astack.config.yaml`, the language policy, runtime, orchestrator, departments, workflows, providers, memory, and Knowledge Packs.\n");
   await put("memory/business-rules.md", "# Business Rules\n\n- AStack Enterprise is an independent AI Engineering Operating System.\n- The primary runtime is Claude Code.\n- Departments do not communicate directly; the Orchestrator coordinates all work.\n- New capabilities must be added through provider, plugin, department, workflow, role, memory, or Knowledge Pack extension points.\n");
 
-  await put("installer/install.ps1", "$ErrorActionPreference = 'Stop'\nnode bin/astack.mjs doctor\nWrite-Host 'AStack Enterprise is ready.'\n");
-  await put("installer/install.sh", "#!/usr/bin/env sh\nset -eu\nnode bin/astack.mjs doctor\necho 'AStack Enterprise is ready.'\n");
-  await put("installer/update.sh", "#!/usr/bin/env sh\nset -eu\nnode scripts/bootstrap-enterprise.mjs\nnode bin/astack.mjs doctor\n");
+  await put("installer/install.ps1", "$ErrorActionPreference = 'Stop'\nnode bin/astack.mjs init\nWrite-Host 'AStack Enterprise is ready.'\n");
+  await put("installer/install.sh", "#!/usr/bin/env sh\nset -eu\nnode bin/astack.mjs init\necho 'AStack Enterprise is ready.'\n");
+  await put("installer/update.sh", "#!/usr/bin/env sh\nset -eu\nnode bin/astack.mjs upgrade\nnode bin/astack.mjs init\n");
   await put("installer/claude-code/install-claude-code.ps1", "$ErrorActionPreference = 'Stop'\nnode bin/astack.mjs doctor --claude-code\nWrite-Host 'Claude Code integration is ready.'\n");
 
   await put(".github/workflows/verify.yml", "name: Verify AStack Enterprise\n\non:\n  pull_request:\n  push:\n    branches:\n      - main\n\npermissions:\n  contents: read\n\njobs:\n  verify:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n      - run: npm test\n");

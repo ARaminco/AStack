@@ -1,0 +1,103 @@
+{
+  "id": "document-intelligence",
+  "name": "Document Intelligence",
+  "nameFa": "هوش اسناد",
+  "source": "builtin",
+  "status": "trusted",
+  "version": 1,
+  "confidence": 0.85,
+  "domains": [
+    "legal",
+    "finance",
+    "accounting",
+    "tax"
+  ],
+  "keywords": [
+    "document",
+    "contract",
+    "report",
+    "statement",
+    "سند",
+    "قرارداد",
+    "گزارش",
+    "صورت",
+    "بند"
+  ],
+  "description": "ساخت نقشه سند و پاسخ‌دادن با ارجاع دقیق، بدون خواندن دوباره کل فایل‌های بزرگ.",
+  "capabilities": [
+    "map",
+    "cite",
+    "compare"
+  ],
+  "requiredTools": [
+    "context",
+    "documents",
+    "memory",
+    "graph"
+  ],
+  "requiredCredentials": [],
+  "riskLevel": "L1",
+  "approvalLevel": "none",
+  "compatibleRuntimes": [
+    "claude-code",
+    "cli"
+  ],
+  "procedure": [
+    {
+      "order": 1,
+      "label": "اول نقشه سند را بساز یا بخوان: فهرست بخش‌ها، شماره صفحه، موجودیت‌ها، تاریخ‌ها، مبالغ، تعهدها و ارجاع‌های داخلی.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 2,
+      "label": "پرسش را به بخش‌های مرتبط نگاشت کن؛ فقط همان محدوده را با دقت بخوان.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 3,
+      "label": "هر پاسخ را به «صفحه/بند» ارجاع بده. پاسخ بدون ارجاع، پاسخ نیست.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 4,
+      "label": "تعهدها را ساخت‌یافته استخراج کن: طرف متعهد، تعهد، مهلت، شرط، جریمه.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 5,
+      "label": "مبالغ و تاریخ‌ها را با واحد و تقویم اصلی ثبت کن و معادل ISO را کنار آن بگذار.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 6,
+      "label": "برای مقایسه دو نسخه، اول ساختار را تطبیق بده و سپس تفاوت‌های معنایی را گزارش کن، نه تفاوت‌های نگارشی.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 7,
+      "label": "موجودیت‌های سند را با `astack graph upsert` و رابطه‌ها را با `astack graph relate` ثبت کن تا دفعه بعد بازیابی سریع‌تر شو",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 8,
+      "label": "نقشه سند را در حافظه ذخیره کن تا خواندن مجدد لازم نشود.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 9,
+      "label": "هر ابهام یا تناقض داخلی سند را جداگانه فهرست کن.",
+      "required": true,
+      "share": 1
+    }
+  ],
+  "createdAt": "2026-08-25T00:00:00.000Z",
+  "updatedAt": "2026-08-25T00:00:00.000Z"
+}
