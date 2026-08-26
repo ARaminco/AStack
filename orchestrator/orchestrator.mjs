@@ -1,5 +1,5 @@
 export class Orchestrator {
-  constructor({ departments, providers, workflows, memory, eventBus, projects, domains, teams, agents }) {
+  constructor({ departments, providers, workflows, memory, eventBus, projects, domains, teams, agents, chief, missions, approvals, scheduler, learning, context }) {
     this.departments = departments;
     this.providers = providers;
     this.workflows = workflows;
@@ -9,6 +9,12 @@ export class Orchestrator {
     this.domains = domains ?? null;
     this.teams = teams ?? null;
     this.agents = agents ?? null;
+    this.chief = chief ?? null;
+    this.missions = missions ?? null;
+    this.approvals = approvals ?? null;
+    this.scheduler = scheduler ?? null;
+    this.learning = learning ?? null;
+    this.context = context ?? null;
   }
 
   analyzeIntent(input) {
@@ -92,6 +98,43 @@ export class Orchestrator {
     return lines;
   }
 
+  /**
+   * What the autonomy layer is holding right now: work already retrieved for
+   * this request, missions in flight, decisions waiting for the owner and
+   * background jobs that need attention.
+   */
+  autonomyBriefing(input) {
+    const lines = [];
+    try {
+      const skills = this.learning?.match(input ?? "", { limit: 2 }) ?? [];
+      if (skills.length) {
+        lines.push("مهارت آموخته‌شده مرتبط: " + skills.map((skill) => skill.id + " (" + skill.status + ")").join("، ") + " — دستور: astack skill show " + skills[0].id);
+      }
+      const waiting = this.approvals?.pending() ?? [];
+      if (waiting.length) {
+        lines.push("در انتظار تصمیم شما: " + waiting.length + " مورد — دستور: astack approval pending");
+      }
+      const missionStatus = this.missions?.status() ?? null;
+      if (missionStatus?.active) {
+        lines.push("مأموریت‌های در جریان: " + missionStatus.active + " مورد — دستور: astack mission list");
+      }
+      const jobs = this.scheduler?.status() ?? null;
+      if (jobs?.due) {
+        lines.push("کارهای پس‌زمینه سررسیدشده: " + jobs.due + " مورد — دستور: astack schedule tick");
+      }
+      if (jobs?.incidents) {
+        lines.push("حادثه‌های باز پایش: " + jobs.incidents + " مورد — دستور: astack schedule incidents");
+      }
+      const context = this.context?.stats() ?? null;
+      if (context?.built) {
+        lines.push("نقشه زمینه آماده است: " + context.files + " فایل ایندکس‌شده — دستور: astack context map \"" + String(input ?? "").slice(0, 40) + "\"");
+      }
+    } catch {
+      return lines;
+    }
+    return lines;
+  }
+
   run(input) {
     this.eventBus.emit("orchestrator.started", { input });
     const intent = this.analyzeIntent(input);
@@ -105,6 +148,7 @@ export class Orchestrator {
     answer.push("Provider پیش‌فرض: " + provider.name);
     answer.push(...this.leadershipBriefing());
     answer.push(...this.activeProjectBriefing());
+    answer.push(...this.autonomyBriefing(input));
     answer.push("گام بعدی: context خوانده شود، خروجی نقش‌ها merge شود و پاسخ نهایی فارسی ارائه شود.");
     const result = {
       intent: intent.summary,

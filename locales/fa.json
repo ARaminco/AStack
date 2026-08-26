@@ -32,14 +32,31 @@
       "workflow": "Workflowها را فهرست یا inspect می‌کند.",
       "provider": "Providerها را فهرست می‌کند.",
       "plugin": "Pluginها را فهرست می‌کند.",
-      "memory": "Scopeهای حافظه را فهرست می‌کند.",
+      "memory": "حافظه چندوجهی: بازیابی، ثبت، جایگزینی زمان‌مند و تجمیع.",
       "knowledge": "Knowledge Packها را فهرست می‌کند.",
       "backup": "از memory فایل پشتیبان می‌سازد.",
       "upgrade": "به‌روزرسانی هسته AStack به آخرین نسخه",
       "domain": "فهرست یا تشخیص دامنه‌های کاری",
       "team": "ساخت و مدیریت تیم‌های تخصصی",
       "agent": "ساخت، زمان‌بندی و نظارت بر ایجنت‌ها",
-      "lead": "رهبری: برنامه‌ریزی، تشکیل تیم، تفویض و بازبینی"
+      "lead": "رهبری: برنامه‌ریزی، تشکیل تیم، تفویض و بازبینی",
+      "ask": "پرسش یا درخواست را به Chief of Staff می‌دهد و برنامه اجرا را برمی‌گرداند.",
+      "standup": "خلاصه شروع جلسه: کپسول هویت مالک، مأموریت‌ها، تأییدها و کارهای پس‌زمینه.",
+      "owner": "مدل مالک: کپسول هویت، ترجیحات و خلاصه گفتگوها.",
+      "context": "نقشه فضای کاری، جست‌وجوی هدفمند و آمار صرفه‌جویی توکن.",
+      "graph": "گراف دانش زمان‌مند: موجودیت‌ها، روابط و تاریخچه.",
+      "learn": "ثبت تجربه، کشف الگوهای تکراری و ساخت خودکار skill.",
+      "skill": "فهرست، جست‌وجو، بررسی، ارتقا و بازگردانی نسخه skillها.",
+      "mission": "مأموریت‌های بادوام: ساخت، اجرا، توقف، ازسرگیری و بازپخش.",
+      "schedule": "کارهای زمان‌بندی‌شده و پایش پس‌زمینه.",
+      "signal": "هوک‌های ورودی: ساخت، قواعد واکنش، دریافت و پردازش.",
+      "browser": "مرورگر داخلی: پروفایل، ورود، اجرای سناریو و شواهد.",
+      "authority": "سطوح اختیار و سیاست تأیید.",
+      "approval": "درخواست‌های تأیید مالک و رسیدهای صادرشده.",
+      "audit": "ردّ ممیزی همه اقدام‌های بیرونی.",
+      "secret": "مرجع اعتبارنامه‌ها بدون افشای مقدار.",
+      "tool": "رجیستری ابزارها با افشای تدریجی.",
+      "runtime": "runtimeهای نصب‌شده و مسیریابی مدل."
     },
     "project": {
       "usage": "فرمان‌های پروژه: init، demo، list، status، board، backlog، add، move، start، done، block، unblock، charter، milestone، sprint، risk، gate، advance، baseline، critical-path، forecast، next، digest، decision، scaffold، raci، report، templates",
@@ -129,7 +146,182 @@
       "checkDone": "حالت بررسی: هیچ فایلی تغییر نکرد.",
       "applied": "ارتقا اعمال شد: {count} فایل. پشتیبان: {backup}",
       "doctorHint": "برای اطمینان، astack doctor را اجرا کنید.",
-      "configAdded": "بخش‌های جدید تنظیمات به astack.config.yaml اضافه شد: {sections}"
+      "configAdded": "بخش‌های جدید تنظیمات به astack.config.yaml اضافه شد: {sections}",
+      "migrationsPending": "{count} مهاجرت داده در انتظار اجراست:",
+      "migrationsApplied": "{count} مهاجرت داده اجرا شد:",
+      "migrationsFailed": "{count} مهاجرت ناموفق بود و باید دستی بررسی شود:",
+      "rollbackHint": "در صورت بروز مشکل، نسخه قبلی در {backup} نگهداری شده است."
+    },
+    "context": {
+      "built": "ایندکس ساخته شد: {files} فایل ({parsed} تحلیل تازه، {reused} از cache)، {symbols} نماد، {ms} میلی‌ثانیه.",
+      "mapSummary": "نقشه: {tokens} توکن از بودجه {budget} | {files} فایل نمایش داده شد، {omitted} فایل پنهان | صرفه‌جویی {savings}٪ | فایل: {path}",
+      "searchTitle": "نتایج جست‌وجو برای «{query}» در میان {scanned} فایل:",
+      "relatedEntity": "موجودیت مرتبط: {name}",
+      "relatedFiles": "فایل‌های مرتبط:",
+      "statsTitle": "آمار موتور زمینه:",
+      "refreshed": "ایندکس به‌روزرسانی شد: {files} فایل، {parsed} تحلیل تازه.",
+      "fresh": "ایندکس تازه است (ساخته‌شده در {builtAt}).",
+      "pins": "فایل‌های سنجاق‌شده: {count}",
+      "unknownAction": "فرمان ناشناخته برای context: {action}"
+    },
+    "memory": {
+      "facetsTitle": "وجوه حافظه:",
+      "searchTitle": "بازیابی حافظه برای «{query}» — {count} نتیجه:",
+      "remembered": "در حافظه ثبت شد: {id} (وجه {facet})",
+      "superseded": "رکورد {previous} با {replacement} جایگزین شد و تاریخچه حفظ شد.",
+      "forgotten": "رکورد حذف شد: {id}",
+      "noEntity": "موجودیتی برای «{query}» پیدا نشد.",
+      "consolidated": "تجمیع حافظه: {merged} ادغام، {decayed} کاهش وزن، {dropped} حذف، {kept} باقی‌مانده.",
+      "statsTitle": "حافظه: {total} رکورد، حدود {tokens} توکن.",
+      "unknownAction": "فرمان ناشناخته برای memory: {action}"
+    },
+    "graph": {
+      "statsTitle": "گراف دانش: {nodes} گره، {edges} یال ({active} فعال، {superseded} جایگزین‌شده).",
+      "upserted": "گره ثبت شد: {id} ({type}) — {name}",
+      "related": "رابطه ثبت شد: {from} -{type}-> {to}",
+      "historyTitle": "تاریخچه {id}:",
+      "compacted": "گراف فشرده شد: {nodes} گره، {edges} یال.",
+      "unknownAction": "فرمان ناشناخته برای graph: {action}"
+    },
+    "learn": {
+      "statusTitle": "یادگیری: {episodes} تجربه ثبت‌شده (موفقیت {success}٪)، {skills} skill، {candidates} نامزد آماده.",
+      "recorded": "تجربه ثبت شد: {id}",
+      "forged": "skill ساخته یا به‌روزرسانی شد: {id} (وضعیت {status}، اعتماد {confidence})",
+      "autoForged": "{count} skill از الگوهای تکراری ساخته یا به‌روزرسانی شد.",
+      "episodesTitle": "تجربه‌های ثبت‌شده ({count}):",
+      "candidatesTitle": "نامزدهای skill ({count}):",
+      "feedback": "بازخورد ثبت شد: {id} → وضعیت {status}، اعتماد {confidence}، {uses} بار استفاده.",
+      "unknownAction": "فرمان ناشناخته برای learn: {action}"
+    },
+    "skill": {
+      "listTitle": "skillها ({count}):",
+      "catalogSummary": "کاتالوگ: {listed} از {total} مورد در {tokens} توکن.",
+      "showTitle": "skill {id} — منبع {source}، وضعیت {status}، {tokens} توکن:",
+      "testTitle": "بررسی skill {id}: {ready}",
+      "historyTitle": "تاریخچه نسخه‌های {id} (نسخه فعلی {current}):",
+      "promoted": "وضعیت skill {id} به {status} تغییر کرد.",
+      "rolledBack": "skill {id} به نسخه قبلی بازگردانده شد (نسخه جدید {version}).",
+      "statsTitle": "skillها: {skills} مورد، کاتالوگ {tokens} توکن.",
+      "unknownAction": "فرمان ناشناخته برای skill: {action}"
+    },
+    "schedule": {
+      "listTitle": "کارهای زمان‌بندی‌شده ({count}):",
+      "created": "کار ساخته شد: {id} ({kind}) — اجرای بعدی {next}",
+      "showTitle": "کار {id} | نوع {kind} | زمان‌بندی {schedule}",
+      "ran": "کار {id} اجرا شد: {status} — {summary}",
+      "ticked": "{count} کار سررسیدشده اجرا شد:",
+      "nothingDue": "هیچ کاری سررسید نشده است.",
+      "stopped": "توقف daemon: {stopped} (pid {pid}) {reason}",
+      "statusTitle": "زمان‌بند: {jobs} کار، {due} سررسیدشده، {failing} ناموفق، {incidents} حادثه باز.",
+      "toggled": "کار {id} اکنون {state} است.",
+      "removed": "کار حذف شد: {id}",
+      "incidentsTitle": "حادثه‌ها ({count}):",
+      "defaults": "{count} کار پیش‌فرض نگهداری نصب شد:",
+      "policyUpdated": "سیاست خودکارسازی به‌روزرسانی شد: {what}",
+      "unknownAction": "فرمان ناشناخته برای schedule: {action}"
+    },
+    "signal": {
+      "listTitle": "هوک‌های ورودی ({count}):",
+      "created": "هوک ساخته شد: {id} (منبع {source})",
+      "endpoint": "نشانی دریافت: {url}",
+      "secret": "کلید امضا (فقط همین یک بار نمایش داده می‌شود): {secret}",
+      "ruleAdded": "قاعده {id} به هوک {hook} اضافه شد: {actions}",
+      "emitted": "رویداد ثبت شد: {id} (دامنه {domain})",
+      "processed": "{count} رویداد پردازش شد:",
+      "statusTitle": "هوک‌ها: {hooks} مورد ({enabled} فعال) | در صف {queued} | دریافت‌شده {received} | پردازش‌شده {processed}",
+      "removed": "هوک حذف شد: {id}",
+      "unknownAction": "فرمان ناشناخته برای signal: {action}"
+    },
+    "browser": {
+      "statusTitle": "مرورگر داخلی: درایور {driver} | مسیر {binary}",
+      "profileCreated": "پروفایل ساخته شد: {id} ({dir})",
+      "profileRemoved": "پروفایل حذف شد: {id}",
+      "loginOpening": "پنجره ورود برای {url} با پروفایل {profile} باز شد؛ پس از ورود، پنجره را ببندید.",
+      "loginDone": "نشست ذخیره شد: پروفایل {profile}، {cookies} کوکی از {hosts} دامنه.",
+      "healthTitle": "سلامت نشست پروفایل {profile}:",
+      "needsLogin": "این دامنه‌ها نیاز به ورود دوباره دارند: {hosts}",
+      "artifacts": "شواهد ثبت‌شده ({count}):",
+      "approvalNeeded": "اجرا پیش از «{action}» متوقف شد و منتظر تأیید مالک است.",
+      "evidenceVerify": "بسته شواهد {bundle}: {entries} رکورد — یکپارچگی {intact}",
+      "unknownAction": "فرمان ناشناخته برای browser: {action}"
+    },
+    "mission": {
+      "listTitle": "مأموریت‌ها ({count}):",
+      "showTitle": "مأموریت {id} | وضعیت {state} | {title}",
+      "created": "مأموریت ساخته شد: {id} با {steps} گام.",
+      "stepAdded": "گام اضافه شد به {id} (مجموع {steps} گام).",
+      "artifacts": "خروجی‌ها ({count}):",
+      "approvals": "تأییدهای مرتبط: {ids}",
+      "paused": "مأموریت متوقف شد: {id}",
+      "cancelled": "مأموریت لغو شد: {id}",
+      "replayed": "بازپخش {original} در حالت بدون اثر انجام شد: {replay}",
+      "reported": "گزارش ثبت شد: {id} → {state}",
+      "statusTitle": "مأموریت‌ها: {missions} مورد، {active} فعال، {waiting} در انتظار تأیید.",
+      "unknownAction": "فرمان ناشناخته برای mission: {action}"
+    },
+    "authority": {
+      "title": "سطح اختیار پیش‌فرض: {level}",
+      "scopes": "سیاست‌های اعمال‌شده:",
+      "defaultSet": "سطح اختیار پیش‌فرض روی {level} تنظیم شد.",
+      "scopeSet": "سطح {level} برای {kind}:{key} تنظیم شد.",
+      "decision": "سطح {level} → {state} ({reason})",
+      "unknownAction": "فرمان ناشناخته برای authority: {action}"
+    },
+    "approval": {
+      "listTitle": "درخواست‌های تأیید ({count}):",
+      "pendingTitle": "در انتظار تصمیم مالک ({count}):",
+      "decided": "تأیید {id} → {state} (رسید {receipt})",
+      "requested": "درخواست تأیید ثبت شد: {id} برای {action}",
+      "unknownAction": "فرمان ناشناخته برای approval: {action}"
+    },
+    "audit": {
+      "listTitle": "ردّ ممیزی ({count} رکورد):",
+      "statsTitle": "ممیزی: {records} رکورد، {approved} با تأیید مالک، {evidence} همراه شواهد.",
+      "unknownAction": "فرمان ناشناخته برای audit: {action}"
+    },
+    "secret": {
+      "listTitle": "مراجع اعتبارنامه ({count}):",
+      "registered": "مرجع ثبت شد: {reference} — مقدار را در متغیر محیطی {env} قرار دهید.",
+      "check": "{reference}: در دسترس {available}",
+      "removed": "مرجع حذف شد: {reference}",
+      "unknownAction": "فرمان ناشناخته برای secret: {action}"
+    },
+    "tool": {
+      "listTitle": "ابزارها ({count}):",
+      "catalogSummary": "کاتالوگ ابزار: {tools} از {total} در {tokens} توکن.",
+      "unknownAction": "فرمان ناشناخته برای tool: {action}"
+    },
+    "runtime": {
+      "listTitle": "runtimeها ({count}):",
+      "tested": "runtime {id} آزمایش شد: نشست {session} → {state}",
+      "routed": "کلاس {taskClass} → سطح {tier} روی {runtime} ({reason})",
+      "unknownAction": "فرمان ناشناخته برای runtime: {action}"
+    },
+    "chief": {
+      "requestRequired": "متن درخواست لازم است.",
+      "briefTitle": "تحلیل درخواست: {request}",
+      "dryRunTitle": "اجرای آزمایشی بدون هیچ اثر بیرونی:",
+      "plannedSteps": "گام‌های برنامه‌ریزی‌شده:",
+      "externalEffects": "اثرهای بیرونی این اجرا:",
+      "credentials": "اعتبارنامه‌های لازم:",
+      "checkpoints": "نقاط توقف برای تأیید مالک:",
+      "questions": "پرسش‌های باز:",
+      "entities": "موجودیت‌های شناسایی‌شده:",
+      "experience": "تجربه‌های مشابه قبلی:",
+      "engaged": "مأموریت {mission} باز شد | تیم {team} با {agents} ایجنت.",
+      "standupTitle": "گزارش شروع کار:",
+      "missions": "مأموریت‌ها: {missions} مورد، {active} فعال، {waiting} در انتظار تأیید.",
+      "pendingApprovals": "در انتظار تأیید شما ({count}):",
+      "learning": "یادگیری: {skills} skill، {candidates} نامزد آماده، {episodes} تجربه.",
+      "jobs": "کارهای پس‌زمینه: {jobs} کار، {due} سررسیدشده، {incidents} حادثه باز.",
+      "signals": "هوک‌ها: {hooks} مورد، {queued} رویداد در صف، {received} دریافت‌شده."
+    },
+    "owner": {
+      "capsuleTitle": "کپسول هویت مالک ({tokens} از {budget} توکن):",
+      "updated": "پروفایل مالک به‌روزرسانی شد ({updatedAt}).",
+      "preference": "ترجیح ثبت شد: {text}",
+      "summarized": "خلاصه گفتگو ذخیره شد: {stored} رکورد.",
+      "unknownAction": "فرمان ناشناخته برای owner: {action}"
     }
   },
   "delivery": {
