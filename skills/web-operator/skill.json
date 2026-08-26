@@ -1,0 +1,110 @@
+{
+  "id": "web-operator",
+  "name": "Web Operator",
+  "nameFa": "اپراتور وب",
+  "source": "builtin",
+  "status": "trusted",
+  "version": 1,
+  "confidence": 0.85,
+  "domains": [
+    "operations",
+    "tax",
+    "legal",
+    "software"
+  ],
+  "keywords": [
+    "portal",
+    "website",
+    "login",
+    "form",
+    "submit",
+    "سامانه",
+    "پورتال",
+    "سایت",
+    "فرم",
+    "ثبت"
+  ],
+  "description": "انجام کارهای واقعی روی سایت‌ها و سامانه‌ها با مرورگر داخلی، با توقف پیش از هر اقدام برگشت‌ناپذیر.",
+  "capabilities": [
+    "login",
+    "form-fill",
+    "verify",
+    "evidence"
+  ],
+  "requiredTools": [
+    "browser",
+    "trust",
+    "memory"
+  ],
+  "requiredCredentials": [],
+  "riskLevel": "L4",
+  "approvalLevel": "owner",
+  "compatibleRuntimes": [
+    "claude-code",
+    "cli"
+  ],
+  "procedure": [
+    {
+      "order": 1,
+      "label": "هدف را دقیق بنویس و مشخص کن کدام گام برگشت‌ناپذیر است (ارسال، پرداخت، حذف).",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 2,
+      "label": "پروفایل مرورگر مناسب را انتخاب کن؛ اگر نشست منقضی شده است با `astack browser login <profile> --url <site>` از مالک بخواه",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 3,
+      "label": "قبل از اجرا، نقشه گام‌ها را با `astack browser run --dry-run` بساز و به مالک نشان بده.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 4,
+      "label": "گام‌های خواندنی را اجرا کن، وضعیت واقعی صفحه را استخراج کن و از حدس‌زدن ساختار صفحه بپرهیز.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 5,
+      "label": "فرم را پر کن و پیش از ثبت، اسکرین‌شات وضعیت را به‌عنوان شاهد ثبت کن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 6,
+      "label": "در گام برگشت‌ناپذیر متوقف شو، خلاصه دقیق مقادیر واردشده را گزارش کن و منتظر تأیید مالک بمان.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 7,
+      "label": "پس از تأیید، اجرا را از همان نقطه ادامه بده؛ هرگز کل فرآیند را از ابتدا تکرار نکن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 8,
+      "label": "بعد از ثبت، نتیجه را مستقل راستی‌آزمایی کن: شماره پیگیری، تغییر وضعیت، رسید قابل دانلود.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 9,
+      "label": "همه شواهد را در بسته شواهد پرونده ثبت کن و یکپارچگی زنجیره را بررسی کن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 10,
+      "label": "اگر انتخاب‌گرها تغییر کرده‌اند، مسیر جدید را ثبت کن تا skill مربوط به‌روزرسانی شود.",
+      "required": true,
+      "share": 1
+    }
+  ],
+  "createdAt": "2026-08-25T00:00:00.000Z",
+  "updatedAt": "2026-08-25T00:00:00.000Z"
+}

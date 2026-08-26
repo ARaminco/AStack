@@ -1,0 +1,109 @@
+{
+  "id": "image-design",
+  "name": "Image Design",
+  "nameFa": "طراحی تصویر",
+  "source": "builtin",
+  "status": "trusted",
+  "version": 1,
+  "confidence": 0.85,
+  "domains": [
+    "marketing",
+    "operations",
+    "business"
+  ],
+  "keywords": [
+    "design",
+    "image",
+    "banner",
+    "logo",
+    "poster",
+    "طراحی",
+    "تصویر",
+    "بنر",
+    "لوگو",
+    "پوستر"
+  ],
+  "description": "تولید و ویرایش تصویرهای حرفه‌ای با جهت‌گیری هنری روشن، از خلاصه سفارش تا فایل نهایی آماده انتشار.",
+  "capabilities": [
+    "art-direction",
+    "generate",
+    "edit",
+    "review"
+  ],
+  "requiredTools": [
+    "filesystem",
+    "http",
+    "documents"
+  ],
+  "requiredCredentials": [],
+  "riskLevel": "L2",
+  "approvalLevel": "none",
+  "compatibleRuntimes": [
+    "claude-code",
+    "cli"
+  ],
+  "procedure": [
+    {
+      "order": 1,
+      "label": "خلاصه سفارش را بساز: کاربرد، مخاطب، پیام اصلی، کانال انتشار، نسبت ابعاد، محدودیت‌های برند و متنی که باید خوانا بماند.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 2,
+      "label": "جهت‌گیری هنری را قبل از تولید بنویس: سبک، پالت رنگ با کدهای دقیق، تایپوگرافی، ترکیب‌بندی، نور و مرجع بصری.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 3,
+      "label": "برای دارایی‌های قطعی و متن‌دار — لوگو، نمودار، بنر با متن دقیق — اول SVG بساز؛ خروجی برداری قابل ویرایش و بدون خطای املا",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 4,
+      "label": "برای تصویرهای مفهومی از سرویس تولید تصویر پیکربندی‌شده با `credential://imagegen/default` استفاده کن و prompt را با جهت‌",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 5,
+      "label": "همیشه سه گزینه با تفاوت معنادار تولید کن، نه سه نسخه از یک ایده.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 6,
+      "label": "متن روی تصویر را پس از تولید بازبینی کن؛ اگر موتور تولید متن را خراب کرده است، متن را جداگانه به‌صورت برداری روی تصویر ب",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 7,
+      "label": "نسخه‌های مورد نیاز کانال‌ها را بساز (مربع، عمودی، افقی) و ناحیه امن هر کانال را رعایت کن.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 8,
+      "label": "چک‌لیست کیفیت را اجرا کن: کنتراست متن، خوانایی در اندازه کوچک، درستی املا، رعایت برند، نبود عناصر ناخواسته.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 9,
+      "label": "فایل نهایی را با نام‌گذاری قابل ردیابی ذخیره کن و نسخه‌ها را نگه دار.",
+      "required": true,
+      "share": 1
+    },
+    {
+      "order": 10,
+      "label": "تصویرهای تولیدشده برای استفاده رسمی را با ذکر منبع و تاریخ در حافظه پروژه ثبت کن.",
+      "required": true,
+      "share": 1
+    }
+  ],
+  "createdAt": "2026-08-25T00:00:00.000Z",
+  "updatedAt": "2026-08-25T00:00:00.000Z"
+}
