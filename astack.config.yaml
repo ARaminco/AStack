@@ -1,7 +1,7 @@
 project:
   name: AStack Enterprise
   product: AI Operating System for Any Practice
-  version: 2.0.0
+  version: 2.1.0
   philosophy: enterprise_modular_platform
   primary_runtime: claude-code
   compatibility:
@@ -45,7 +45,18 @@ architecture:
   layers:
     - core
     - runtime
+    - chief-of-staff
     - orchestrator
+    - context-engine
+    - knowledge-graph
+    - learning-engine
+    - mission-engine
+    - scheduler-engine
+    - signal-engine
+    - browser-engine
+    - tool-registry
+    - runtime-providers
+    - trust-engine
     - domains
     - departments
     - roles
@@ -225,6 +236,24 @@ cli:
     - upgrade
     - update
     - review
+    - ask
+    - standup
+    - owner
+    - context
+    - memory
+    - graph
+    - learn
+    - skill
+    - mission
+    - schedule
+    - signal
+    - browser
+    - authority
+    - approval
+    - audit
+    - secret
+    - tool
+    - runtime
     - domain
     - team
     - agent
@@ -233,6 +262,113 @@ cli:
     - workflow
     - provider
     - plugin
-    - memory
     - knowledge
     - backup
+
+context:
+  enabled: true
+  engine: context-engine/context-engine.mjs
+  router: context-engine/context-router.mjs
+  lenses: context-engine/lenses.json
+  storage: .astack/context
+  owner_capsule_budget: 800
+  memory_budget: 2500
+  project_budget: 3500
+  repo_map_budget: 2000
+  skill_budget: 3000
+  tool_catalog_budget: 500
+  retrieval_budget: 12000
+  max_files: 8
+  refresh: auto
+
+graph:
+  enabled: true
+  engine: knowledge-graph/graph-engine.mjs
+  backend: file
+  storage: .astack/graph
+  temporal: true
+
+learning:
+  enabled: true
+  engine: learning-engine/learning-engine.mjs
+  catalog: learning-engine/skill-catalog.mjs
+  storage: .astack/learning
+  skills: skills/learned
+  auto_extract_lessons: true
+  auto_create_skill_candidates: true
+  auto_promote_skills: false
+  min_occurrences: 3
+  min_distinct_days: 2
+  min_success_rate: 0.6
+
+runtime:
+  default: claude-code
+  registry: runtime-providers/agent-runtime.mjs
+  model_router: runtime-providers/model-router.mjs
+  providers:
+    claude-code:
+      enabled: true
+    mock:
+      enabled: true
+
+tools:
+  registry: tool-registry/tool-registry.mjs
+  manifest: tool-registry/tools.json
+  custom: .astack/tools
+  progressive_disclosure: true
+
+missions:
+  enabled: true
+  engine: mission-engine/mission-engine.mjs
+  storage: .astack/missions
+  resumable: true
+
+scheduler:
+  enabled: true
+  engine: scheduler-engine/scheduler-engine.mjs
+  storage: .astack/scheduler
+  tick_interval: 60s
+  default_timeout_ms: 30000
+  default_retries: 1
+
+signals:
+  enabled: true
+  engine: signal-engine/signal-engine.mjs
+  storage: .astack/signals
+  server:
+    host: 127.0.0.1
+    port: 8787
+    require_signature: true
+    rate_limit_per_minute: 60
+
+browser:
+  enabled: true
+  engine: browser-engine/browser-engine.mjs
+  preferred_driver: cdp
+  persistent_profiles: true
+  storage: .astack/browser
+  evidence: .astack/evidence
+  headless_default: true
+  stop_before_commit: true
+
+authority:
+  default_level: L2
+  autonomous:
+    - L0
+    - L1
+    - L2
+  require_approval:
+    - L4
+  policy: .astack/security/authority.json
+
+audit:
+  enabled: true
+  engine: trust-engine/audit.mjs
+  storage: .astack/audit
+  approvals: .astack/approvals
+
+secrets:
+  broker: trust-engine/secrets.mjs
+  registry: .astack/security/credentials.json
+  source: environment_variables
+  reference_scheme: credential://<provider>/<name>

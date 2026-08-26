@@ -32,14 +32,31 @@
       "workflow": "List or inspect workflows.",
       "provider": "List providers.",
       "plugin": "List plugins.",
-      "memory": "List memory scopes.",
+      "memory": "Multi-faceted memory: recall, remember, temporal supersede and consolidate.",
       "knowledge": "List Knowledge Packs.",
       "backup": "Create a memory backup.",
       "upgrade": "Upgrade the embedded AStack core to the latest version",
       "domain": "List or detect engagement domains",
       "team": "Create and manage cross-functional teams",
       "agent": "Create, schedule, and supervise agents",
-      "lead": "Leadership: plan, form teams, delegate, review"
+      "lead": "Leadership: plan, form teams, delegate, review",
+      "ask": "Send a request to the Chief of Staff and get the execution plan.",
+      "standup": "Session opener: owner capsule, missions, approvals and background work.",
+      "owner": "Owner model: identity capsule, preferences and conversation summaries.",
+      "context": "Workspace map, targeted retrieval and token savings statistics.",
+      "graph": "Temporal knowledge graph: entities, relationships and history.",
+      "learn": "Record experience, mine repeated work and forge skills.",
+      "skill": "List, search, inspect, promote and roll back skills.",
+      "mission": "Durable missions: create, run, pause, resume and replay.",
+      "schedule": "Scheduled jobs and background monitoring.",
+      "signal": "Inbound hooks: create, react, receive and process.",
+      "browser": "Internal browser: profiles, login, flows and evidence.",
+      "authority": "Authority levels and approval policy.",
+      "approval": "Owner approval requests and issued receipts.",
+      "audit": "Audit trail of every external action.",
+      "secret": "Credential references without exposing values.",
+      "tool": "Tool registry with progressive disclosure.",
+      "runtime": "Installed runtimes and model routing."
     },
     "project": {
       "usage": "Project commands: init, demo, list, status, board, backlog, add, move, start, done, block, unblock, charter, milestone, sprint, risk, gate, advance, baseline, critical-path, forecast, next, digest, decision, scaffold, raci, report, templates",
@@ -129,7 +146,182 @@
       "checkDone": "Check mode: no files were changed.",
       "applied": "Upgrade applied: {count} files. Backup: {backup}",
       "doctorHint": "Run astack doctor to verify the upgraded install.",
-      "configAdded": "Added new config sections to astack.config.yaml: {sections}"
+      "configAdded": "Added new config sections to astack.config.yaml: {sections}",
+      "migrationsPending": "{count} data migrations are pending:",
+      "migrationsApplied": "{count} data migrations applied:",
+      "migrationsFailed": "{count} migrations failed and need a manual look:",
+      "rollbackHint": "If anything breaks, the previous version is kept in {backup}."
+    },
+    "context": {
+      "built": "Index built: {files} files ({parsed} parsed, {reused} cached), {symbols} symbols, {ms}ms.",
+      "mapSummary": "Map: {tokens}/{budget} tokens | {files} files shown, {omitted} hidden | saved {savings}% | file: {path}",
+      "searchTitle": "Search results for \"{query}\" across {scanned} files:",
+      "relatedEntity": "Related entity: {name}",
+      "relatedFiles": "Related files:",
+      "statsTitle": "Context engine statistics:",
+      "refreshed": "Index refreshed: {files} files, {parsed} parsed.",
+      "fresh": "Index is fresh (built {builtAt}).",
+      "pins": "Pinned files: {count}",
+      "unknownAction": "Unknown context action: {action}"
+    },
+    "memory": {
+      "facetsTitle": "Memory facets:",
+      "searchTitle": "Memory recall for \"{query}\" — {count} hits:",
+      "remembered": "Stored: {id} (facet {facet})",
+      "superseded": "Record {previous} superseded by {replacement}; history kept.",
+      "forgotten": "Record removed: {id}",
+      "noEntity": "No entity found for \"{query}\".",
+      "consolidated": "Consolidation: {merged} merged, {decayed} decayed, {dropped} dropped, {kept} kept.",
+      "statsTitle": "Memory: {total} records, about {tokens} tokens.",
+      "unknownAction": "Unknown memory action: {action}"
+    },
+    "graph": {
+      "statsTitle": "Knowledge graph: {nodes} nodes, {edges} edges ({active} active, {superseded} superseded).",
+      "upserted": "Node stored: {id} ({type}) — {name}",
+      "related": "Edge stored: {from} -{type}-> {to}",
+      "historyTitle": "History of {id}:",
+      "compacted": "Graph compacted: {nodes} nodes, {edges} edges.",
+      "unknownAction": "Unknown graph action: {action}"
+    },
+    "learn": {
+      "statusTitle": "Learning: {episodes} episodes ({success}% success), {skills} skills, {candidates} ready candidates.",
+      "recorded": "Episode recorded: {id}",
+      "forged": "Skill forged or refined: {id} (status {status}, confidence {confidence})",
+      "autoForged": "{count} skills forged or refined from repeated work.",
+      "episodesTitle": "Recorded episodes ({count}):",
+      "candidatesTitle": "Skill candidates ({count}):",
+      "feedback": "Feedback recorded: {id} → status {status}, confidence {confidence}, {uses} uses.",
+      "unknownAction": "Unknown learn action: {action}"
+    },
+    "skill": {
+      "listTitle": "Skills ({count}):",
+      "catalogSummary": "Catalog: {listed} of {total} in {tokens} tokens.",
+      "showTitle": "Skill {id} — source {source}, status {status}, {tokens} tokens:",
+      "testTitle": "Skill check {id}: {ready}",
+      "historyTitle": "Version history of {id} (current {current}):",
+      "promoted": "Skill {id} status changed to {status}.",
+      "rolledBack": "Skill {id} rolled back (new version {version}).",
+      "statsTitle": "Skills: {skills}, catalog {tokens} tokens.",
+      "unknownAction": "Unknown skill action: {action}"
+    },
+    "schedule": {
+      "listTitle": "Scheduled jobs ({count}):",
+      "created": "Job created: {id} ({kind}) — next run {next}",
+      "showTitle": "Job {id} | kind {kind} | schedule {schedule}",
+      "ran": "Job {id} ran: {status} — {summary}",
+      "ticked": "{count} due jobs executed:",
+      "nothingDue": "No job is due.",
+      "stopped": "Daemon stop: {stopped} (pid {pid}) {reason}",
+      "statusTitle": "Scheduler: {jobs} jobs, {due} due, {failing} failing, {incidents} open incidents.",
+      "toggled": "Job {id} is now {state}.",
+      "removed": "Job removed: {id}",
+      "incidentsTitle": "Incidents ({count}):",
+      "defaults": "{count} default maintenance jobs installed:",
+      "policyUpdated": "Automation policy updated: {what}",
+      "unknownAction": "Unknown schedule action: {action}"
+    },
+    "signal": {
+      "listTitle": "Inbound hooks ({count}):",
+      "created": "Hook created: {id} (source {source})",
+      "endpoint": "Endpoint: {url}",
+      "secret": "Signing secret (shown once): {secret}",
+      "ruleAdded": "Rule {id} added to hook {hook}: {actions}",
+      "emitted": "Event queued: {id} (domain {domain})",
+      "processed": "{count} events processed:",
+      "statusTitle": "Hooks: {hooks} ({enabled} enabled) | queued {queued} | received {received} | processed {processed}",
+      "removed": "Hook removed: {id}",
+      "unknownAction": "Unknown signal action: {action}"
+    },
+    "browser": {
+      "statusTitle": "Internal browser: driver {driver} | binary {binary}",
+      "profileCreated": "Profile created: {id} ({dir})",
+      "profileRemoved": "Profile removed: {id}",
+      "loginOpening": "Opening a login window for {url} with profile {profile}; close it when you are signed in.",
+      "loginDone": "Session saved: profile {profile}, {cookies} cookies across {hosts} hosts.",
+      "healthTitle": "Session health for profile {profile}:",
+      "needsLogin": "These hosts need a new login: {hosts}",
+      "artifacts": "Captured evidence ({count}):",
+      "approvalNeeded": "Stopped before \"{action}\" and waiting for owner approval.",
+      "evidenceVerify": "Evidence bundle {bundle}: {entries} records — integrity {intact}",
+      "unknownAction": "Unknown browser action: {action}"
+    },
+    "mission": {
+      "listTitle": "Missions ({count}):",
+      "showTitle": "Mission {id} | state {state} | {title}",
+      "created": "Mission created: {id} with {steps} steps.",
+      "stepAdded": "Step added to {id} ({steps} steps total).",
+      "artifacts": "Artifacts ({count}):",
+      "approvals": "Related approvals: {ids}",
+      "paused": "Mission paused: {id}",
+      "cancelled": "Mission cancelled: {id}",
+      "replayed": "Replayed {original} with no side effects: {replay}",
+      "reported": "Report stored: {id} → {state}",
+      "statusTitle": "Missions: {missions}, {active} active, {waiting} waiting for approval.",
+      "unknownAction": "Unknown mission action: {action}"
+    },
+    "authority": {
+      "title": "Default authority level: {level}",
+      "scopes": "Applied policies:",
+      "defaultSet": "Default authority set to {level}.",
+      "scopeSet": "Level {level} set for {kind}:{key}.",
+      "decision": "Level {level} → {state} ({reason})",
+      "unknownAction": "Unknown authority action: {action}"
+    },
+    "approval": {
+      "listTitle": "Approval requests ({count}):",
+      "pendingTitle": "Waiting for the owner ({count}):",
+      "decided": "Approval {id} → {state} (receipt {receipt})",
+      "requested": "Approval requested: {id} for {action}",
+      "unknownAction": "Unknown approval action: {action}"
+    },
+    "audit": {
+      "listTitle": "Audit trail ({count} records):",
+      "statsTitle": "Audit: {records} records, {approved} owner approved, {evidence} with evidence.",
+      "unknownAction": "Unknown audit action: {action}"
+    },
+    "secret": {
+      "listTitle": "Credential references ({count}):",
+      "registered": "Reference registered: {reference} — put the value in environment variable {env}.",
+      "check": "{reference}: available {available}",
+      "removed": "Reference removed: {reference}",
+      "unknownAction": "Unknown secret action: {action}"
+    },
+    "tool": {
+      "listTitle": "Tools ({count}):",
+      "catalogSummary": "Tool catalog: {tools} of {total} in {tokens} tokens.",
+      "unknownAction": "Unknown tool action: {action}"
+    },
+    "runtime": {
+      "listTitle": "Runtimes ({count}):",
+      "tested": "Runtime {id} tested: session {session} → {state}",
+      "routed": "Class {taskClass} → tier {tier} on {runtime} ({reason})",
+      "unknownAction": "Unknown runtime action: {action}"
+    },
+    "chief": {
+      "requestRequired": "A request text is required.",
+      "briefTitle": "Request analysis: {request}",
+      "dryRunTitle": "Dry run with no external effects:",
+      "plannedSteps": "Planned steps:",
+      "externalEffects": "External effects of this run:",
+      "credentials": "Required credentials:",
+      "checkpoints": "Owner approval checkpoints:",
+      "questions": "Open questions:",
+      "entities": "Resolved entities:",
+      "experience": "Similar past runs:",
+      "engaged": "Mission {mission} opened | team {team} with {agents} agents.",
+      "standupTitle": "Session standup:",
+      "missions": "Missions: {missions}, {active} active, {waiting} waiting for approval.",
+      "pendingApprovals": "Waiting for your approval ({count}):",
+      "learning": "Learning: {skills} skills, {candidates} ready candidates, {episodes} episodes.",
+      "jobs": "Background jobs: {jobs} jobs, {due} due, {incidents} open incidents.",
+      "signals": "Hooks: {hooks}, {queued} queued events, {received} received."
+    },
+    "owner": {
+      "capsuleTitle": "Owner identity capsule ({tokens} of {budget} tokens):",
+      "updated": "Owner profile updated ({updatedAt}).",
+      "preference": "Preference stored: {text}",
+      "summarized": "Conversation summary stored: {stored} records.",
+      "unknownAction": "Unknown owner action: {action}"
     }
   },
   "delivery": {

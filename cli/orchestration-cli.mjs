@@ -1,5 +1,6 @@
 import { parseArgs } from "../delivery-engine/cli.mjs";
 import { DEFAULT_SOURCE, UpgradeEngine, fetchSource } from "../upgrade-engine/upgrade-engine.mjs";
+import { pendingMigrations, runMigrations } from "../upgrade-engine/migrations.mjs";
 
 const out = (line) => console.log(line);
 
@@ -253,6 +254,15 @@ export function runUpgradeCommand({ runtime, i18n, tokens }) {
       out("- " + change.action + " " + change.path);
     }
     out(t("cli.upgrade.checkDone"));
+  }
+  if (flags.check) {
+    const pending = pendingMigrations(runtime.workspaceRoot ?? runtime.root);
+    if (pending.length) {
+      out(t("cli.upgrade.migrationsPending", { count: pending.length }));
+      for (const migration of pending) {
+        out("- " + migration.id + ": " + migration.description);
+      }
+    }
     return;
   }
   const result = engine.apply({ force: Boolean(flags.force) });
@@ -260,5 +270,21 @@ export function runUpgradeCommand({ runtime, i18n, tokens }) {
   if (result.configSectionsAdded?.length) {
     out(t("cli.upgrade.configAdded", { sections: result.configSectionsAdded.join(", ") }));
   }
+  const migrated = runMigrations(runtime.workspaceRoot ?? runtime.root);
+  const applied = migrated.filter((entry) => entry.status === "applied");
+  const failed = migrated.filter((entry) => entry.status === "failed");
+  if (applied.length) {
+    out(t("cli.upgrade.migrationsApplied", { count: applied.length }));
+    for (const entry of applied) {
+      out("- " + entry.id + ": " + entry.detail);
+    }
+  }
+  if (failed.length) {
+    out(t("cli.upgrade.migrationsFailed", { count: failed.length }));
+    for (const entry of failed) {
+      out("- " + entry.id + ": " + entry.detail);
+    }
+  }
+  out(t("cli.upgrade.rollbackHint", { backup: result.backupDir ?? "-" }));
   out(t("cli.upgrade.doctorHint"));
 }
