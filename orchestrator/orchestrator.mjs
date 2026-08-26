@@ -1,5 +1,5 @@
 export class Orchestrator {
-  constructor({ departments, providers, workflows, memory, eventBus, projects, domains, teams, agents, chief, missions, approvals, scheduler, learning, context }) {
+  constructor({ departments, providers, workflows, memory, eventBus, projects, domains, teams, agents, missions, approvals, scheduler, learning, context }) {
     this.departments = departments;
     this.providers = providers;
     this.workflows = workflows;
@@ -9,7 +9,6 @@ export class Orchestrator {
     this.domains = domains ?? null;
     this.teams = teams ?? null;
     this.agents = agents ?? null;
-    this.chief = chief ?? null;
     this.missions = missions ?? null;
     this.approvals = approvals ?? null;
     this.scheduler = scheduler ?? null;

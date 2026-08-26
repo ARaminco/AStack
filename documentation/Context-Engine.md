@@ -54,7 +54,7 @@ header. A stale map is refreshed before it is served, never silently returned.
 
 ```bash
 astack context build [--force]
-astack context map "<query>" [--budget 4000] [--print]
+astack context map "<query>" [--budget 2000] [--print]
 astack context search "<query>" [--limit 10]
 astack context expand <path>
 astack context related "<entity or symbol>"
@@ -66,5 +66,10 @@ astack context pin <path>
 ## Measured, not claimed
 
 `astack context stats` reports tokens rendered, tokens avoided and the savings
-ratio from real usage. On this repository a 2.4k token map replaces a 181k
-token corpus.
+ratio from real usage. On this repository, at the 2.1.0 release, 418 indexed
+files hold about 355k tokens of text and the default 2000 token budget renders
+a 1.9k token map: a 99 percent reduction, with every omitted file named as
+omitted and reachable by path.
+
+Re-measure rather than quoting this paragraph: the numbers move with the
+workspace.

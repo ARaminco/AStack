@@ -16,8 +16,14 @@ const sandbox = mkdtempSync(join(tmpdir(), "astack-browser-e2e-"));
 const engine = new BrowserEngine(sandbox, {});
 
 if (!engine.available()) {
-  console.log("AStack browser e2e skipped: no Chromium based browser found on this machine.");
+  const status = engine.status();
   rmSync(sandbox, { recursive: true, force: true, maxRetries: 3 });
+  if (process.env.ASTACK_BROWSER_E2E) {
+    // Asked for explicitly: a missing prerequisite is a failure, not a skip.
+    console.error("AStack browser e2e cannot run: " + status.note);
+    process.exit(1);
+  }
+  console.log("AStack browser e2e skipped: " + status.note);
   process.exit(0);
 }
 

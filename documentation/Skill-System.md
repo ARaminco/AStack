@@ -55,7 +55,15 @@ skills/<id>/
 
 ## Lifecycle
 
-candidate -> draft -> active -> trusted, with deprecated as the exit. Transitions
-are driven by recorded outcomes, never by assertion. `astack skill test <id>`
-validates a package statically: does it still have a reproducible procedure,
-enough evidence and an acceptable success rate.
+candidate -> draft -> active -> trusted, with deprecated as the exit.
+
+For **learned** skills every transition is driven by recorded outcomes: a
+forged skill starts as a draft and is promoted, demoted or retired on its own
+metrics, and `astack skill test <id>` checks that it still has a reproducible
+procedure, enough evidence and an acceptable success rate.
+
+**Built in** packs ship as `trusted` by editorial decision — they are written
+and reviewed, not measured — and carry no metrics until they are used. Their
+static check verifies the package is complete; it cannot verify a track record
+that does not exist yet. Record outcomes with `astack learn feedback` if you
+want a built in pack to earn its confidence the same way a learned one does.

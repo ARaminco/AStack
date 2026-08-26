@@ -113,15 +113,20 @@ export class SkillCatalog {
 
   search(query, { limit = 5, domain = null } = {}) {
     const tokens = uniqueTokens(query);
+    if (!tokens.length) {
+      return [];
+    }
     return this.list({ domain })
       .map((skill) => {
-        const haystack = uniqueTokens([skill.id, skill.name, skill.description, ...(skill.keywords ?? [])].join(" "));
-        const overlap = jaccard(tokens, haystack);
-        const learnedBoost = skill.source === "learned" ? 0.15 : 0;
-        const trust = { candidate: 0.6, draft: 0.8, active: 1, trusted: 1.1, deprecated: 0.2 }[skill.status] ?? 1;
-        return { skill, score: Number(((overlap + learnedBoost) * trust).toFixed(3)) };
+        const haystack = uniqueTokens([skill.id, skill.name, skill.nameFa, skill.description, ...(skill.keywords ?? [])].join(" "));
+        const covered = tokens.filter((token) => haystack.some((entry) => entry === token || entry.startsWith(token) || token.startsWith(entry))).length;
+        const named = tokens.some((token) => skill.id.toLowerCase().includes(token)) ? 0.4 : 0;
+        const domainMatch = (skill.domains ?? []).some((entry) => tokens.includes(entry)) ? 0.3 : 0;
+        const learnedBoost = skill.source === "learned" ? 0.1 : 0;
+        const trust = { candidate: 0.6, draft: 0.8, active: 1, trusted: 1.05, deprecated: 0.2 }[skill.status] ?? 1;
+        return { skill, score: Number(((covered / tokens.length + named + domainMatch + learnedBoost) * trust).toFixed(3)) };
       })
-      .filter((entry) => entry.score > 0.05)
+      .filter((entry) => entry.score >= 0.3)
       .sort((a, b) => b.score - a.score)
       .slice(0, limit)
       .map((entry) => ({

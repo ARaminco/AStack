@@ -42,6 +42,9 @@ export class MissionEngine {
   }
 
   get(id) {
+    if (this.simulating && this.projection?.id === id) {
+      return this.projection;
+    }
     if (!this.exists(id)) {
       throw new Error("Unknown mission: " + id);
     }
@@ -49,6 +52,12 @@ export class MissionEngine {
   }
 
   save(mission) {
+    if (this.simulating) {
+      // A dry run projects the plan; it never touches the mission on disk.
+      mission.updatedAt = this.now();
+      this.projection = mission;
+      return mission;
+    }
     mkdirSync(this.directory, { recursive: true });
     mission.updatedAt = this.now();
     writeFileSync(this.path(mission.id), JSON.stringify(mission, null, 2) + "\n", "utf8");
@@ -127,7 +136,21 @@ export class MissionEngine {
    * registry, so authority, policy and audit apply uniformly. A step that
    * needs approval parks the mission instead of guessing.
    */
-  async run(id, { dryRun = false, maxSteps = 50, actor = "astack" } = {}) {
+  async run(id, options = {}) {
+    if (options.dryRun) {
+      this.simulating = true;
+      this.projection = JSON.parse(JSON.stringify(this.get(id)));
+      try {
+        return await this.execute(id, options);
+      } finally {
+        this.simulating = false;
+        this.projection = null;
+      }
+    }
+    return this.execute(id, options);
+  }
+
+  async execute(id, { dryRun = false, maxSteps = 50, actor = "astack" } = {}) {
     let mission = this.get(id);
     if (["completed", "cancelled"].includes(mission.state)) {
       return { mission, ran: 0, summary: "mission is already " + mission.state };
@@ -144,14 +167,21 @@ export class MissionEngine {
         this.save(mission);
         continue;
       }
+      // The receipt is verified and consumed by the tool registry, which is the
+      // one place every external call passes through. Here we only decide
+      // whether the mission may move at all.
       const approval = step.approvalId ? this.safeApproval(step.approvalId) : null;
-      if (approval && approval.state === "approved") {
-        this.approvals?.consume(approval.id, { by: actor });
-      } else if (approval && ["pending", "rejected", "expired"].includes(approval.state)) {
+      if (approval && approval.state !== "approved") {
         mission.state = approval.state === "pending" ? "waiting-approval" : "blocked";
         this.record(mission, "approval-" + approval.state, { step: step.id, approval: approval.id });
         this.save(mission);
-        return { mission, ran, summary: "waiting for approval " + approval.id + " on step " + step.id };
+        return {
+          mission,
+          ran,
+          summary: approval.state === "consumed"
+            ? "approval " + approval.id + " was already used; step " + step.id + " needs a new decision"
+            : "waiting for approval " + approval.id + " on step " + step.id
+        };
       }
       step.state = "running";
       step.startedAt = this.now();
@@ -214,6 +244,12 @@ export class MissionEngine {
         this.record(mission, "step-failed", { step: step.id, summary: outcome.summary });
         this.save(mission);
         this.eventBus?.emit("mission.failed", { id: mission.id, step: step.id });
+        this.router?.recordOutcome(mission.runtime ?? "claude-code", {
+          taskClass: this.router.classify(mission.title),
+          outcome: "failed",
+          durationMs: mission.metrics.durationMs,
+          tokens: mission.metrics.tokens
+        });
         await this.learn(mission, "failed");
         return { mission, ran, summary: "step " + step.id + " failed: " + outcome.summary };
       }
@@ -223,14 +259,6 @@ export class MissionEngine {
     }
     mission = this.get(id);
     mission.metrics.durationMs += Date.now() - started;
-    if (dryRun) {
-      for (const step of mission.steps) {
-        if (["done", "skipped", "failed"].includes(step.state)) {
-          step.state = "pending";
-        }
-      }
-      mission.currentStep = 0;
-    }
     if (mission.currentStep >= mission.steps.length || dryRun) {
       mission.state = dryRun ? "created" : "completed";
       this.record(mission, dryRun ? "dry-run-finished" : "completed", {});
@@ -248,6 +276,14 @@ export class MissionEngine {
           evidence: mission.artifacts
         });
         await this.learn(mission, "done");
+        // Feed the router what actually happened, so later routing is based on
+        // this owner's real workload rather than on the declared strengths.
+        this.router?.recordOutcome(mission.runtime ?? "claude-code", {
+          taskClass: this.router.classify(mission.title),
+          outcome: "done",
+          durationMs: mission.metrics.durationMs,
+          tokens: mission.metrics.tokens
+        });
       }
     } else {
       this.save(mission);

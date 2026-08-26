@@ -229,13 +229,20 @@ export class Indexer {
     let parsed = 0;
     for (const file of files) {
       const cached = previous?.files?.[file.rel];
-      if (cached && cached.size === file.size && cached.mtime === file.mtime && cached.signalVersion === this.lenses.version) {
+      if (
+        cached &&
+        cached.size === file.size &&
+        cached.mtime === file.mtime &&
+        cached.signalVersion === this.lenses.version &&
+        (cached.signalDomain ?? null) === domain
+      ) {
         entries[file.rel] = cached;
         reused += 1;
         continue;
       }
       const record = this.indexFile(file, signalDefinitions);
       record.signalVersion = this.lenses.version;
+      record.signalDomain = domain;
       entries[file.rel] = record;
       parsed += 1;
     }

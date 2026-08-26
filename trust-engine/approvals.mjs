@@ -1,5 +1,6 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { randomBytes } from "node:crypto";
 import { shortHash } from "../lib/text.mjs";
 
 export const approvalStates = ["pending", "approved", "rejected", "expired", "consumed"];
@@ -96,7 +97,9 @@ export class ApprovalEngine {
     }
     const createdAt = this.now();
     const record = {
-      id: "AP-" + shortHash(action, target ?? "", createdAt).slice(0, 10),
+      // Two requests for the same action in the same instant must not share
+      // an id: the second would overwrite the first, approval and all.
+      id: "AP-" + shortHash(action, target ?? "", createdAt, randomBytes(6).toString("hex")).slice(0, 10),
       action,
       summary: summary ?? action,
       parameters,

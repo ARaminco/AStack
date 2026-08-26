@@ -282,7 +282,8 @@ export class ChiefOfStaff {
       capsule,
       missions,
       pendingApprovals: approvals.map((approval) => ({ id: approval.id, action: approval.action, summary: approval.summary })),
-      learning: learning ? { skills: learning.skills, candidates: learning.readyCandidates, episodes: learning.episodes.episodes } : null
+      learning: learning ? { skills: learning.skills, candidates: learning.readyCandidates, episodes: learning.episodes.episodes } : null,
+      runtimes: (this.runtimes?.list() ?? []).map((entry) => ({ id: entry.id, status: entry.status, available: entry.available }))
     };
   }
 }

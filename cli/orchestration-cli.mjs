@@ -246,6 +246,15 @@ export function runUpgradeCommand({ runtime, i18n, tokens }) {
   out(t("cli.upgrade.versions", { current: plan.currentVersion, latest: plan.sourceVersion }));
   if (plan.upToDate && !flags.force) {
     out(t("cli.upgrade.upToDate"));
+    // The core can be current while owner data still needs a migration, which
+    // is exactly the state an install lands in after upgrading from 2.0.
+    const outstanding = runMigrations(runtime.workspaceRoot ?? runtime.root).filter((entry) => entry.status === "applied");
+    if (outstanding.length) {
+      out(t("cli.upgrade.migrationsApplied", { count: outstanding.length }));
+      for (const entry of outstanding) {
+        out("- " + entry.id + ": " + entry.detail);
+      }
+    }
     return;
   }
   out(t("cli.upgrade.planLine", { add: plan.counts.add, update: plan.counts.update, seed: plan.counts.seed, preserved: plan.counts.preserved }));

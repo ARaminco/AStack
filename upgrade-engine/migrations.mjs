@@ -139,6 +139,41 @@ export const migrations = [
       writeFileSync(join(root, ".astack", "memory", "decision.jsonl"), lines.join("\n") + "\n", "utf8");
       return "imported " + entries.length + " decisions into the structured memory";
     }
+  },
+  {
+    id: "2026.6-ignore-runtime-state",
+    description: "Teach an existing .gitignore about the directories the new engines write.",
+    appliesTo: (root) =>
+      existsSync(join(root, ".gitignore")) && !readFileSync(join(root, ".gitignore"), "utf8").includes(".astack/browser/"),
+    run: (root) => {
+      // Sessions, credentials and evidence live under .astack. An install that
+      // upgraded from 2.0 keeps its own .gitignore, so the new rules have to be
+      // appended rather than shipped.
+      const path = join(root, ".gitignore");
+      const current = readFileSync(path, "utf8");
+      const rules = [
+        ".astack/context/",
+        ".astack/graph/",
+        ".astack/learning/",
+        ".astack/memory/",
+        ".astack/missions/",
+        ".astack/scheduler/",
+        ".astack/signals/",
+        ".astack/browser/",
+        ".astack/evidence/",
+        ".astack/audit/",
+        ".astack/approvals/",
+        ".astack/security/",
+        ".astack/owner/",
+        ".astack/runtimes/",
+        ".astack/tools/"
+      ].filter((rule) => !current.includes(rule));
+      if (!rules.length) {
+        return "nothing to add";
+      }
+      writeFileSync(path, current.replace(/\s*$/, "\n") + rules.join("\n") + "\n", "utf8");
+      return "added " + rules.length + " ignore rules for runtime state";
+    }
   }
 ];
 
@@ -181,7 +216,8 @@ export function runMigrations(root, { dryRun = false } = {}) {
       continue;
     }
     if (!migration.appliesTo(root)) {
-      state.applied.push(migration.id);
+      // Not applicable now does not mean finished: appliesTo is the idempotency
+      // guard, so leave it free to run when the condition appears.
       results.push({ id: migration.id, status: "skipped", detail: "not applicable" });
       continue;
     }
@@ -194,6 +230,7 @@ export function runMigrations(root, { dryRun = false } = {}) {
       state.applied.push(migration.id);
       results.push({ id: migration.id, status: "applied", detail });
     } catch (error) {
+      // A failure is not recorded as applied, so the next run tries again.
       results.push({ id: migration.id, status: "failed", detail: error.message });
     }
   }

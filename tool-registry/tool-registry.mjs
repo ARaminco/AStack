@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { isAbsolute, join, parse, relative, resolve } from "node:path";
 import { estimateTokens, jaccard, uniqueTokens } from "../lib/text.mjs";
 
 export const toolStatuses = ["implemented", "experimental", "adapter-ready", "mock-only", "future"];
@@ -13,7 +13,7 @@ export const toolStatuses = ["implemented", "experimental", "adapter-ready", "mo
  * it supports a dry run, so the authority engine can rule on it before it runs.
  */
 export class ToolRegistry {
-  constructor(root, { workspaceRoot = null, services = {}, policy = null, authority = null, audit = null, secrets = null } = {}) {
+  constructor(root, { workspaceRoot = null, services = {}, policy = null, authority = null, audit = null, secrets = null, approvals = null, clock } = {}) {
     this.root = root;
     this.workspaceRoot = workspaceRoot ?? root;
     this.manifestPath = join(root, "tool-registry", "tools.json");
@@ -23,6 +23,8 @@ export class ToolRegistry {
     this.authority = authority;
     this.audit = audit;
     this.secrets = secrets;
+    this.approvals = approvals;
+    this.clock = clock ?? (() => new Date());
     this.customHandlers = {};
   }
 
@@ -88,13 +90,20 @@ export class ToolRegistry {
 
   search(capability, { limit = 5 } = {}) {
     const tokens = uniqueTokens(capability);
+    if (!tokens.length) {
+      return [];
+    }
     return this.manifest()
       .map((tool) => {
         const haystack = uniqueTokens([tool.id, tool.name, tool.description, ...(tool.capabilities ?? [])].join(" "));
-        const direct = (tool.capabilities ?? []).some((entry) => tokens.includes(entry)) ? 0.6 : 0;
-        return { tool, score: Number((jaccard(tokens, haystack) + direct).toFixed(3)) };
+        // Coverage of the query, not overlap of two sets: a one word question
+        // should not be diluted by everything the tool also does.
+        const covered = tokens.filter((token) => haystack.some((entry) => entry === token || entry.startsWith(token) || token.startsWith(entry))).length;
+        const direct = (tool.capabilities ?? []).some((entry) => tokens.includes(entry)) ? 0.4 : 0;
+        const named = tokens.some((token) => tool.id.toLowerCase().includes(token)) ? 0.4 : 0;
+        return { tool, score: Number((covered / tokens.length + direct + named).toFixed(3)) };
       })
-      .filter((entry) => entry.score > 0.05)
+      .filter((entry) => entry.score >= 0.3)
       .sort((a, b) => b.score - a.score)
       .slice(0, limit)
       .map((entry) => ({ id: entry.tool.id, name: entry.tool.name, status: entry.tool.status, riskLevel: entry.tool.riskLevel, score: entry.score }));
@@ -153,11 +162,25 @@ export class ToolRegistry {
     if (decision.blocked) {
       return { ok: false, summary: "blocked: " + decision.reason, tool: toolId, action, decision };
     }
-    if (decision.requiresApproval && !approvalId) {
-      return { ok: false, requiresApproval: true, summary: "approval required: " + decision.reason, tool: toolId, action, decision };
-    }
     if (dryRun) {
-      return { ok: true, dryRun: true, summary: "dry run for " + toolId + "." + action, tool: toolId, action, decision, params };
+      return {
+        ok: true,
+        dryRun: true,
+        requiresApproval: decision.requiresApproval,
+        summary: "dry run for " + toolId + "." + action + (decision.requiresApproval ? " (would need owner approval)" : ""),
+        tool: toolId,
+        action,
+        decision,
+        params
+      };
+    }
+    let receipt = null;
+    if (decision.requiresApproval) {
+      const verdict = this.verifyApproval({ toolId, action, params, approvalId, mission });
+      if (!verdict.ok) {
+        return { ok: false, requiresApproval: true, summary: verdict.reason, tool: toolId, action, decision };
+      }
+      receipt = verdict.record;
     }
     const handler = this.customHandlers[toolId]?.[action] ?? this.handlers()[toolId]?.[action];
     if (!handler) {
@@ -177,12 +200,66 @@ export class ToolRegistry {
       action,
       target: params.url ?? params.path ?? params.id ?? null,
       riskLevel: risk,
-      approval: approvalId ? "granted" : decision.requiresApproval ? "granted" : "not-required",
+      approval: receipt ? "granted:" + receipt.id : "not-required",
       result: result?.summary ?? (result?.ok === false ? "failed" : "ok"),
       mission,
       metadata: { durationMs }
     });
+    if (receipt) {
+      try {
+        this.approvals.consume(receipt.id, { by: actor });
+      } catch {
+        // The receipt was verified moments ago; a race here must not hide the
+        // result that was already produced.
+      }
+    }
     return { ok: result?.ok !== false, durationMs, tool: toolId, action, ...result };
+  }
+
+  /**
+   * An approval authorizes one action, once, with the parameters the owner saw.
+   *
+   * The identifier alone proves nothing: the record has to exist, still be
+   * approved, be unexpired, name this exact tool action, match the parameters
+   * that were shown, and belong to this mission when it was raised for one.
+   */
+  verifyApproval({ toolId, action, params = {}, approvalId = null, mission = null }) {
+    const name = toolId + "." + action;
+    if (!this.approvals) {
+      return { ok: false, reason: "approval required for " + name + ", but no approval engine is wired in" };
+    }
+    if (!approvalId) {
+      return { ok: false, reason: "approval required: " + name + " needs an owner decision first" };
+    }
+    let record = null;
+    try {
+      record = this.approvals.get(approvalId);
+    } catch {
+      return { ok: false, reason: "unknown approval: " + approvalId };
+    }
+    if (record.state !== "approved") {
+      return { ok: false, reason: "approval " + approvalId + " is " + record.state + ", not approved" };
+    }
+    if (record.receipt?.expiresAt && new Date(record.receipt.expiresAt).getTime() <= this.now()) {
+      return { ok: false, reason: "approval " + approvalId + " expired before it was used" };
+    }
+    if (record.action !== name) {
+      return { ok: false, reason: "approval " + approvalId + " authorizes " + record.action + ", not " + name };
+    }
+    if (record.mission && mission && record.mission !== mission) {
+      return { ok: false, reason: "approval " + approvalId + " belongs to mission " + record.mission };
+    }
+    for (const key of ["url", "path", "command", "profile"]) {
+      const approved = record.parameters?.[key];
+      if (approved !== undefined && approved !== null && String(approved) !== String(params?.[key] ?? "")) {
+        return { ok: false, reason: "approval " + approvalId + " was given for " + key + "=" + approved };
+      }
+    }
+    return { ok: true, record };
+  }
+
+  now() {
+    return this.clock().getTime();
   }
 
   handlers() {
@@ -244,14 +321,29 @@ export class ToolRegistry {
           }
           const headers = { ...(params.headers ?? {}) };
           if (params.credential && this.secrets) {
-            headers.authorization = "Bearer " + this.secrets.resolve(params.credential, { requester: "http-tool", purpose: "api call" });
+            const described = this.secrets.describe(params.credential);
+            const origin = new URL(params.url).hostname.toLowerCase();
+            if (described.site && described.site.toLowerCase() !== origin) {
+              return { ok: false, summary: "credential " + params.credential + " belongs to " + described.site + ", not " + origin };
+            }
+            headers.authorization = "Bearer " + this.secrets.resolve(params.credential, { requester: "http-tool", purpose: "api call", scope: origin });
           }
           const response = await fetch(params.url, {
             method: params.method ?? "GET",
             headers,
             body: params.body ? (typeof params.body === "string" ? params.body : JSON.stringify(params.body)) : undefined,
+            // A redirect can leave the allowlist, so it is surfaced rather than followed.
+            redirect: "manual",
             signal: AbortSignal.timeout(params.timeoutMs ?? 20000)
           });
+          if (response.status >= 300 && response.status < 400) {
+            const location = response.headers.get("location");
+            return {
+              ok: false,
+              summary: "HTTP " + response.status + " redirect to " + (location ?? "an unnamed target") + "; call it directly if it is allowed",
+              data: { status: response.status, location }
+            };
+          }
           const text = await response.text();
           return {
             ok: response.ok,
@@ -290,7 +382,9 @@ export class ToolRegistry {
       },
       shell: {
         run: async (params) => {
-          const verdict = this.policy?.allowCommand(params.command) ?? { allowed: true };
+          const verdict = this.policy?.allowInvocation
+            ? this.policy.allowInvocation(params.command, params.args ?? [])
+            : { allowed: true };
           if (!verdict.allowed) {
             return { ok: false, summary: "blocked by automation policy: " + verdict.reason };
           }
@@ -324,13 +418,42 @@ export class ToolRegistry {
   }
 }
 
+const SENSITIVE = [
+  ".astack/security",
+  ".astack/browser/sessions",
+  ".astack/browser/profiles",
+  ".env"
+];
+
+/**
+ * Everything the filesystem tool touches stays inside the workspace, and the
+ * few places inside it that hold secrets stay out of reach entirely.
+ *
+ * A relative path is not enough of a check on Windows, where "D:/secrets" and
+ * "\\\\server\\share" resolve away from the root without ever starting with "..".
+ */
 function safePath(root, target) {
-  const absolute = resolve(root, String(target ?? "."));
-  const rel = relative(root, absolute);
-  if (rel.startsWith("..")) {
-    throw new Error("Path escapes the workspace: " + target);
+  const value = String(target ?? ".");
+  if (isAbsolute(value) || /^[A-Za-z]:/.test(value) || /^[\\/]{2}/.test(value)) {
+    return abort("Absolute paths are outside the workspace: " + value);
+  }
+  const absolute = resolve(root, value);
+  const rel = relative(root, absolute).replace(/\\/g, "/");
+  if (rel.startsWith("..") || (rel === "" && absolute !== resolve(root))) {
+    return abort("Path escapes the workspace: " + value);
+  }
+  if (parse(absolute).root.toLowerCase() !== parse(resolve(root)).root.toLowerCase()) {
+    return abort("Path leaves the workspace volume: " + value);
+  }
+  const normalized = rel.toLowerCase();
+  if (SENSITIVE.some((entry) => normalized === entry || normalized.startsWith(entry + "/") || normalized.split("/").pop().startsWith(".env"))) {
+    return abort("This path holds credentials or session material and is not readable through a tool: " + rel);
   }
   return absolute;
+}
+
+function abort(message) {
+  throw new Error(message);
 }
 
 export { safePath };

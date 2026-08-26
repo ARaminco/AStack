@@ -85,6 +85,19 @@ function parseScalar(raw) {
   if (/^-?\d*\.\d+$/.test(value)) {
     return Number.parseFloat(value);
   }
+  if (value === "[]") {
+    return [];
+  }
+  if (value === "{}") {
+    return {};
+  }
+  if (/^[{[]/.test(value)) {
+    // Flow style is not part of the subset. Returning the raw text would make a
+    // mis-formatted section look like a string setting and fail much later.
+    throw new Error(
+      "astack.config.yaml uses block style only; rewrite this value over indented lines instead of " + value.slice(0, 40)
+    );
+  }
   return value;
 }
 
