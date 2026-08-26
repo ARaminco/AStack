@@ -150,7 +150,8 @@
       "migrationsPending": "{count} data migrations are pending:",
       "migrationsApplied": "{count} data migrations applied:",
       "migrationsFailed": "{count} migrations failed and need a manual look:",
-      "rollbackHint": "If anything breaks, the previous version is kept in {backup}."
+      "rollbackHint": "If anything breaks, the previous version is kept in {backup}.",
+      "migrationsHint": "Run `astack init` once to apply them; owner data is left untouched."
     },
     "context": {
       "built": "Index built: {files} files ({parsed} parsed, {reused} cached), {symbols} symbols, {ms}ms.",

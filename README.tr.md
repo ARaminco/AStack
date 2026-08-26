@@ -23,6 +23,32 @@ node bin/astack.mjs lead standup
 ```
 Devamı: [Kurulum](documentation/Installation.md) ve [Komut Referansı](documentation/API.md).
 
+## Özerk Organizasyon
+AStack sahibini konuşmalar arasında hatırlar, her istek için gereken en küçük uzman ekibi kurar, gerçek araçlarla yazılımları ve web sitelerini işletir, geri alınamaz her adımdan önce durur, sonucu doğrular, denetim kaydına yazar ve deneyimden öğrenir.
+
+```bash
+node bin/astack.mjs standup
+node bin/astack.mjs ask "what is the status of this invoice?"
+node bin/astack.mjs ask "file the quarterly vat return" --dry-run
+node bin/astack.mjs context map "invoice reconciliation"
+node bin/astack.mjs memory search "the accountant of Acme"
+node bin/astack.mjs schedule add "portal" --kind http-check --every 10m --url https://example.com
+node bin/astack.mjs signal create "whatsapp inbox" --source whatsapp
+node bin/astack.mjs browser login owner --url https://portal.example.gov
+node bin/astack.mjs approval pending
+```
+
+Tamamını [Autonomous Organization](documentation/Autonomous-Organization.md) belgesinde okuyun; oradaki özellik durumu tablosu neyin gerçekten uygulandığını, neyin yalnızca adaptöre hazır olduğunu ayırır.
+
+### Neler eklendi
+- **Çok yönlü ve zamansal bellek** — on iki bellek yüzü, üzerine yazmak yerine geçersiz kılma, gecelik konsolidasyon ([belge](documentation/Memory-OS.md))
+- **Bağlam motoru** — çalışma alanı haritası, sembol dizini ve alan kayıtları grafiği, belirli bir token bütçesi içinde ([belge](documentation/Context-Engine.md))
+- **Bilgi grafiği** — kişiler, şirketler, davalar, hesaplar ve zaman içindeki ilişkileri ([belge](documentation/Knowledge-Graph.md))
+- **Öğrenme motoru** — tekrar eden iş, kanıta dayalı ve sürümlenmiş bir beceriye dönüşür ([belge](documentation/Learning-Engine.md))
+- **Dahili tarayıcı** — kalıcı oturumlar, formlarla gerçek çalışma, zincirlenmiş kanıtlar, gönderimden önce duraklama ([belge](documentation/Browser-Operator.md))
+- **Zamanlayıcı ve kancalar** — arka plan izleme ve kendi görevini oluşturan gelen olaylar ([belge](documentation/Scheduler-and-Signals.md))
+- **Güven katmanı** — yetki seviyeleri, onay makbuzları, denetim izi, kimlik bilgisi aracısı ([belge](documentation/Security-and-Authority.md))
+
 ## İş Alanları
 Alan kayıt defteri her isteği — Farsça veya İngilizce — doğru departmanlara, iş akışına ve ekip şablonuna yönlendirir: yazılım, hukuk, finans, muhasebe, vergi, pazarlama, operasyon, insan kaynakları, araştırma ve iş. Bakınız: [Departmanlar](documentation/Departments.md) ve [Roller](documentation/Roles.md) (33 departman, 219 uzman rol).
 

@@ -150,7 +150,8 @@
       "migrationsPending": "{count} مهاجرت داده در انتظار اجراست:",
       "migrationsApplied": "{count} مهاجرت داده اجرا شد:",
       "migrationsFailed": "{count} مهاجرت ناموفق بود و باید دستی بررسی شود:",
-      "rollbackHint": "در صورت بروز مشکل، نسخه قبلی در {backup} نگهداری شده است."
+      "rollbackHint": "در صورت بروز مشکل، نسخه قبلی در {backup} نگهداری شده است.",
+      "migrationsHint": "برای اعمال این مهاجرت‌ها یک‌بار `astack init` را اجرا کنید (داده مالک دست‌نخورده می‌ماند)."
     },
     "context": {
       "built": "ایندکس ساخته شد: {files} فایل ({parsed} تحلیل تازه، {reused} از cache)، {symbols} نماد، {ms} میلی‌ثانیه.",
