@@ -34,9 +34,17 @@ working; the new layer is additive.
 
 ```bash
 astack upgrade --check     # see the plan and the pending data migrations
-astack upgrade             # apply, then run the migrations, then verify
+astack upgrade             # replace the core, append the new config sections
+astack init                # apply the data migrations (see the note below)
 astack doctor --verbose
 ```
+
+> **Why `astack init` after the first upgrade.** An install upgrades itself by running its own
+> command, so a 2.0 install runs the 2.0 upgrade code, which predates data migrations. The new
+> core lands during that run but its migration step does not execute in the same process.
+> `astack doctor` therefore reports what is still pending, and `astack init` applies it. From
+> 2.1 onward `astack upgrade` runs migrations itself and this step is no longer needed.
+> Migrations are idempotent, so running either command twice changes nothing.
 
 ### What the upgrade does
 
@@ -52,7 +60,13 @@ astack doctor --verbose
 | 2026.4-learned-skills-directory | creates `skills/learned` |
 | 2026.5-legacy-memory-import | imports `memory/decision.md` into the decision facet |
 
-Migrations are idempotent and recorded in `.astack/upgrade-state.json`.
+Migrations are idempotent and recorded in `.astack/upgrade-state.json`. None of them destroy
+anything: they create the scaffolding the new engines expect and copy existing decisions into the
+structured memory, leaving `memory/decision.md` exactly as it was.
+
+Every engine also degrades gracefully without them — the memory store, owner profile and authority
+policy fall back to their defaults and are created on first write — so an install that never runs
+them still works. The one thing that would be lost is the import of existing decisions.
 
 ### What is never touched
 

@@ -23,6 +23,32 @@ node bin/astack.mjs lead standup
 ```
 المزيد في [دليل التثبيت](documentation/Installation.md) و[مرجع الأوامر](documentation/API.md).
 
+## المنظمة ذاتية التشغيل
+يتذكّر AStack مالكه عبر المحادثات، ويشكّل أصغر فريق خبراء تحتاجه كل مهمة، ويشغّل البرمجيات والمواقع عبر أدوات حقيقية، ويتوقف قبل أي إجراء لا يمكن التراجع عنه، ويتحقق من النتيجة، ويسجّلها للتدقيق، ويتعلّم منها.
+
+```bash
+node bin/astack.mjs standup
+node bin/astack.mjs ask "what is the status of this invoice?"
+node bin/astack.mjs ask "file the quarterly vat return" --dry-run
+node bin/astack.mjs context map "invoice reconciliation"
+node bin/astack.mjs memory search "the accountant of Acme"
+node bin/astack.mjs schedule add "portal" --kind http-check --every 10m --url https://example.com
+node bin/astack.mjs signal create "whatsapp inbox" --source whatsapp
+node bin/astack.mjs browser login owner --url https://portal.example.gov
+node bin/astack.mjs approval pending
+```
+
+اقرأ التفاصيل في [Autonomous Organization](documentation/Autonomous-Organization.md)، وراجع جدول حالة الميزات فيه لمعرفة ما هو منفَّذ فعليًا وما هو جاهز للربط فقط.
+
+### ما الذي أُضيف
+- **ذاكرة متعددة الأوجه وزمنية** — اثنا عشر وجهًا للذاكرة، واستبدال الحقائق بدل استبدالها الكامل، وتجميع ليلي ([التفاصيل](documentation/Memory-OS.md))
+- **محرّك السياق** — خريطة مساحة العمل وفهرس الرموز ورسم بياني لسجلات المجال ضمن ميزانية رموز محددة ([التفاصيل](documentation/Context-Engine.md))
+- **رسم بياني للمعرفة** — الأشخاص والشركات والقضايا والحسابات وعلاقاتها عبر الزمن ([التفاصيل](documentation/Knowledge-Graph.md))
+- **محرّك التعلّم** — العمل المتكرر يتحول إلى مهارة موثّقة ومُصدَّرة بنسخ ([التفاصيل](documentation/Learning-Engine.md))
+- **متصفح داخلي** — جلسات دخول دائمة، وعمل حقيقي على النماذج، وأدلة مترابطة بالتجزئة، وتوقف قبل الإرسال النهائي ([التفاصيل](documentation/Browser-Operator.md))
+- **المجدول والخطافات** — مراقبة في الخلفية وأحداث واردة تُنشئ مهامًا بنفسها ([التفاصيل](documentation/Scheduler-and-Signals.md))
+- **طبقة الثقة** — مستويات صلاحية، وإيصالات موافقة، وسجل تدقيق، ووسيط اعتماديات ([التفاصيل](documentation/Security-and-Authority.md))
+
 ## مجالات العمل
 يوجّه سجل المجالات كل طلب — بالفارسية أو الإنجليزية — إلى الأقسام وسير العمل ومخطط الفريق المناسب: البرمجيات، القانون، المالية، المحاسبة، الضرائب، التسويق، العمليات، الموارد البشرية، البحث، والأعمال. انظر: [الأقسام](documentation/Departments.md) و[الأدوار](documentation/Roles.md) (33 قسمًا، 219 دورًا متخصصًا).
 

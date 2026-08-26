@@ -9,6 +9,7 @@ import { runContextCommand, runGraphCommand, runLearningCommand, runMemoryComman
 import { runBrowserCommand, runMissionCommand, runScheduleCommand, runSignalCommand } from "../cli/operations-cli.mjs";
 import { runApprovalCommand, runAuditCommand, runAuthorityCommand, runRuntimeCommand, runSecretCommand, runToolCommand } from "../cli/trust-cli.mjs";
 import { runAskCommand, runOwnerCommand, runStandupCommand } from "../cli/chief-cli.mjs";
+import { pendingMigrations, runMigrations } from "../upgrade-engine/migrations.mjs";
 
 const i18n = createLocalization();
 const runtime = createRuntime();
@@ -70,6 +71,17 @@ function doctor({ verbose = false } = {}) {
   console.log("Browser: " + runtime.browser.status().driver);
   console.log("Authority default: " + runtime.authority.describe().defaultLevel);
   console.log("Telemetry: disabled");
+  // An install that upgraded from an older core ran the previous upgrade command,
+  // which had no migration step. Report what is still waiting rather than letting
+  // it be missed.
+  const pending = pendingMigrations(runtime.workspaceRoot);
+  if (pending.length) {
+    console.log(i18n.t("cli.upgrade.migrationsPending", { count: pending.length }));
+    for (const migration of pending) {
+      console.log("- " + migration.id + ": " + migration.description);
+    }
+    console.log(i18n.t("cli.upgrade.migrationsHint"));
+  }
   if (verbose) {
     const context = runtime.context.stats();
     console.log("Context index: " + (context.built ? context.files + " files, " + context.symbols + " symbols" : "not built"));
@@ -94,10 +106,18 @@ async function run() {
   const context = { runtime, i18n, tokens };
   switch (command) {
     case "init":
-    case "install":
+    case "install": {
       doctor();
+      const migrated = runMigrations(runtime.workspaceRoot).filter((entry) => entry.status === "applied");
+      if (migrated.length) {
+        console.log(i18n.t("cli.upgrade.migrationsApplied", { count: migrated.length }));
+        for (const entry of migrated) {
+          console.log("- " + entry.id + ": " + entry.detail);
+        }
+      }
       console.log(command === "init" ? i18n.t("cli.initDone") : i18n.t("cli.installed"));
       return;
+    }
     case "doctor":
       doctor({ verbose: tokens.includes("--verbose") });
       return;
