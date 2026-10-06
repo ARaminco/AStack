@@ -34,13 +34,23 @@ Run `astack interop sync` after cloning or upgrading to (re)generate the runtime
 ## Token Discipline
 This is a hard requirement, not a preference.
 
-1. Do not read the workspace to find something. Run `astack context map "<question>"` or `astack context search "<terms>"`, then open only the exact paths and line ranges you need.
+1. Do not read the workspace to find something. For code structure ask the code graph first (`astack graphify query "<question>"` / `astack_graph_query`); otherwise run `astack context map "<question>"` or `astack context search "<terms>"`. Then open only the exact paths and line ranges you need.
 2. Do not re-read large documents. Build or read the document map, then load the relevant section.
 3. Do not load every skill, tool, role or memory. Use the catalogs (`astack skill catalog`, `astack tool catalog`) and load full content only for what you selected.
 4. Do not paste transcripts between agents or runtimes. Use structured handoffs: what was done, findings, artifacts, open questions, recommended next step.
 5. Prefer identifiers and paths over duplicated content.
 6. When something does not fit a budget, say what was omitted and how to reveal it.
 7. Report savings honestly: `astack context stats` measures them.
+
+## Code Graph (Graphify)
+Graphify turns the workspace into a knowledge graph (`graphify-out/graph.json`) with tree-sitter, locally and without model calls. AStack drives it for both runtimes; never run `graphify claude install` or `graphify codex install`, which would write different, machine-specific guidance per runtime.
+
+- Ask before you grep or read: `astack graphify query "<question>"`, `explain "<symbol>"`, `path "<A>" "<B>"`, `affected "<symbol>"` — or the `astack_graph_*` MCP tools.
+- Every answer is capped by `graphify.query_budget` (hard cap `graphify.max_budget`) and metered; raise `--budget` only when an answer says it was truncated.
+- Run `astack graphify affected "<symbol>"` before changing a widely used symbol.
+- The graph is rebuilt by git hooks after commits and checkouts; after a pull or a large uncommitted change run `astack graphify build`. A stale graph says so in its answer.
+- Read `graphify-out/GRAPH_REPORT.md` only for a broad architecture review.
+- `astack graphify status` shows the version, freshness, tokens served and measured savings; `astack graphify upgrade` updates Graphify itself.
 
 ## Memory Protocol
 - Recall before acting: `astack memory search "<query>"`, `astack memory entity "<name>"`.

@@ -116,6 +116,13 @@ astack interop hook session-start|session-end --runtime <id>   # called by the r
 astack mcp serve | tools
 ```
 
+## Code graph (Graphify)
+
+```bash
+astack graphify status | setup [--no-hooks] [--no-build] | upgrade | build [--force] | benchmark
+astack graphify query "<question>" [--budget N] | explain "<node>" | path "<A>" "<B>" | affected "<node>"
+```
+
 ## Existing surface (unchanged)
 
 ```bash

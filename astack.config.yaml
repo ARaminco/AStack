@@ -282,6 +282,14 @@ context:
   max_files: 8
   refresh: auto
 
+graphify:
+  enabled: true
+  package: graphifyy
+  output: graphify-out
+  query_budget: 1500
+  max_budget: 4000
+  git_hooks: true
+
 graph:
   enabled: true
   engine: knowledge-graph/graph-engine.mjs

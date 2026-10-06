@@ -39,7 +39,7 @@ One-time trust steps that cannot be automated safely:
 
 ## MCP tools
 
-`astack_standup`, `astack_memory_search`, `astack_memory_remember`, `astack_memory_supersede`, `astack_memory_entity`, `astack_context_map`, `astack_context_search`, `astack_ask`, `astack_skill_catalog`, `astack_handoff_write`, `astack_journal`, `astack_interop_status`.
+`astack_standup`, `astack_memory_search`, `astack_memory_remember`, `astack_memory_supersede`, `astack_memory_entity`, `astack_context_map`, `astack_context_search`, `astack_ask`, `astack_skill_catalog`, `astack_handoff_write`, `astack_journal`, `astack_interop_status`, and the code graph tools `astack_graph_query`, `astack_graph_explain`, `astack_graph_path`, `astack_graph_affected` ([Graphify](Graphify.md)).
 
 Each tool runs the astack CLI with an argument vector (never a shell string), so it can do nothing the CLI could not, and both runtimes get byte-identical results. `astack mcp tools` lists them.
 

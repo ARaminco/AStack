@@ -58,7 +58,8 @@
       "tool": "رجیستری ابزارها با افشای تدریجی.",
       "runtime": "runtimeهای نصب‌شده و مسیریابی مدل.",
       "interop": "Claude Code و Codex را روی یک قرارداد، یک حافظه و یک دفترچه رویداد نگه می‌دارد: status، sync، handoff، journal، hook.",
-      "mcp": "سرور MCP مشترک astack را برای Claude Code و Codex اجرا می‌کند."
+      "mcp": "سرور MCP مشترک astack را برای Claude Code و Codex اجرا می‌کند.",
+      "graphify": "گراف دانش کد با Graphify و بودجه توکن: status، setup، upgrade، build، query، explain، path، affected، benchmark."
     },
     "project": {
       "usage": "فرمان‌های پروژه: init، demo، list، status، board، backlog، add، move، start، done، block، unblock، charter، milestone، sprint، risk، gate، advance، baseline، critical-path، forecast، next، digest، decision، scaffold، raci، report، templates",
@@ -351,6 +352,24 @@
       "noClaudeMemory": "حافظه خودکار Claude Code برای این workspace پیدا نشد.",
       "unknownAction": "عملیات interop ناشناخته: {action}",
       "codexHooks": "Codex هوک‌های پروژه را فقط پس از یک‌بار تأیید اجرا می‌کند: Codex را در همین پوشه باز کنید، ‎/hooks را بزنید و دو هوک astack را trust کنید (اگر sync آن‌ها را تغییر داد، دوباره)."
+    },
+    "graphify": {
+      "statusTitle": "گراف کد Graphify (منبع context با بودجه توکن)",
+      "installed": "graphify نسخه {version} نصب است",
+      "notInstalled": "graphify نصب نیست: astack graphify setup",
+      "graph": "گراف {path}: {nodes} گره، {edges} یال، ساخته‌شده {at} ({state})",
+      "fresh": "به‌روز",
+      "stale": "قدیمی — astack graphify build",
+      "noGraph": "هنوز گرافی ساخته نشده: astack graphify build",
+      "hooksOn": "git hookها گراف را بعد از هر commit و checkout به‌روز نگه می‌دارند",
+      "hooksOff": "git hookها نصب نیستند: astack graphify setup (یا graphify hook install)",
+      "budget": "بودجه هر پاسخ: {query} توکن (سقف قطعی {max})",
+      "usage": "اندازه‌گیری‌شده: {queries} پرسش، {served} توکن تحویل‌شده، {truncated} مورد کوتاه‌شده تا سقف بودجه",
+      "benchmark": "بنچمارک: {reduction} برابر توکن کمتر در هر پرسش (~{avg} در برابر ~{naive} حالت خام)؛ صرفه‌جویی تخمینی تا الان: {saved}",
+      "ready": "Graphify نسخه {version} برای Claude Code و Codex آماده است.",
+      "setupFailed": "راه‌اندازی Graphify کامل نشد؛ مرحله ناموفق بالا را ببینید.",
+      "served": "({tokens} توکن از بودجه {budget} توکنی تحویل شد)",
+      "unknownAction": "عملیات graphify ناشناخته: {action}"
     }
   },
   "delivery": {

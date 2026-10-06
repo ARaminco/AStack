@@ -6,6 +6,7 @@ AStack Enterprise یک سیستم‌عامل هوش مصنوعی ماژولار 
 
 ## رانتایم
 - رانتایم‌ها: Claude Code و Codex به‌صورت هم‌تراز ([مغز مشترک](documentation/Codex-and-Claude-Code.md)، [چرخه کار Claude Code](documentation/Claude-Code.md))
+- گراف کد: [Graphify](documentation/Graphify.md) با بودجه توکن AStack برای هر دو رانتایم (`node bin/astack.mjs graphify setup`)
 - قرارداد مشترک: `AGENTS.md` (Codex مستقیم می‌خواند و `CLAUDE.md` آن را import می‌کند)؛ سیم‌کشی هر دو: `node bin/astack.mjs interop sync`
 - ارتباط با مالک: فارسی — کد و مستندات فنی: انگلیسی
 - معماری: لایه‌ای، توسعه‌پذیر با پلاگین، مستقل از ارائه‌دهنده، دامنه‌آگاه ([جزئیات](documentation/Architecture.md))

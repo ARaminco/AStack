@@ -30,6 +30,7 @@ import { ClaudeCodeRuntime } from "../runtime-providers/adapters/claude-code.mjs
 import { CliRuntime } from "../runtime-providers/adapters/cli-runtime.mjs";
 import { CodexRuntime } from "../runtime-providers/adapters/codex.mjs";
 import { InteropEngine, detectRuntime } from "../interop-engine/interop-engine.mjs";
+import { GraphifyAdapter } from "../context-engine/graphify.mjs";
 import { MockRuntime } from "../runtime-providers/adapters/mock-runtime.mjs";
 import { ModelRouter } from "../runtime-providers/model-router.mjs";
 import { MissionEngine } from "../mission-engine/mission-engine.mjs";
@@ -162,7 +163,8 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
     budgets
   });
 
-  const interop = new InteropEngine(root, { workspaceRoot, memory, clock, standup: () => chief.standup() });
+  const graphify = new GraphifyAdapter(workspaceRoot, { config: configuration.section("graphify", {}), clock });
+  const interop = new InteropEngine(root, { workspaceRoot, memory, clock, graphify, standup: () => chief.standup() });
 
   const departments = JSON.parse(readFileSync(join(root, "departments", "departments.json"), "utf8")).departments;
   const providers = providerRegistry.list();
@@ -213,6 +215,7 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
     runtimes,
     modelRouter,
     interop,
+    graphify,
     missions,
     scheduler,
     signals,

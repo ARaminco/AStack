@@ -10,6 +10,7 @@ import { runBrowserCommand, runMissionCommand, runScheduleCommand, runSignalComm
 import { runApprovalCommand, runAuditCommand, runAuthorityCommand, runRuntimeCommand, runSecretCommand, runToolCommand } from "../cli/trust-cli.mjs";
 import { runAskCommand, runOwnerCommand, runStandupCommand } from "../cli/chief-cli.mjs";
 import { runInteropCommand, runMcpCommand } from "../cli/interop-cli.mjs";
+import { runGraphifyCommand } from "../cli/graphify-cli.mjs";
 import { pendingMigrations, runMigrations } from "../upgrade-engine/migrations.mjs";
 
 const i18n = createLocalization();
@@ -19,7 +20,7 @@ const COMMANDS = [
   "init", "install", "doctor", "upgrade", "review", "ask", "standup", "owner",
   "context", "memory", "graph", "learn", "skill",
   "mission", "schedule", "signal", "browser",
-  "authority", "approval", "audit", "secret", "tool", "runtime", "interop", "mcp",
+  "authority", "approval", "audit", "secret", "tool", "runtime", "interop", "mcp", "graphify",
   "domain", "team", "agent", "lead", "project", "workflow", "provider", "plugin", "knowledge", "backup"
 ];
 
@@ -56,6 +57,8 @@ function doctor({ verbose = false } = {}) {
   console.log("Claude Code: CLAUDE.md");
   console.log("Codex: AGENTS.md");
   const interop = runtime.interop.status();
+  const graph = runtime.graphify.status();
+  console.log("Graphify: " + (graph.installed ? graph.version + (graph.graph.built ? ", " + graph.graph.nodes + " nodes" + (graph.graph.stale ? " (stale)" : "") : ", graph not built") : "not installed (astack graphify setup)"));
   console.log("Shared contract: AGENTS.md#" + interop.contract.hash + (interop.parity ? " (Claude Code and Codex in parity)" : " (run: astack interop sync)"));
   console.log("Departments: " + runtime.departments.length);
   console.log("Enterprise Roles: " + JSON.parse(readFileSync(join(runtime.root, "roles", "enterprise-roles.json"), "utf8")).roles.length);
@@ -199,6 +202,9 @@ async function run() {
       return;
     case "mcp":
       await runMcpCommand(context);
+      return;
+    case "graphify":
+      runGraphifyCommand(context);
       return;
     case "domain":
       runDomainCommand(context);
