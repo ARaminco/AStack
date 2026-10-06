@@ -470,11 +470,15 @@ assert.match(updateJournal.sessionContext({ runtime: "codex" }), /AStack update 
 assert.ok(!existsSync(join(updated, ".astack", "update.lock")), "the lock is released");
 
 const failing = makeOld();
+writeFileSync(join(failing, "CLAUDE.md"), "# Owner guide only\n", "utf8");
+rmSync(join(failing, ".mcp.json"));
 const failResult = new UpdatePipeline({ target: failing, source: repoRoot, flags: quiet, hooks: { verify: () => ({ ok: false, detail: "simulated failure" }) } }).run();
 assert.ok(!failResult.ok && failResult.rolledBack, "a failed verification rolls back");
 assert.equal(JSON.parse(readFileSync(join(failing, "core", "manifest.json"), "utf8")).version, "2.1.0", "the old version is restored");
 assert.ok(!existsSync(join(failing, "interop-engine")), "files the update added are removed again");
 assert.equal(new UpdatePipeline({ target: failing }).history()[0].result, "rolled-back");
+assert.equal(readFileSync(join(failing, "CLAUDE.md"), "utf8"), "# Owner guide only\n", "wiring the setup stage changed is restored");
+assert.ok(!existsSync(join(failing, ".mcp.json")), "wiring the setup stage created is removed");
 
 const locked = makeOld();
 writeFileSync(join(locked, ".astack", "update.lock"), "{}", "utf8");

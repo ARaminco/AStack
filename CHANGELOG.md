@@ -3,6 +3,16 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 2.4.1
+
+A rollback now restores the project completely. The pipeline snapshots the
+files the setup stage writes outside the core (`AGENTS.md`, `CLAUDE.md`,
+`.mcp.json`, `.claude/settings.json`, `.codex/*`, `.gitignore`, `graphify-out`)
+before setup and puts them back — or removes them — when verification fails.
+Found updating a heavily customised 2.0 fork whose protected engines are
+incompatible with 2.4: the core was restored, but its `CLAUDE.md` kept an
+import of an `AGENTS.md` that the rollback had removed.
+
 ## 2.4.0 — The update pipeline
 
 "Update AStack" is now one defined pipeline that always takes the new core from

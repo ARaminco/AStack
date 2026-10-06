@@ -20,6 +20,9 @@ import { UpgradeEngine, compareVersions, readVersion } from "./upgrade-engine.mj
 export const STAGES = ["preflight", "fetch", "plan", "apply", "setup", "verify", "record"];
 const LOCK_STALE_MS = 30 * 60 * 1000;
 const SETUP_FLAGS = ["no-graphify", "no-trust-codex", "no-global-skill", "no-hooks", "no-index"];
+// Files and directories the setup stage writes outside the managed core. They
+// are snapshotted before setup so a rollback restores the project exactly.
+export const WIRING = ["AGENTS.md", "CLAUDE.md", ".mcp.json", ".claude/settings.json", ".codex/config.toml", ".codex/hooks.json", ".gitignore", "graphify-out"];
 
 function readConfigValue(root, section, key) {
   const path = join(root, "astack.config.yaml");
@@ -155,11 +158,55 @@ export class UpdatePipeline {
         }
       }
     }
+    restored += this.restoreWiring(backupDir);
     if (existsSync(join(backupDir, "astack.config.yaml"))) {
       cpSync(join(backupDir, "astack.config.yaml"), join(this.target, "astack.config.yaml"));
       restored += 1;
     }
     return { restored, removed, version: readVersion(this.target) };
+  }
+
+  snapshotWiring(backupDir) {
+    const state = {};
+    for (const path of WIRING) {
+      const source = join(this.target, path);
+      state[path] = existsSync(source);
+      if (state[path] && path !== "graphify-out") {
+        const copy = join(backupDir, ".wiring", path);
+        mkdirSync(dirname(copy), { recursive: true });
+        cpSync(source, copy);
+      }
+    }
+    mkdirSync(backupDir, { recursive: true });
+    writeFileSync(join(backupDir, "wiring.json"), JSON.stringify(state, null, 2) + "\n", "utf8");
+    return state;
+  }
+
+  restoreWiring(backupDir) {
+    const statePath = join(backupDir, "wiring.json");
+    if (!existsSync(statePath)) {
+      return 0;
+    }
+    const state = JSON.parse(readFileSync(statePath, "utf8"));
+    let changed = 0;
+    for (const [path, existed] of Object.entries(state)) {
+      const target = join(this.target, path);
+      if (existed) {
+        const copy = join(backupDir, ".wiring", path);
+        if (existsSync(copy)) {
+          cpSync(copy, target);
+          changed += 1;
+        }
+      } else if (existsSync(target)) {
+        rmSync(target, { recursive: true, force: true });
+        changed += 1;
+        const parent = dirname(target);
+        if (parent !== this.target && existsSync(parent) && readdirSync(parent).length === 0) {
+          rmSync(parent, { recursive: true, force: true });
+        }
+      }
+    }
+    return changed;
   }
 
   history({ limit = 20 } = {}) {
@@ -319,6 +366,9 @@ export class UpdatePipeline {
       }
 
       // setup (migrations, contract, wiring, Graphify, index) with the new code
+      if (backupDir) {
+        this.snapshotWiring(backupDir);
+      }
       const setup = this.runSetup();
       this.stage("setup", setup.ok, setup.ok ? "migrations, contract, Claude Code/Codex wiring, code graph and index refreshed" : "setup failed: " + (setup.output ?? "").split(/\r?\n/).slice(-1)[0]);
 
