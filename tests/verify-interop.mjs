@@ -529,6 +529,18 @@ assert.ok(!existsSync(join(mergeTarget, "engine", "helper.mjs")));
 refreshBase({ target: mergeTarget, sourceDir: mergeSource, keep: ["engine"] });
 assert.equal(readFileSync(join(mergeTarget, ".astack", "upstream-base", "engine", "plain.mjs"), "utf8"), "new\n", "the release becomes the next base");
 
+const keptProject = makeOld();
+const keptConfig = readFileSync(join(keptProject, "astack.config.yaml"), "utf8").replace("  keep: []", "  keep:\n    - astack.config.yaml\n    - orchestrator");
+writeFileSync(join(keptProject, "astack.config.yaml"), keptConfig, "utf8");
+writeFileSync(join(keptProject, "orchestrator", "orchestrator.mjs"), readFileSync(join(keptProject, "orchestrator", "orchestrator.mjs"), "utf8") + "\n// owner note\n", "utf8");
+process.env.ASTACK_USER_HOME = setupHome;
+const keptResult = new UpdatePipeline({ target: keptProject, source: repoRoot, flags: quiet }).run();
+delete process.env.ASTACK_USER_HOME;
+assert.ok(keptResult.ok, JSON.stringify(keptResult.stages));
+assert.match(keptResult.stages.find((entry) => entry.stage === "merge").detail, /^1 protected path/, "the config in upgrade.keep is not merged");
+assert.match(readFileSync(join(keptProject, "orchestrator", "orchestrator.mjs"), "utf8"), /owner note/, "the owner's protected code survives");
+assert.ok(existsSync(join(keptProject, ".astack", "upstream-base", "orchestrator", "orchestrator.mjs")), "a verified update records the merge base");
+
 // ---------------------------------------------------------------- markdown memory comes back whole
 
 const legacyRoot = sandbox("astack-legacy-memory-");

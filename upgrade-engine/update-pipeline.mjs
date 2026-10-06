@@ -368,7 +368,12 @@ export class UpdatePipeline {
       }
 
       // merge: the owner's protected paths, three ways against the last base
-      const ownerKeep = [...new Set([...readKeepList(this.target), ...keep])];
+      // Seed files (the config, CLAUDE.md, README) and preserved owner data are
+      // never merged: the config gains new sections on apply, the rest is the owner's.
+      const unmergeable = [...(engine.manifest.seed ?? []), ...(engine.manifest.preserve ?? [])];
+      const ownerKeep = [...new Set([...readKeepList(this.target), ...keep])]
+        .map((entry) => String(entry).replace(/[/\\]+$/, ""))
+        .filter((entry) => !entry.includes("*") && !unmergeable.some((path) => entry === path || entry.startsWith(path + "/")));
       if (backupDir && ownerKeep.length) {
         const merged = mergeKept({ target: this.target, sourceDir, keep: ownerKeep, required: engine.manifest.required ?? [], backupDir });
         this.stage(
