@@ -13,7 +13,7 @@ Any project that embeds an AStack core can update itself to the latest version w
 | plan | versions, add/update/seed counts, new config sections, CHANGELOG titles in between, uncommitted managed files | a downgrade without `--force`; `--check` ends here |
 | apply | backs up every replaced file to `.astack/backups/upgrade-<stamp>/`, then writes | — |
 | setup | migrations, the contract block, Claude Code/Codex wiring, Graphify, index — with the new code in a new process | — |
-| verify | `doctor` and `interop doctor` (parity); `--test` adds the test suites | any check fails → automatic **rollback** to the backup |
+| verify | `doctor` and `interop doctor` (parity); `--test` adds the test suites | any check fails → automatic **rollback**: core files, configuration and the wiring setup wrote (`AGENTS.md`, `CLAUDE.md`, `.mcp.json`, `.claude/`, `.codex/`, `.gitignore`, `graphify-out`) are restored |
 | record | `.astack/update-history.jsonl` and the shared journal | — |
 
 ```bash

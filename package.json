@@ -1,6 +1,6 @@
 {
   "name": "astack-enterprise",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "private": true,
   "type": "module",
   "description": "AStack Enterprise: a self-learning AI operating system that remembers its owner, forms expert teams, operates software and websites through real tools, and turns experience into reusable skills.",
