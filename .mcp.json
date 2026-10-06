@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "astack": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "bin/astack.mjs",
+        "mcp",
+        "serve"
+      ]
+    }
+  }
+}

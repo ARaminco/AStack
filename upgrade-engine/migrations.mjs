@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { InteropEngine } from "../interop-engine/interop-engine.mjs";
 
 /**
  * Data migrations that run after an upgrade.
@@ -173,6 +174,21 @@ export const migrations = [
       }
       writeFileSync(path, current.replace(/\s*$/, "\n") + rules.join("\n") + "\n", "utf8");
       return "added " + rules.length + " ignore rules for runtime state";
+    }
+  },
+  {
+    id: "2026.7-runtime-interop",
+    description: "Wire Claude Code and Codex to the shared AGENTS.md contract, the astack MCP server, the session hooks and the journal.",
+    appliesTo: (root) => existsSync(join(root, "AGENTS.md")) && new InteropEngine(root).plan().some((entry) => entry.action !== "ok"),
+    run: (root) => {
+      // CLAUDE.md, .mcp.json and the runtime settings belong to the owner, so the
+      // wiring is merged into them rather than shipped over them.
+      const changed = new InteropEngine(root).sync().filter((entry) => entry.action !== "ok");
+      const ignore = join(root, ".gitignore");
+      if (existsSync(ignore) && !readFileSync(ignore, "utf8").includes(".astack/interop/")) {
+        writeFileSync(ignore, readFileSync(ignore, "utf8").replace(/\s*$/, "\n") + ".astack/interop/\n", "utf8");
+      }
+      return changed.length ? "wired " + changed.map((entry) => entry.path).join(", ") : "runtime wiring already in place";
     }
   }
 ];

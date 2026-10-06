@@ -56,7 +56,9 @@
       "audit": "Audit trail of every external action.",
       "secret": "Credential references without exposing values.",
       "tool": "Tool registry with progressive disclosure.",
-      "runtime": "Installed runtimes and model routing."
+      "runtime": "Installed runtimes and model routing.",
+      "interop": "Keep Claude Code and Codex on one contract, one memory and one journal: status, sync, handoff, journal, hook.",
+      "mcp": "Serve the astack MCP server over stdio for Claude Code and Codex."
     },
     "project": {
       "usage": "Project commands: init, demo, list, status, board, backlog, add, move, start, done, block, unblock, charter, milestone, sprint, risk, gate, advance, baseline, critical-path, forecast, next, digest, decision, scaffold, raci, report, templates",
@@ -323,6 +325,32 @@
       "preference": "Preference stored: {text}",
       "summarized": "Conversation summary stored: {stored} records.",
       "unknownAction": "Unknown owner action: {action}"
+    },
+    "interop": {
+      "statusTitle": "AStack interop: one contract, one memory, one journal",
+      "contract": "Shared contract: AGENTS.md#{hash} ({bytes} bytes)",
+      "memory": "Shared memory: {path}",
+      "journal": "Journal: {path} ({entries} entries)",
+      "runtimeLine": "{instructions} · wiring {wired}",
+      "claudeMemory": "auto-memory (imported at session start): {path}",
+      "codexTrusted": "project trusted in ~/.codex/config.toml ({key})",
+      "codexUntrusted": "project NOT trusted in ~/.codex/config.toml — Codex ignores .codex/ until it is: astack interop sync --trust-codex",
+      "codexMissing": "~/.codex/config.toml not found (Codex not installed for this user)",
+      "lastSeen": "last {runtime}: {entry}",
+      "pending": "[{runtime}] {path}: {action} pending — run astack interop sync",
+      "parityOk": "Parity: Claude Code and Codex load the same contract and reach the same memory, tools and journal.",
+      "parityMissing": "Parity incomplete: run astack interop sync.",
+      "syncPlan": "Planned runtime wiring (dry run):",
+      "syncDone": "Runtime wiring synchronized:",
+      "trustAdded": "Codex now trusts {key} (backup: {backup}).",
+      "trustPresent": "Codex already trusts {key}.",
+      "trustHint": "Codex ignores the project .codex/ layer until the project is trusted: astack interop sync --trust-codex (or trust it from Codex).",
+      "handoffSaved": "Handoff recorded for {runtime} (memory {memory}).",
+      "journalTitle": "Journal ({count} entries, newest first):",
+      "imported": "Claude Code memory import from {directory}: {imported} new, {updated} updated, {unchanged} unchanged, {skipped} skipped.",
+      "noClaudeMemory": "No Claude Code auto-memory found for this workspace.",
+      "unknownAction": "Unknown interop action: {action}",
+      "codexHooks": "Codex runs project hooks only after you trust them once: open Codex here, run /hooks and trust the two astack hooks (re-trust after astack interop sync changes them)."
     }
   },
   "delivery": {

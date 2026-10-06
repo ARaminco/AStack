@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node bin/astack.mjs interop hook session-start --runtime codex",
+            "statusMessage": "Loading the AStack shared brain",
+            "additionalContextLimit": 4000
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node bin/astack.mjs interop hook session-end --runtime codex"
+          }
+        ]
+      }
+    ]
+  }
+}

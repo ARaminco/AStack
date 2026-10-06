@@ -3,6 +3,50 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 2.2.0 — Claude Code and Codex in parity
+
+Claude Code and Codex become two hands of the same operator: one operating
+contract, one memory, one journal, one tool surface. Work started in one runtime
+continues in the other without re-explaining anything. Additive; 2.1 installs
+are wired by a migration.
+
+### Added
+
+**Shared contract** — `AGENTS.md` is the runtime-neutral operating guide. Codex
+loads it natively; `CLAUDE.md` imports it with `@AGENTS.md` and keeps only the
+Claude Code specifics, so both runtimes read byte-identical rules.
+`astack interop status` proves both resolve to the same contract hash.
+
+**Interop engine** (`interop-engine/`) — `astack interop sync` generates or
+merges the wiring for both runtimes (`.mcp.json` and `.claude/settings.json`
+for Claude Code, `.codex/config.toml` and `.codex/hooks.json` for Codex). Owner
+entries are kept, malformed files are reported and never overwritten, and a
+second run changes nothing. `--trust-codex` trusts the project in
+`~/.codex/config.toml` with a backup.
+
+**astack MCP server** — `astack mcp serve`, a dependency-free stdio MCP server
+both runtimes launch. Twelve tools (standup, memory search/remember/supersede/
+entity, context map/search, ask, skill catalog, handoff, journal, interop
+status) run the CLI with an argument vector, so results are identical in both
+runtimes and records keep the calling runtime as provenance.
+
+**Session hooks and journal** — a session-start hook gives either runtime the
+same context: contract hash, the latest handoffs and session ends from both
+runtimes, owner capsule, open work and a memory brief. Session ends and
+structured handoffs (`astack interop handoff`) go to
+`.astack/interop/journal.jsonl`; handoffs are also episodic memory.
+
+**Claude Code memory import** — Claude Code auto-memory is imported into the
+shared store at every Claude Code session start; a changed file supersedes its
+earlier record, so Codex recalls what Claude Code learned.
+
+**Codex runtime adapter** — `codex` is a hosted runtime writing the same work
+order format as `claude-code`; the model router prefers the runtime hosting
+the current session on a tie.
+
+**Migration `2026.7-runtime-interop`** and the `verify-interop` suite (six
+suites in `npm test`).
+
 ## 2.1.0 — The autonomy layer
 
 AStack becomes a persistent organization: it remembers its owner across

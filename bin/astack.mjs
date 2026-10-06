@@ -9,6 +9,7 @@ import { runContextCommand, runGraphCommand, runLearningCommand, runMemoryComman
 import { runBrowserCommand, runMissionCommand, runScheduleCommand, runSignalCommand } from "../cli/operations-cli.mjs";
 import { runApprovalCommand, runAuditCommand, runAuthorityCommand, runRuntimeCommand, runSecretCommand, runToolCommand } from "../cli/trust-cli.mjs";
 import { runAskCommand, runOwnerCommand, runStandupCommand } from "../cli/chief-cli.mjs";
+import { runInteropCommand, runMcpCommand } from "../cli/interop-cli.mjs";
 import { pendingMigrations, runMigrations } from "../upgrade-engine/migrations.mjs";
 
 const i18n = createLocalization();
@@ -18,7 +19,7 @@ const COMMANDS = [
   "init", "install", "doctor", "upgrade", "review", "ask", "standup", "owner",
   "context", "memory", "graph", "learn", "skill",
   "mission", "schedule", "signal", "browser",
-  "authority", "approval", "audit", "secret", "tool", "runtime",
+  "authority", "approval", "audit", "secret", "tool", "runtime", "interop", "mcp",
   "domain", "team", "agent", "lead", "project", "workflow", "provider", "plugin", "knowledge", "backup"
 ];
 
@@ -40,7 +41,8 @@ function doctor({ verbose = false } = {}) {
     "memory-engine", "workflow-engine", "delivery-engine", "team-engine", "agent-engine", "upgrade-engine",
     "localization-engine", "configuration-engine", "event-bus", "permission-system", "installer", "documentation",
     "tests", "context-engine", "knowledge-graph", "learning-engine", "scheduler-engine", "browser-engine",
-    "signal-engine", "mission-engine", "trust-engine", "tool-registry", "runtime-providers", "chief-of-staff", "CLAUDE.md"
+    "signal-engine", "mission-engine", "trust-engine", "tool-registry", "runtime-providers", "chief-of-staff", "interop-engine",
+    "CLAUDE.md", "AGENTS.md"
   ];
   const missing = required.filter((item) => !existsSync(join(runtime.root, item)));
   const config = runtime.configuration.requireSections([
@@ -52,6 +54,9 @@ function doctor({ verbose = false } = {}) {
   }
   console.log(i18n.t("cli.doctorOk"));
   console.log("Claude Code: CLAUDE.md");
+  console.log("Codex: AGENTS.md");
+  const interop = runtime.interop.status();
+  console.log("Shared contract: AGENTS.md#" + interop.contract.hash + (interop.parity ? " (Claude Code and Codex in parity)" : " (run: astack interop sync)"));
   console.log("Departments: " + runtime.departments.length);
   console.log("Enterprise Roles: " + JSON.parse(readFileSync(join(runtime.root, "roles", "enterprise-roles.json"), "utf8")).roles.length);
   console.log("Domains: " + runtime.domains.list().length);
@@ -188,6 +193,12 @@ async function run() {
       return;
     case "runtime":
       await runRuntimeCommand(context);
+      return;
+    case "interop":
+      await runInteropCommand(context);
+      return;
+    case "mcp":
+      await runMcpCommand(context);
       return;
     case "domain":
       runDomainCommand(context);

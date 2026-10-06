@@ -18,8 +18,8 @@ astack doctor                 # verify afterwards
 The manifest `upgrade-engine/manifest.json` (always taken from the new version) defines three sets:
 
 - **managed** — engine code, registries, locales, templates, tests, documentation. Replaced when different; every replaced file is first copied to `.astack/backups/upgrade-<stamp>/`, next to an `upgrade-report.json`.
-- **seed** — `astack.config.yaml`, `CLAUDE.md`, `README.md`, `package.json`, `.gitignore`, `.github`, `Dockerfile`. Created only when missing; never overwritten. For `astack.config.yaml`, top-level sections that exist in the new version but not in the owner's file (for example `domains:`, `teams:`, `agents:`, `upgrade:`) are appended automatically — existing values are never modified, and the previous config is backed up first.
-- **preserve** — `.astack/`, `memory/`, `plugins/`, `knowledge-packs/`, `.env`, `.git`, `node_modules`. Never touched.
+- **seed** — `astack.config.yaml`, `AGENTS.md`, `CLAUDE.md`, `README.md`, `package.json`, `.gitignore`, `.github`, `Dockerfile`. Created only when missing; never overwritten. For `astack.config.yaml`, top-level sections that exist in the new version but not in the owner's file (for example `domains:`, `teams:`, `agents:`, `upgrade:`) are appended automatically — existing values are never modified, and the previous config is backed up first.
+- **preserve** — `.astack/`, `memory/`, `plugins/`, `knowledge-packs/`, the runtime wiring (`.claude/`, `.codex/`, `.agents/`, `.mcp.json`), `.env`, `.git`, `node_modules`. Never touched; the `2026.7-runtime-interop` migration merges the astack entries into the wiring files instead.
 
 Owner customizations of managed paths can be protected permanently by listing them in `astack.config.yaml`:
 

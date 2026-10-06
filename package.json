@@ -1,6 +1,6 @@
 {
   "name": "astack-enterprise",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "private": true,
   "type": "module",
   "description": "AStack Enterprise: a self-learning AI operating system that remembers its owner, forms expert teams, operates software and websites through real tools, and turns experience into reusable skills.",
@@ -10,12 +10,15 @@
   "scripts": {
     "bootstrap": "node scripts/bootstrap-enterprise.mjs",
     "doctor": "node bin/astack.mjs doctor",
-    "test": "node tests/verify-astack.mjs && node tests/verify-delivery.mjs && node tests/verify-orchestration.mjs && node tests/verify-intelligence.mjs && node tests/verify-autonomy.mjs",
+    "test": "node tests/verify-astack.mjs && node tests/verify-delivery.mjs && node tests/verify-orchestration.mjs && node tests/verify-intelligence.mjs && node tests/verify-autonomy.mjs && node tests/verify-interop.mjs",
     "upgrade": "node bin/astack.mjs upgrade",
     "claude:doctor": "node bin/astack.mjs doctor --claude-code",
     "list:knowledge": "node bin/astack.mjs knowledge list",
     "test:intelligence": "node tests/verify-intelligence.mjs",
     "test:autonomy": "node tests/verify-autonomy.mjs",
+    "test:interop": "node tests/verify-interop.mjs",
+    "interop": "node bin/astack.mjs interop status",
+    "interop:sync": "node bin/astack.mjs interop sync",
     "test:browser": "node tests/verify-browser-e2e.mjs",
     "standup": "node bin/astack.mjs standup",
     "tick": "node bin/astack.mjs schedule tick"

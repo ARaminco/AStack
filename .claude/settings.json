@@ -1,0 +1,35 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/bin/astack.mjs\" interop hook session-start --runtime claude-code",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/bin/astack.mjs\" interop hook session-end --runtime claude-code",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "astack"
+  ],
+  "permissions": {
+    "allow": [
+      "mcp__astack"
+    ]
+  }
+}

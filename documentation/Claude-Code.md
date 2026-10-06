@@ -1,6 +1,6 @@
 # Claude Code Runtime
 
-Claude Code is the primary runtime for AStack. The root `CLAUDE.md` is the operational contract it loads before any task; this page explains how the pieces fit together at run time.
+Claude Code is one of the two first-class runtimes for AStack; Codex is the other, and both run from the same contract (see [Codex and Claude Code](Codex-and-Claude-Code.md)). The root `CLAUDE.md` imports `AGENTS.md`, the shared operational contract, and adds the few Claude Code specifics; this page explains how the pieces fit together at run time.
 
 ## Startup Order
 1. `astack.config.yaml` — the single active configuration.
@@ -9,7 +9,9 @@ Claude Code is the primary runtime for AStack. The root `CLAUDE.md` is the opera
 4. `orchestrator/orchestrator.mjs` — the only coordination point.
 5. `domains/domain-registry.mjs` — engagement classification (software, legal, finance, accounting, tax, marketing, operations, hr, research, business).
 6. `departments/departments.json`, `providers/`, `knowledge-packs/`.
-7. `memory-engine/`, `workflow-engine/`, `delivery-engine/`, `team-engine/`, `agent-engine/` (with `leadership.mjs`), `upgrade-engine/`.
+7. `memory-engine/`, `workflow-engine/`, `delivery-engine/`, `team-engine/`, `agent-engine/` (with `leadership.mjs`), `interop-engine/`, `upgrade-engine/`.
+
+The session-start hook in `.claude/settings.json` injects the shared state before the first turn, and the `astack` MCP server from `.mcp.json` exposes memory, context, standup and handoff tools.
 
 ## How Claude Code Operates AStack
 Claude Code is both the leader and the workforce:
@@ -21,6 +23,7 @@ Claude Code is both the leader and the workforce:
 5. **Delegate** — `astack lead delegate` converts ready work items into scheduled agent missions.
 6. **Execute** — `astack agent run-due` dispatches work orders; Claude Code opens each work order in `.astack/agents/<id>/outbox/`, performs it **in the role of that agent** (the role defines the specialization and quality bar), and records the outcome with `astack agent report`.
 7. **Supervise** — `astack lead standup`, `astack lead review`, and `astack project status` before anything is returned to the owner.
+8. **Hand off** — `astack interop handoff` so the next session, in Claude Code or Codex, continues from the same point.
 
 The engines are deterministic state machines; Claude Code supplies the intelligence. No agent talks to another agent directly — results flow through reports, the review queue, and the Orchestrator.
 
@@ -30,4 +33,4 @@ The engines are deterministic state machines; Claude Code supplies the intellige
 - Every substantial engagement becomes a project; every decision is recorded with `astack project decision` so estimate calibration improves over time.
 
 ## Verification
-After any architectural change run `npm test` (three suites) or `astack doctor`.
+After any architectural change run `npm test` (six suites) or `astack doctor`; `astack interop status` confirms Claude Code and Codex are in parity.
