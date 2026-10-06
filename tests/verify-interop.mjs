@@ -11,6 +11,7 @@ import { ClaudeCodeRuntime } from "../runtime-providers/adapters/claude-code.mjs
 import { CodexRuntime } from "../runtime-providers/adapters/codex.mjs";
 import { ModelRouter } from "../runtime-providers/model-router.mjs";
 import { migrations } from "../upgrade-engine/migrations.mjs";
+import { GraphifyAdapter, fitToBudget } from "../context-engine/graphify.mjs";
 
 const repoRoot = process.cwd();
 const sandboxes = [];
@@ -260,7 +261,87 @@ write(join(legacy, ".gitignore"), "node_modules/\n");
 assert.ok(migration.appliesTo(legacy));
 assert.match(migration.run(legacy), /wired/);
 assert.ok(!migration.appliesTo(legacy), "the migration is idempotent");
-assert.match(readFileSync(join(legacy, ".gitignore"), "utf8"), /\.astack\/interop\//);
+assert.match(readFileSync(join(legacy, ".gitignore"), "utf8"), /\.astack\/interop\/\ngraphify-out\//);
 assert.ok(!migration.appliesTo(sandbox("astack-no-contract-")), "nothing to wire without the shared contract");
+
+// ---------------------------------------------------------------- Graphify
+
+const graphRoot = sandbox("astack-graphify-");
+const absent = new GraphifyAdapter(graphRoot, { run: () => ({ ok: false, missing: true, stdout: "", stderr: "not found" }) });
+assert.equal(absent.status().installed, false);
+assert.match(absent.ask("query", ["anything"]).text, /not installed/);
+assert.equal(absent.contextLine(), null, "no graph and no graphify: nothing to say at session start");
+
+const invocations = [];
+let uvFails = true;
+let installedNow = false;
+let head = "aaaa111";
+const fakeRun = (command, args) => {
+  invocations.push([command, ...args]);
+  if (command === "git") {
+    if (args[0] === "rev-parse") return { ok: true, stdout: head + "\n" };
+    return { ok: true, stdout: "" };
+  }
+  if (command === "uv") return uvFails ? { ok: false, stdout: "", stderr: "uv: not found" } : { ok: true, stdout: "Installed graphify" };
+  if (command === "pipx") return (installedNow = true, { ok: true, stdout: "installed package graphifyy 0.9.77" });
+  if (command !== "graphify") return { ok: false, stdout: "", stderr: "unexpected" };
+  if (!installedNow) return { ok: false, missing: true, stdout: "", stderr: "" };
+  switch (args[0]) {
+    case "--version": return { ok: true, stdout: "graphify 0.9.77\n" };
+    case "hook": return { ok: true, stdout: args[1] === "status" ? "post-commit: not installed\n" : "hooks installed\n" };
+    case "update":
+      write(join(graphRoot, "graphify-out", "graph.json"), JSON.stringify({ nodes: [{ id: "a" }, { id: "b" }], links: [{ source: "a", target: "b" }], built_at_commit: "aaaa111" }));
+      return { ok: true, stdout: "[graphify watch] Rebuilt: 2 nodes, 1 edges, 1 communities\n" };
+    case "query": return { ok: true, stdout: Array.from({ length: 400 }, (_, index) => "NODE symbol" + index + " [src=lib/file" + index + ".mjs]").join("\n") };
+    case "explain": return { ok: true, stdout: "Node: InteropEngine\n  Source: interop-engine/interop-engine.mjs L115\n" };
+    case "benchmark": return { ok: true, stdout: "Corpus: 150,550 words → ~200,733 tokens (naive)\n  Avg query cost:  ~7,661 tokens\n  Reduction:       26.2x fewer tokens per query\n" };
+    default: return { ok: true, stdout: "" };
+  }
+};
+const graphify = new GraphifyAdapter(graphRoot, { run: fakeRun, clock, config: { query_budget: 300, max_budget: 1000 } });
+const setup = graphify.setup();
+assert.ok(setup.ok, "setup falls back from uv to pipx");
+assert.deepEqual(setup.steps.map((step) => step.step.split(" ")[0]), ["uv", "pipx", "graphify", "graphify"]);
+assert.equal(setup.version, "0.9.77");
+assert.ok(invocations.some((call) => call.join(" ") === "graphify hook install"), "git hooks keep the graph current");
+assert.match(setup.steps.at(-1).detail, /Rebuilt: 2 nodes/);
+
+const graphState = graphify.graph();
+assert.equal(graphState.nodes, 2);
+assert.equal(graphState.edges, 1);
+assert.equal(graphState.stale, false);
+head = "bbbb222";
+assert.equal(graphify.graph().stale, true, "a graph built at an older commit is stale");
+head = "aaaa111";
+
+const answer = graphify.ask("query", ["how does billing work"]);
+assert.ok(answer.ok);
+assert.ok(answer.tokens <= 300 && answer.truncated, "answers are capped by the AStack budget");
+assert.match(answer.text, /truncated at 300 tokens/);
+assert.deepEqual(invocations.findLast((call) => call[1] === "query").slice(-2), ["--budget", "300"]);
+graphify.ask("query", ["x"], { budget: 99999 });
+assert.deepEqual(invocations.findLast((call) => call[1] === "query").slice(-1), ["1000"], "a requested budget never exceeds the hard cap");
+assert.equal(graphify.ask("explain", ["InteropEngine"]).truncated, false);
+assert.equal(graphify.ask("path", ["a", ""]).ok, false, "path needs two nodes");
+assert.equal(fitToBudget("short", 50).truncated, false);
+
+const benchmark = graphify.benchmark();
+assert.equal(benchmark.reduction, 26.2);
+assert.equal(benchmark.naiveTokens, 200733);
+const usage = graphify.usage();
+assert.equal(usage.queries, 3, "every successful answer is metered");
+assert.ok(usage.tokensServed > 0 && usage.estimatedSaved > 0);
+assert.match(graphify.contextLine(), /Code graph: 2 nodes, 1 edges\. Ask it before grepping/);
+
+const withGraph = new InteropEngine(workspace, { memory, clock, home, graphify });
+assert.match(withGraph.sessionContext({ runtime: "codex" }), /Code graph: 2 nodes/, "both runtimes are told the graph exists");
+const graphCalls = [];
+const graphHandle = createMcpHandler({ run: async (args) => (graphCalls.push(args), { ok: true, output: "" }) });
+await graphHandle({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "astack_graph_query", arguments: { question: "who calls route", budget: 800 } } });
+assert.deepEqual(graphCalls.at(-1), ["graphify", "query", "who calls route", "--budget", "800"]);
+await graphHandle({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "astack_graph_path", arguments: { from: "A", to: "B" } } });
+assert.deepEqual(graphCalls.at(-1), ["graphify", "path", "A", "B"]);
+assert.match(agents, /## Code Graph \(Graphify\)/, "Graphify guidance lives once, in the shared contract");
+assert.ok(!/graphify claude install|## graphify/i.test(claudeMd), "no runtime-specific Graphify section in CLAUDE.md");
 
 console.log("AStack interop verification passed");

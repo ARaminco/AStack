@@ -6,6 +6,7 @@ AStack Enterprise is a modular AI Operating System that runs natively in both Cl
 
 ## Runtime
 - Runtimes: Claude Code and Codex in parity ([how they share one brain](documentation/Codex-and-Claude-Code.md), [Claude Code loop](documentation/Claude-Code.md))
+- Code graph: [Graphify](documentation/Graphify.md) under AStack token budgets for both runtimes (`node bin/astack.mjs graphify setup`)
 - Shared contract: `AGENTS.md` (Codex reads it natively, `CLAUDE.md` imports it); wire both runtimes with `node bin/astack.mjs interop sync`
 - User communication: Persian — software assets and documentation: English
 - Architecture: layered, plugin-ready, provider-agnostic, domain-aware ([details](documentation/Architecture.md))

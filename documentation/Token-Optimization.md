@@ -2,6 +2,10 @@
 
 Token efficiency is a design constraint, not an afterthought.
 
+## Code graph first
+
+For questions about code structure, ask the Graphify graph before reading files (`astack graphify query`, `astack_graph_query`). Answers are capped by `graphify.query_budget` and metered; see [Graphify](Graphify.md).
+
 ## Budgets
 
 Configured in `astack.config.yaml`:

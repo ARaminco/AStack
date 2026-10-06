@@ -113,8 +113,9 @@ function parseFrontmatter(text) {
 }
 
 export class InteropEngine {
-  constructor(root, { workspaceRoot = root, memory = null, standup = null, clock, home = homedir(), env = process.env } = {}) {
+  constructor(root, { workspaceRoot = root, memory = null, standup = null, graphify = null, clock, home = homedir(), env = process.env } = {}) {
     this.root = root;
+    this.graphify = graphify;
     this.workspaceRoot = workspaceRoot;
     this.memory = memory;
     this.standupProvider = standup;
@@ -553,6 +554,10 @@ export class InteropEngine {
     const lines = ["# AStack shared brain", ""];
     const contract = this.contract();
     lines.push("Runtime: " + (runtimeSurfaces[runtime]?.name ?? runtime) + " · contract AGENTS.md#" + (contract.hash ?? "missing") + " (shared by Claude Code and Codex)");
+    const graphLine = this.graphifyLine();
+    if (graphLine) {
+      lines.push(graphLine);
+    }
     const recent = this.journal({ limit: 6 }).filter((entry) => entry.kind === "handoff" || entry.kind === "session-end");
     if (recent.length) {
       lines.push("", "## Recent work (both runtimes, newest first)");
@@ -596,6 +601,14 @@ export class InteropEngine {
       "Rules: durable knowledge goes to the shared store (`astack memory remember` or MCP astack_memory_remember); finish substantial work with `astack interop handoff \"<summary>\" --next \"...\"`."
     );
     return lines.join("\n");
+  }
+
+  graphifyLine() {
+    try {
+      return this.graphify?.contextLine() ?? null;
+    } catch {
+      return null;
+    }
   }
 
   sessionStart({ runtime, payload = {} } = {}) {

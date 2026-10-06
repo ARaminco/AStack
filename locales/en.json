@@ -58,7 +58,8 @@
       "tool": "Tool registry with progressive disclosure.",
       "runtime": "Installed runtimes and model routing.",
       "interop": "Keep Claude Code and Codex on one contract, one memory and one journal: status, sync, handoff, journal, hook.",
-      "mcp": "Serve the astack MCP server over stdio for Claude Code and Codex."
+      "mcp": "Serve the astack MCP server over stdio for Claude Code and Codex.",
+      "graphify": "Code knowledge graph via Graphify with token budgets: status, setup, upgrade, build, query, explain, path, affected, benchmark."
     },
     "project": {
       "usage": "Project commands: init, demo, list, status, board, backlog, add, move, start, done, block, unblock, charter, milestone, sprint, risk, gate, advance, baseline, critical-path, forecast, next, digest, decision, scaffold, raci, report, templates",
@@ -351,6 +352,24 @@
       "noClaudeMemory": "No Claude Code auto-memory found for this workspace.",
       "unknownAction": "Unknown interop action: {action}",
       "codexHooks": "Codex runs project hooks only after you trust them once: open Codex here, run /hooks and trust the two astack hooks (re-trust after astack interop sync changes them)."
+    },
+    "graphify": {
+      "statusTitle": "Graphify code graph (token-budgeted context source)",
+      "installed": "graphify {version} installed",
+      "notInstalled": "graphify not installed: astack graphify setup",
+      "graph": "graph {path}: {nodes} nodes, {edges} edges, built {at} ({state})",
+      "fresh": "fresh",
+      "stale": "stale — astack graphify build",
+      "noGraph": "no graph yet: astack graphify build",
+      "hooksOn": "git hooks keep the graph current after commits and checkouts",
+      "hooksOff": "git hooks not installed: astack graphify setup (or graphify hook install)",
+      "budget": "budget per answer: {query} tokens (hard cap {max})",
+      "usage": "metered: {queries} queries, {served} tokens served, {truncated} truncated to budget",
+      "benchmark": "benchmark: {reduction}x fewer tokens per query (~{avg} vs ~{naive} naive); estimated saved so far: {saved}",
+      "ready": "Graphify {version} ready for Claude Code and Codex.",
+      "setupFailed": "Graphify setup did not complete; see the failed step above.",
+      "served": "(served {tokens} tokens of a {budget}-token budget)",
+      "unknownAction": "Unknown graphify action: {action}"
     }
   },
   "delivery": {

@@ -24,6 +24,7 @@ AStack is a personal AI operating system for any practice — software, legal, f
 - [Security and Authority](Security-and-Authority.md) — authority levels, policy, secrets
 - [Audit and Approvals](Audit-and-Approvals.md) — human in the loop and the audit trail
 - [Token Optimization](Token-Optimization.md) — budgets, progressive disclosure, measurement
+- [Graphify](Graphify.md) — code knowledge graph for both runtimes, capped and metered
 
 ## Concepts
 - [Architecture](Architecture.md) — layers, module map, data flow, design rules

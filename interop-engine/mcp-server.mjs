@@ -108,6 +108,34 @@ export const mcpTools = [
     args: (input) => ["context", "search", String(input.terms)]
   },
   {
+    name: "astack_graph_query",
+    description: "Ask the Graphify code knowledge graph a question. Returns a scoped subgraph capped by an AStack token budget — use it before grepping or reading files.",
+    inputSchema: {
+      type: "object",
+      properties: { question: text("The codebase question"), budget: number("Token cap, default from astack.config.yaml graphify.query_budget") },
+      required: ["question"]
+    },
+    args: (input) => ["graphify", "query", String(input.question), ...optional("budget", input.budget)]
+  },
+  {
+    name: "astack_graph_explain",
+    description: "Explain one symbol, file or concept from the code graph with its connections.",
+    inputSchema: { type: "object", properties: { node: text("Symbol, file or concept"), budget: number("Token cap") }, required: ["node"] },
+    args: (input) => ["graphify", "explain", String(input.node), ...optional("budget", input.budget)]
+  },
+  {
+    name: "astack_graph_path",
+    description: "Shortest relationship path between two nodes of the code graph.",
+    inputSchema: { type: "object", properties: { from: text("Start node"), to: text("End node") }, required: ["from", "to"] },
+    args: (input) => ["graphify", "path", String(input.from), String(input.to)]
+  },
+  {
+    name: "astack_graph_affected",
+    description: "Impact analysis: what calls, imports or depends on a node, before you change it.",
+    inputSchema: { type: "object", properties: { node: text("Symbol or file") }, required: ["node"] },
+    args: (input) => ["graphify", "affected", String(input.node)]
+  },
+  {
     name: "astack_ask",
     description: "Chief of Staff analysis of a request: intent, entities, context, skills, tools, runtime, authority and proposed team. Read-only.",
     inputSchema: { type: "object", properties: { request: text("The owner's request") }, required: ["request"] },

@@ -3,7 +3,7 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
-## 2.2.0 — Claude Code and Codex in parity
+## 2.2.0 — Claude Code and Codex in parity, Graphify under budget
 
 Claude Code and Codex become two hands of the same operator: one operating
 contract, one memory, one journal, one tool surface. Work started in one runtime
@@ -25,9 +25,9 @@ second run changes nothing. `--trust-codex` trusts the project in
 `~/.codex/config.toml` with a backup.
 
 **astack MCP server** — `astack mcp serve`, a dependency-free stdio MCP server
-both runtimes launch. Twelve tools (standup, memory search/remember/supersede/
+both runtimes launch. Sixteen tools (standup, memory search/remember/supersede/
 entity, context map/search, ask, skill catalog, handoff, journal, interop
-status) run the CLI with an argument vector, so results are identical in both
+status, and four code graph tools) run the CLI with an argument vector, so results are identical in both
 runtimes and records keep the calling runtime as provenance.
 
 **Session hooks and journal** — a session-start hook gives either runtime the
@@ -43,6 +43,16 @@ earlier record, so Codex recalls what Claude Code learned.
 **Codex runtime adapter** — `codex` is a hosted runtime writing the same work
 order format as `claude-code`; the model router prefers the runtime hosting
 the current session on a tie.
+
+**Graphify, driven by AStack** — `astack graphify setup|upgrade|build|status|
+query|explain|path|affected|benchmark` installs Graphify (`graphifyy`) as an
+isolated tool, installs its git hooks and builds a local, AST-only code graph.
+The guidance lives once in `AGENTS.md` instead of Graphify's per-runtime,
+machine-specific installers. Every answer is capped by `graphify.query_budget`
+(hard cap `graphify.max_budget`), metered in
+`.astack/context/graphify-usage.jsonl`, and flagged when the graph is stale;
+`status` reports tokens served and savings against Graphify's benchmark
+(25.5x fewer tokens per query on this repository).
 
 **Migration `2026.7-runtime-interop`** and the `verify-interop` suite (six
 suites in `npm test`).

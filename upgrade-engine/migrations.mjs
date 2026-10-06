@@ -185,8 +185,13 @@ export const migrations = [
       // wiring is merged into them rather than shipped over them.
       const changed = new InteropEngine(root).sync().filter((entry) => entry.action !== "ok");
       const ignore = join(root, ".gitignore");
-      if (existsSync(ignore) && !readFileSync(ignore, "utf8").includes(".astack/interop/")) {
-        writeFileSync(ignore, readFileSync(ignore, "utf8").replace(/\s*$/, "\n") + ".astack/interop/\n", "utf8");
+      if (existsSync(ignore)) {
+        // The journal and the Graphify output are machine-local and rebuilt on demand.
+        const current = readFileSync(ignore, "utf8");
+        const rules = [".astack/interop/", "graphify-out/"].filter((rule) => !current.includes(rule));
+        if (rules.length) {
+          writeFileSync(ignore, current.replace(/\s*$/, "\n") + rules.join("\n") + "\n", "utf8");
+        }
       }
       return changed.length ? "wired " + changed.map((entry) => entry.path).join(", ") : "runtime wiring already in place";
     }
