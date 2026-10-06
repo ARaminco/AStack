@@ -11,13 +11,14 @@ import { runApprovalCommand, runAuditCommand, runAuthorityCommand, runRuntimeCom
 import { runAskCommand, runOwnerCommand, runStandupCommand } from "../cli/chief-cli.mjs";
 import { runInteropCommand, runMcpCommand } from "../cli/interop-cli.mjs";
 import { runGraphifyCommand } from "../cli/graphify-cli.mjs";
-import { pendingMigrations, runMigrations } from "../upgrade-engine/migrations.mjs";
+import { runSetupCommand } from "../cli/setup-cli.mjs";
+import { pendingMigrations } from "../upgrade-engine/migrations.mjs";
 
 const i18n = createLocalization();
 const runtime = createRuntime();
 
 const COMMANDS = [
-  "init", "install", "doctor", "upgrade", "review", "ask", "standup", "owner",
+  "setup", "init", "install", "doctor", "upgrade", "review", "ask", "standup", "owner",
   "context", "memory", "graph", "learn", "skill",
   "mission", "schedule", "signal", "browser",
   "authority", "approval", "audit", "secret", "tool", "runtime", "interop", "mcp", "graphify",
@@ -113,16 +114,18 @@ async function run() {
   }
   const context = { runtime, i18n, tokens };
   switch (command) {
+    case "setup":
+      runSetupCommand(context);
+      return;
     case "init":
     case "install": {
-      doctor();
-      const migrated = runMigrations(runtime.workspaceRoot).filter((entry) => entry.status === "applied");
-      if (migrated.length) {
-        console.log(i18n.t("cli.upgrade.migrationsApplied", { count: migrated.length }));
-        for (const entry of migrated) {
-          console.log("- " + entry.id + ": " + entry.detail);
-        }
+      // "Install" means the full setup: migrations, both runtimes, Graphify,
+      // the index and the global skill. Doctor then validates the result.
+      runSetupCommand(context);
+      if (process.exitCode) {
+        return;
       }
+      doctor();
       console.log(command === "init" ? i18n.t("cli.initDone") : i18n.t("cli.installed"));
       return;
     }

@@ -1,6 +1,7 @@
+<!-- astack:contract:begin — managed by astack setup from system/agent-contract.md; project rules go outside this block -->
 # AStack Enterprise Operating Guide
 
-This file is the single operating contract for every agent runtime that works in this repository. Codex loads it directly; Claude Code loads it through `CLAUDE.md`, which imports it. Change the rules here, never in a runtime-specific copy, so both runtimes always understand the project the same way.
+This is the single operating contract for every agent runtime that works in this project. It ships with the AStack core as `system/agent-contract.md` and is carried into `AGENTS.md` as a managed block, refreshed by every `astack setup` and `astack upgrade`. Codex loads `AGENTS.md` directly; Claude Code loads it through `CLAUDE.md`, which imports it. Project-specific rules belong in `AGENTS.md` outside the managed block, never in a runtime-specific file, so both runtimes always understand the project the same way.
 
 AStack is an AI operating system for any practice: software delivery, legal cases, finance, tax, accounting, marketing, operations, HR, research, and business strategy. It remembers its owner across conversations, forms the smallest expert team a request needs, executes through real tools, stops before anything irreversible, verifies the result, audits it, and learns from it.
 
@@ -13,7 +14,15 @@ Claude Code and Codex are two hands of the same operator. They share one contrac
 4. **One tool surface** — the `astack` MCP server (`node bin/astack.mjs mcp serve`) exposes the same memory, context, standup and handoff tools to both runtimes.
 5. **Handoff before you stop** — after substantial work, record what was done, findings, open questions and the next step with `astack interop handoff "<summary>" --next "..."` (or `astack_handoff_write`). The other runtime starts from that packet, not from a transcript.
 
-Run `astack interop sync` after cloning or upgrading to (re)generate the runtime wiring: `.mcp.json` and `.claude/settings.json` for Claude Code, `.codex/config.toml` and `.codex/hooks.json` for Codex.
+Run `astack interop sync` after cloning to (re)generate the runtime wiring: `.mcp.json` and `.claude/settings.json` for Claude Code, `.codex/config.toml` and `.codex/hooks.json` for Codex. `astack setup` does it for you.
+
+## Install and Setup Requests
+When the owner asks to install, set up, update or repair AStack — in any words, for example "install", "set up", "نصب شو", "راه‌اندازی شو", "آپدیت شو", "AStack رو نصب کن" — run the full setup instead of individual steps, then report the result and the remaining one-time manual steps:
+
+1. In a project that already has `bin/astack.mjs`: `node bin/astack.mjs setup --update`.
+2. Anywhere else (no AStack yet, or a core too old to know `setup`): refresh the canonical core with `git clone --depth 1 https://github.com/ARaminco/AStack.git ~/.astack/core` (or `git -C ~/.astack/core pull --ff-only`), then `node ~/.astack/core/bin/astack.mjs setup --target "<project root>"`.
+
+Setup installs or upgrades the core, runs data migrations, wires Claude Code and Codex, trusts the project in Codex, installs Graphify with its git hooks and builds the code graph, builds the context index, and installs the global `astack-setup` skill for both runtimes. It is idempotent: running it again repairs whatever is missing and changes nothing else.
 
 ## Startup Order
 1. Read `astack.config.yaml`.
@@ -98,7 +107,7 @@ The internal browser uses persistent profiles so the owner logs in once and late
 Manage every substantial engagement as a project through `astack project` commands: charter and stage gates, PERT-estimated work items with dependencies, WSJF-ranked backlog, WIP-limited board, sprint planning and close, risk register, Monte Carlo forecasts, EVM health, and Persian status reports. Record decisions with `astack project decision` so the calibration loop improves future estimates. Domain templates exist for legal cases, tax filings, accounting closes, and financial audits (`astack project templates`).
 
 ## Core Upgrades
-`astack upgrade` updates an embedded AStack core from the canonical repository (or `--from <path|url>`): managed engine files are replaced after a backup under `.astack/backups/`, seed files are only created when missing, data migrations in `upgrade-engine/migrations.mjs` run afterwards, and `.astack/`, `memory/`, `plugins/`, `knowledge-packs/`, `skills/learned/` and the runtime wiring (`.claude/`, `.codex/`, `.mcp.json`) are never touched. Owner customizations can be protected with `upgrade.keep` in `astack.config.yaml`. Projects on cores that predate this engine run the standalone `scripts/astack-upgrade.mjs`.
+`astack upgrade` updates an embedded AStack core from the canonical repository (or `--from <path|url>`): managed engine files are replaced after a backup under `.astack/backups/`, seed files are only created when missing, data migrations in `upgrade-engine/migrations.mjs` run afterwards, and `.astack/`, `memory/`, `plugins/`, `knowledge-packs/`, `skills/learned/` and the runtime wiring (`.claude/`, `.codex/`, `.mcp.json`) are never overwritten; the contract block in `AGENTS.md` and the astack entries in the wiring files are refreshed by the setup that runs after every upgrade. Owner customizations can be protected with `upgrade.keep` in `astack.config.yaml`. Projects on cores that predate this engine run the standalone `scripts/astack-upgrade.mjs`.
 
 ## Honesty Rules
 - State what is implemented, what is adapter-ready and what is not installed. Never present a placeholder as a working integration.
@@ -113,3 +122,4 @@ Departments and agents never coordinate directly. The Chief of Staff and the Orc
 
 ## Verification
 Run `npm test` (six suites) or `astack doctor` after architectural changes. `astack interop status` verifies that both runtimes are wired to the same contract and memory. `npm run test:browser` exercises the internal browser against a real Chromium profile.
+<!-- astack:contract:end -->

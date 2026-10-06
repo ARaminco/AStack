@@ -179,7 +179,8 @@ export const migrations = [
   {
     id: "2026.7-runtime-interop",
     description: "Wire Claude Code and Codex to the shared AGENTS.md contract, the astack MCP server, the session hooks and the journal.",
-    appliesTo: (root) => existsSync(join(root, "AGENTS.md")) && new InteropEngine(root).plan().some((entry) => entry.action !== "ok"),
+    appliesTo: (root) =>
+      (existsSync(join(root, "AGENTS.md")) || existsSync(join(root, "system", "agent-contract.md"))) && new InteropEngine(root).plan().some((entry) => entry.action !== "ok"),
     run: (root) => {
       // CLAUDE.md, .mcp.json and the runtime settings belong to the owner, so the
       // wiring is merged into them rather than shipped over them.

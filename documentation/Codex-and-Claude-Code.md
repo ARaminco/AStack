@@ -17,6 +17,8 @@ Neither runtime's private memory is a source of truth. Claude Code auto-memory (
 
 ## Setup
 
+`astack setup` (also `astack install`/`init`, and automatically after `astack upgrade`) does all of the following in one idempotent run; see [Installation](Installation.md). The individual commands remain available:
+
 ```bash
 node bin/astack.mjs interop sync            # generate or merge the wiring for both runtimes
 node bin/astack.mjs interop sync --trust-codex   # also trust the project in ~/.codex/config.toml (backup kept)

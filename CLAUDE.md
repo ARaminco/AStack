@@ -1,6 +1,6 @@
 # Claude Code Operating Guide For AStack Enterprise
 
-Claude Code and Codex share one operating contract: `AGENTS.md`. It is imported below, so Claude Code reads exactly the same rules Codex reads. Edit `AGENTS.md`, not this file, when a rule changes.
+Claude Code and Codex share one operating contract: `AGENTS.md`. It is imported below, so Claude Code reads exactly the same rules Codex reads. The AStack contract inside it is a managed block refreshed from `system/agent-contract.md`; project rules go into `AGENTS.md` outside that block, not into this file.
 
 @AGENTS.md
 

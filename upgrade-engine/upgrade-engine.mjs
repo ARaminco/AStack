@@ -5,6 +5,22 @@ import { dirname, join, resolve } from "node:path";
 
 export const DEFAULT_SOURCE = "https://github.com/ARaminco/AStack.git";
 
+// Seed entries that belong to the AStack repository itself. A project AStack
+// was embedded into keeps its own and never receives these.
+export const REPOSITORY_FURNITURE = [".github", "Dockerfile", "README.md", "package.json"];
+
+export function installRecordPath(root) {
+  return join(root, ".astack", "install.json");
+}
+
+export function readInstallRecord(root) {
+  try {
+    return JSON.parse(readFileSync(installRecordPath(root), "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 export function findInstallRoot(startDir) {
   let current = startDir;
   for (let depth = 0; depth < 24; depth += 1) {
@@ -118,7 +134,14 @@ export function topLevelBlocks(yamlText) {
 }
 
 export class UpgradeEngine {
-  constructor(targetRoot, { sourceDir, keep = [] } = {}) {
+  /**
+   * skipSeeds: seed entries not to create (repository furniture such as CI
+   * workflows, a Dockerfile or a README when AStack is embedded into an
+   * existing project). fillPreserved: preserved directories that are copied
+   * file by file where the target has nothing yet, so a fresh install gets the
+   * stock knowledge packs and plugins while an existing one keeps its own.
+   */
+  constructor(targetRoot, { sourceDir, keep = [], skipSeeds = [], fillPreserved = [] } = {}) {
     if (!sourceDir) {
       throw new Error("UpgradeEngine requires a sourceDir with the new AStack version");
     }
@@ -130,6 +153,9 @@ export class UpgradeEngine {
     }
     this.manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
     this.keep = [...new Set([...(this.manifest.preserve ?? []), ...readKeepList(targetRoot), ...keep])];
+    const embedded = readInstallRecord(this.target)?.mode === "embedded";
+    this.skipSeeds = new Set([...skipSeeds, ...(embedded ? REPOSITORY_FURNITURE : [])]);
+    this.fillPreserved = fillPreserved;
   }
 
   /**
@@ -181,7 +207,20 @@ export class UpgradeEngine {
         }
       }
     }
+    for (const entry of this.fillPreserved) {
+      if (!existsSync(join(this.source, entry))) {
+        continue;
+      }
+      for (const rel of listFiles(this.source, entry)) {
+        if (!existsSync(join(this.target, rel)) && !changes.some((change) => change.path === rel && change.action !== "preserved")) {
+          changes.push({ path: rel, action: "seed" });
+        }
+      }
+    }
     for (const entry of this.manifest.seed ?? []) {
+      if (this.skipSeeds.has(entry)) {
+        continue;
+      }
       if (existsSync(join(this.source, entry)) && !existsSync(join(this.target, entry))) {
         changes.push({ path: entry, action: "seed" });
       }

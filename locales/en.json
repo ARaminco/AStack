@@ -23,8 +23,8 @@
     "knowledgeList": "Installed Knowledge Packs:",
     "memoryList": "Memory scopes:",
     "help": {
-      "init": "Prepare the structure required to run AStack inside Claude Code.",
-      "install": "Run local installation checks.",
+      "init": "Install or update AStack and set everything up for Claude Code and Codex: core, migrations, wiring, Graphify, index, global skill.",
+      "install": "Install or update AStack and set everything up for Claude Code and Codex: core, migrations, wiring, Graphify, index, global skill.",
       "doctor": "Check architecture, localization, providers, plugins, and Claude Code readiness.",
       "update": "Run the Enterprise bootstrap again.",
       "review": "Send a request to the Orchestrator and return a localized report.",
@@ -59,7 +59,8 @@
       "runtime": "Installed runtimes and model routing.",
       "interop": "Keep Claude Code and Codex on one contract, one memory and one journal: status, sync, handoff, journal, hook.",
       "mcp": "Serve the astack MCP server over stdio for Claude Code and Codex.",
-      "graphify": "Code knowledge graph via Graphify with token budgets: status, setup, upgrade, build, query, explain, path, affected, benchmark."
+      "graphify": "Code knowledge graph via Graphify with token budgets: status, setup, upgrade, build, query, explain, path, affected, benchmark.",
+      "setup": "Install or update AStack and set everything up for Claude Code and Codex: core, migrations, wiring, Graphify, index, global skill."
     },
     "project": {
       "usage": "Project commands: init, demo, list, status, board, backlog, add, move, start, done, block, unblock, charter, milestone, sprint, risk, gate, advance, baseline, critical-path, forecast, next, digest, decision, scaffold, raci, report, templates",
@@ -370,6 +371,31 @@
       "setupFailed": "Graphify setup did not complete; see the failed step above.",
       "served": "(served {tokens} tokens of a {budget}-token budget)",
       "unknownAction": "Unknown graphify action: {action}"
+    },
+    "setup": {
+      "title": "AStack setup",
+      "core": {
+        "installed": "installed AStack {to} into {target} ({files} files)",
+        "embedded": "embedded AStack {to} into the existing project {target} ({files} files; its own README, package.json, Dockerfile and CI were left alone)",
+        "upgraded": "upgraded AStack {from} → {to} ({files} files)",
+        "current": "AStack {to} is already current",
+        "newer": "installed core {from} is newer than the source {to}; left as is"
+      },
+      "backup": "replaced files backed up in {backup}",
+      "step": {
+        "migrations": "data migrations",
+        "gitignore": ".gitignore",
+        "interop": "Claude Code + Codex wiring",
+        "codex-trust": "Codex project trust",
+        "graphify": "Graphify code graph",
+        "context-index": "context index",
+        "global-skill": "global astack-setup skill"
+      },
+      "manualTitle": "One-time manual steps (cannot be automated safely):",
+      "manualCodex": "Codex: open Codex in this project, run /hooks and trust the two astack hooks.",
+      "manualClaude": "Claude Code: accept the workspace trust dialog the first time you open this project.",
+      "done": "Setup complete: {target}",
+      "failed": "Setup finished with errors; see the ✗ steps above."
     }
   },
   "delivery": {

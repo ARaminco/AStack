@@ -11,6 +11,14 @@ AStack Enterprise is a modular AI Operating System that runs natively in both Cl
 - User communication: Persian — software assets and documentation: English
 - Architecture: layered, plugin-ready, provider-agnostic, domain-aware ([details](documentation/Architecture.md))
 
+## Install in any project
+New or old, with or without an existing AStack core — one command sets up the core, Claude Code + Codex, Graphify, the index and the global `astack-setup` skill (after that, telling either runtime "install / set up" is enough):
+```bash
+git clone --depth 1 https://github.com/ARaminco/AStack.git ~/.astack/core   # or: git -C ~/.astack/core pull
+node ~/.astack/core/bin/astack.mjs setup --target /path/to/project
+```
+Inside a project that already has AStack: `node bin/astack.mjs setup --update`.
+
 ## Quick Start
 ```bash
 npm test

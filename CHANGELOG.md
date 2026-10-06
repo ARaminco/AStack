@@ -3,6 +3,41 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 2.3.0 — One command to install and set up
+
+"Install and set up" is now one idempotent command for any project — empty,
+existing, or running an old core — and a request in plain words to either
+runtime is enough.
+
+### Added
+
+**`astack setup`** (also `install`/`init`, and run automatically after
+`astack upgrade`): installs or upgrades the core, runs data migrations in a
+new process with the new code (no separate `init` after an upgrade any more),
+wires Claude Code and Codex, trusts the project in Codex, installs Graphify with
+its git hooks and builds the code graph, builds the context index and installs
+the global skill. A failing optional step is reported without stopping the
+rest. `--target <dir>` sets up another project from this core; `--update`
+refreshes the canonical core at `~/.astack/core` first.
+
+**Embedding into existing projects** — a fresh install into a non-empty
+directory keeps the project's own `README.md`, `package.json`, `Dockerfile`
+and CI workflows, records `.astack/install.json` so later upgrades keep doing
+so, and fills stock knowledge packs and plugins only where nothing exists.
+
+**Global `astack-setup` skill** for Claude Code (`~/.claude/skills`) and Codex
+(`~/.agents/skills`): saying "install", "set up", "نصب شو" or "راه‌اندازی شو"
+in any project runs the setup, with or without AStack already there.
+
+### Changed
+
+**The contract is a managed block.** It ships as `system/agent-contract.md` and
+lives in `AGENTS.md` between markers, refreshed on every setup and upgrade, so
+contract changes reach installs while project rules outside the block are kept.
+An unmarked `AGENTS.md` exactly as 2.2.0 shipped it is replaced, not
+duplicated. The installers (`installer/install.sh`, `install.ps1`) bootstrap
+any project through the canonical core.
+
 ## 2.2.0 — Claude Code and Codex in parity, Graphify under budget
 
 Claude Code and Codex become two hands of the same operator: one operating
