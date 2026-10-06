@@ -1,7 +1,7 @@
 project:
   name: AStack Enterprise
   product: AI Operating System for Any Practice
-  version: 2.4.1
+  version: 2.5.0
   philosophy: enterprise_modular_platform
   primary_runtime: claude-code
   compatibility:
@@ -124,6 +124,9 @@ localization:
 
 memory:
   enabled: true
+  import_paths:
+    - memory
+  import_exclude: []
   engine: memory-engine/memory-engine.mjs
   directory: memory
   scopes:
@@ -327,6 +330,7 @@ runtime:
 
 interop:
   enabled: true
+  # project_root: ..        # when the core lives in a subfolder of the project the runtimes open
   engine: interop-engine/interop-engine.mjs
   contract: AGENTS.md
   journal: .astack/interop/journal.jsonl

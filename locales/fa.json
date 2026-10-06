@@ -178,7 +178,8 @@
       "noEntity": "موجودیتی برای «{query}» پیدا نشد.",
       "consolidated": "تجمیع حافظه: {merged} ادغام، {decayed} کاهش وزن، {dropped} حذف، {kept} باقی‌مانده.",
       "statsTitle": "حافظه: {total} رکورد، حدود {tokens} توکن.",
-      "unknownAction": "فرمان ناشناخته برای memory: {action}"
+      "unknownAction": "فرمان ناشناخته برای memory: {action}",
+      "legacyImported": "حافظه قدیمی: {files} فایل، {sections} بخش ({added} جدید، {updated} به‌روز، {retired} بازنشسته، {unchanged} فایل بدون تغییر؛ ردشده: {skippedStock} قالب پیش‌فرض، {skippedSecret} مشابه اطلاعات محرمانه، {skippedExcluded} مستثنا). حافظه خودکار Claude Code: {claude} ورود یا به‌روزرسانی."
     },
     "graph": {
       "statsTitle": "گراف دانش: {nodes} گره، {edges} یال ({active} فعال، {superseded} جایگزین‌شده).",
@@ -389,7 +390,8 @@
         "codex-trust": "اعتماد Codex به پروژه",
         "graphify": "گراف کد Graphify",
         "context-index": "ایندکس context",
-        "global-skill": "مهارت سراسری astack-setup"
+        "global-skill": "مهارت سراسری astack-setup",
+        "memory-import": "ورود حافظه به حافظه مشترک"
       },
       "manualTitle": "کارهای دستی یک‌باره (خودکارشدنی نیستند):",
       "manualCodex": "Codex: پروژه را در Codex باز کنید، ‎/hooks را بزنید و دو هوک astack را trust کنید.",
@@ -407,7 +409,8 @@
         "setup": "مهاجرت + راه‌اندازی",
         "verify": "اعتبارسنجی",
         "rollback": "بازگردانی",
-        "record": "ثبت"
+        "record": "ثبت",
+        "merge": "ادغام مسیرهای محافظت‌شده"
       },
       "checkOnly": "فقط بررسی: چیزی تغییر نکرد. برای آپدیت بدون --check اجرا کنید.",
       "done": "AStack از {from} به {to} آپدیت شد. Claude Code و Codex در شروع نشست بعدی آن را می‌بینند.",

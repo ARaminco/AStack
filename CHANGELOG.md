@@ -3,6 +3,36 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 2.5.0 — Customised installs update safely, memory comes back whole
+
+Written while updating a law firm's heavily customised 2.0 fork.
+
+### Added
+
+**Three-way merge of protected paths** — a new `merge` stage in the update
+pipeline. Paths in `upgrade.keep` used to be frozen, so a release that changed
+the engine around them broke the install. They are now merged against the
+release the project last received (`.astack/upstream-base/`, refreshed after
+each verified update): owner-only changes stay, upstream-only changes arrive,
+both go through `git merge-file` (JSON leaf by leaf), and a real conflict keeps
+the owner's version and is reported. New upstream code and `manifest.required`
+files arrive inside protected paths; new curated content does not. Rollback
+undoes the merge.
+
+**Markdown memory import** — `memory/` scopes and any folder in
+`memory.import_paths` are imported into the shared store one section per record,
+at every session start (both runtimes), in setup and with
+`astack memory import-legacy`. Changed sections supersede, removed ones retire,
+credential-like files are never read, AStack's own template files are skipped.
+
+**`interop.project_root`** — for a core embedded in a subfolder: the contract,
+`CLAUDE.md` import, MCP server, hooks and Claude Code memory import target the
+folder the runtimes are actually opened in.
+
+**`cli.aliases`** — owner command names in `astack.config.yaml` (for example
+`matter: project`), which survive updates where an edit to `bin/astack.mjs`
+did not.
+
 ## 2.4.1
 
 A rollback now restores the project completely. The pipeline snapshots the

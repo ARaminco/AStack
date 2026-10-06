@@ -178,7 +178,8 @@
       "noEntity": "No entity found for \"{query}\".",
       "consolidated": "Consolidation: {merged} merged, {decayed} decayed, {dropped} dropped, {kept} kept.",
       "statsTitle": "Memory: {total} records, about {tokens} tokens.",
-      "unknownAction": "Unknown memory action: {action}"
+      "unknownAction": "Unknown memory action: {action}",
+      "legacyImported": "Legacy memory: {files} files, {sections} sections ({added} new, {updated} updated, {retired} retired, {unchanged} files unchanged; skipped {skippedStock} stock, {skippedSecret} credential-like, {skippedExcluded} excluded). Claude Code auto-memory: {claude} imported or updated."
     },
     "graph": {
       "statsTitle": "Knowledge graph: {nodes} nodes, {edges} edges ({active} active, {superseded} superseded).",
@@ -389,7 +390,8 @@
         "codex-trust": "Codex project trust",
         "graphify": "Graphify code graph",
         "context-index": "context index",
-        "global-skill": "global astack-setup skill"
+        "global-skill": "global astack-setup skill",
+        "memory-import": "shared memory import"
       },
       "manualTitle": "One-time manual steps (cannot be automated safely):",
       "manualCodex": "Codex: open Codex in this project, run /hooks and trust the two astack hooks.",
@@ -407,7 +409,8 @@
         "setup": "migrations + setup",
         "verify": "verify",
         "rollback": "rollback",
-        "record": "record"
+        "record": "record",
+        "merge": "merge protected paths"
       },
       "checkOnly": "Check only: nothing was changed. Run without --check to update.",
       "done": "AStack updated {from} → {to}. Claude Code and Codex will see it at their next session start.",

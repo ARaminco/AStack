@@ -31,6 +31,7 @@ git -C ~/.astack/core fetch --depth 1 origin main && git -C ~/.astack/core check
 2. **fetch** — the newest release tag (`--version 2.4.0` pins one, `--channel main` takes the branch head);
 3. **plan** — versions, file counts, the CHANGELOG entries in between, and any uncommitted managed files that will be replaced; `--check` stops here;
 4. **apply** — every replaced file backed up under `.astack/backups/`;
+4b. **merge** — paths protected with `upgrade.keep` are merged three ways against the last release the project received, so owner customisations and upstream fixes both survive; real conflicts keep the owner's version and are reported;
 5. **setup** — migrations, contract block, runtime wiring, code graph and index, with the new code;
 6. **verify** — doctor and Claude Code/Codex parity (`--test` adds the test suites); a failure rolls the project back automatically;
 7. **record** — `.astack/update-history.jsonl` and the shared journal, so the next session in either runtime knows.
@@ -81,6 +82,7 @@ Graphify turns the workspace into a knowledge graph (`graphify-out/graph.json`) 
 - Change a fact with `astack memory supersede` — never overwrite. History stays answerable with `--asOf`.
 - Summarize a meaningful conversation into structured memory with `astack owner summarize`, not into a transcript.
 - Claude Code auto-memory is imported into the shared store at every Claude Code session start (`astack interop import-claude-memory`).
+- Markdown memory (the `memory/` scopes and any folder in `memory.import_paths`) is imported section by section at every session start and by `astack memory import-legacy`; a changed section supersedes its record, credential-like files are never read.
 - Never store secrets, one time codes, card numbers or credentials in memory.
 
 ## Engagement Protocol

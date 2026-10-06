@@ -71,5 +71,9 @@
     "node_modules",
     "plugins",
     "skills/learned"
+  ],
+  "required": [
+    "memory-engine/facets.mjs",
+    "system/agent-contract.md"
   ]
 }
