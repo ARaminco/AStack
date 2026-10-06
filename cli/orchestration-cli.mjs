@@ -1,6 +1,7 @@
 import { parseArgs } from "../delivery-engine/cli.mjs";
 import { DEFAULT_SOURCE, UpgradeEngine, fetchSource } from "../upgrade-engine/upgrade-engine.mjs";
 import { pendingMigrations, runMigrations } from "../upgrade-engine/migrations.mjs";
+import { respawnLocal } from "../installer/setup.mjs";
 
 const out = (line) => console.log(line);
 
@@ -295,5 +296,10 @@ export function runUpgradeCommand({ runtime, i18n, tokens }) {
     }
   }
   out(t("cli.upgrade.rollbackHint", { backup: result.backupDir ?? "-" }));
+  if (!flags.noSetup) {
+    // Migrations, the contract block, runtime wiring and the code graph are
+    // refreshed by the new code, which only a new process can load.
+    process.exitCode = respawnLocal(runtime.workspaceRoot ?? runtime.root, flags);
+  }
   out(t("cli.upgrade.doctorHint"));
 }

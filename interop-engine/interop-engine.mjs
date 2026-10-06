@@ -20,6 +20,11 @@ const HOOK_MARKER = "interop hook";
 const TOML_BEGIN = "# >>> astack (managed by `astack interop sync`) >>>";
 const TOML_END = "# <<< astack <<<";
 const CLAUDE_IMPORT = "@AGENTS.md";
+export const CONTRACT_SOURCE = "system/agent-contract.md";
+const CONTRACT_BEGIN = "<!-- astack:contract:begin — managed by astack setup from system/agent-contract.md; project rules go outside this block -->";
+const CONTRACT_END = "<!-- astack:contract:end -->";
+// AGENTS.md as 2.2.0 shipped it, before the contract moved into a managed block.
+const STOCK_CONTRACT_HASHES = new Set(["8ce3d5fbd21caf4e", "bd49495ccdf2d4dd"]);
 
 export const runtimeSurfaces = {
   "claude-code": {
@@ -138,6 +143,38 @@ export class InteropEngine {
   cli() {
     const bin = relative(this.workspaceRoot, join(this.root, "bin", "astack.mjs")).split("\\").join("/");
     return bin || "bin/astack.mjs";
+  }
+
+  /** The contract text shipped with the core; AGENTS.md carries it as a managed block. */
+  contractSource() {
+    const path = join(this.root, CONTRACT_SOURCE);
+    return existsSync(path) ? readFileSync(path, "utf8").replace(/\r\n/g, "\n").trim() : null;
+  }
+
+  /**
+   * AGENTS.md belongs to the project. The AStack contract lives in it between
+   * two markers: the block is refreshed from the core on every setup, and
+   * everything outside it — the project's own rules — is kept as written.
+   */
+  plannedAgents(current) {
+    const source = this.contractSource();
+    if (source === null) {
+      return current;
+    }
+    const block = CONTRACT_BEGIN + "\n" + source + "\n" + CONTRACT_END;
+    if (current === null || !current.trim()) {
+      return block + "\n";
+    }
+    const begin = current.indexOf(CONTRACT_BEGIN.slice(0, 26));
+    const end = current.indexOf(CONTRACT_END);
+    if (begin !== -1 && end > begin) {
+      return current.slice(0, begin) + block + current.slice(end + CONTRACT_END.length);
+    }
+    if (current.replace(/\r\n/g, "\n").trim() === source || STOCK_CONTRACT_HASHES.has(contractHash(current))) {
+      // An unmarked copy of a stock contract: replaced, not duplicated.
+      return block + "\n";
+    }
+    return current.replace(/\s*$/, "") + "\n\n" + block + "\n";
   }
 
   contract() {
@@ -270,6 +307,7 @@ export class InteropEngine {
    */
   plan() {
     const files = [
+      { runtime: "shared", path: "AGENTS.md", kind: "text", build: (current) => this.plannedAgents(current) },
       { runtime: "claude-code", path: "CLAUDE.md", kind: "text", build: (current) => this.plannedClaudeInstructions(current) },
       { runtime: "claude-code", path: ".mcp.json", kind: "json", build: (current) => this.plannedMcpJson(current) },
       { runtime: "claude-code", path: ".claude/settings.json", kind: "json", build: (current) => this.plannedClaudeSettings(current) },
@@ -293,14 +331,17 @@ export class InteropEngine {
       } else {
         content = file.build(before);
       }
+      if (content === null) {
+        return { runtime: file.runtime, path: file.path, action: "ok", content: null };
+      }
       const same = before !== null && before.replace(/\r\n/g, "\n") === content.replace(/\r\n/g, "\n");
       return { runtime: file.runtime, path: file.path, action: !exists ? "create" : same ? "ok" : "update", content };
     });
   }
 
   sync({ dryRun = false } = {}) {
-    if (!this.contract().present) {
-      throw new Error("AGENTS.md is missing: the shared contract must exist before the runtimes can be wired to it");
+    if (!this.contract().present && this.contractSource() === null) {
+      throw new Error("AGENTS.md is missing and the core has no " + CONTRACT_SOURCE + ": nothing to wire the runtimes to");
     }
     const plan = this.plan();
     if (!dryRun) {

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -65,7 +65,7 @@ const interop = new InteropEngine(workspace, { memory, clock, home, env: {} });
 const first = interop.sync();
 assert.deepEqual(
   first.map((entry) => entry.path + ":" + entry.action),
-  ["CLAUDE.md:update", ".mcp.json:update", ".claude/settings.json:update", ".codex/config.toml:update", ".codex/hooks.json:create"]
+  ["AGENTS.md:ok", "CLAUDE.md:update", ".mcp.json:update", ".claude/settings.json:update", ".codex/config.toml:update", ".codex/hooks.json:create"]
 );
 const claudeAfter = readFileSync(join(workspace, "CLAUDE.md"), "utf8");
 assert.match(claudeAfter, /Owner rule that must survive/);
@@ -343,5 +343,86 @@ await graphHandle({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name:
 assert.deepEqual(graphCalls.at(-1), ["graphify", "path", "A", "B"]);
 assert.match(agents, /## Code Graph \(Graphify\)/, "Graphify guidance lives once, in the shared contract");
 assert.ok(!/graphify claude install|## graphify/i.test(claudeMd), "no runtime-specific Graphify section in CLAUDE.md");
+
+// ---------------------------------------------------------------- the contract block in AGENTS.md
+
+const contractCore = sandbox("astack-contract-");
+write(join(contractCore, "system", "agent-contract.md"), "# AStack Operating Guide\n\nRule one.\n");
+write(join(contractCore, "AGENTS.md"), "# App rules\n\n- Use tabs.\n");
+const contractInterop = new InteropEngine(contractCore, { home });
+contractInterop.sync();
+let agentsText = readFileSync(join(contractCore, "AGENTS.md"), "utf8");
+assert.match(agentsText, /^# App rules\n\n- Use tabs\.\n\n<!-- astack:contract:begin/, "project rules stay first and untouched");
+assert.match(agentsText, /Rule one\.\n<!-- astack:contract:end -->/);
+assert.ok(contractInterop.sync().every((entry) => entry.action === "ok"), "the block is written once");
+write(join(contractCore, "system", "agent-contract.md"), "# AStack Operating Guide\n\nRule two.\n");
+assert.equal(contractInterop.sync().find((entry) => entry.path === "AGENTS.md").action, "update", "a newer core refreshes the block");
+agentsText = readFileSync(join(contractCore, "AGENTS.md"), "utf8");
+assert.ok(agentsText.includes("Rule two.") && !agentsText.includes("Rule one."));
+assert.equal(agentsText.split("astack:contract:begin").length - 1, 1);
+assert.match(agentsText, /- Use tabs\./);
+const emptyCore = sandbox("astack-contract-empty-");
+write(join(emptyCore, "system", "agent-contract.md"), "# Guide\n");
+new InteropEngine(emptyCore, { home }).sync();
+assert.match(readFileSync(join(emptyCore, "AGENTS.md"), "utf8"), /^<!-- astack:contract:begin[^\n]*\n# Guide\n<!-- astack:contract:end -->\n$/, "a project without AGENTS.md gets the block alone");
+
+// ---------------------------------------------------------------- one-command setup
+
+const setupHome = sandbox("astack-setup-home-");
+mkdirSync(join(setupHome, ".codex"), { recursive: true });
+writeFileSync(join(setupHome, ".codex", "config.toml"), "model = \"x\"\n", "utf8");
+const runSetup = (target, extra = []) => {
+  const result = spawnSync(process.execPath, [join(repoRoot, "bin", "astack.mjs"), "setup", "--target", target, "--no-graphify", "--no-index", ...extra], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    windowsHide: true,
+    env: { ...process.env, ASTACK_USER_HOME: setupHome, ASTACK_RUNTIME: "" }
+  });
+  assert.equal(result.status, 0, "setup failed: " + result.stdout + result.stderr);
+  return result.stdout;
+};
+
+// A brand-new, empty project gets the complete core.
+const freshProject = sandbox("astack-fresh-");
+runSetup(freshProject);
+for (const path of ["bin/astack.mjs", "AGENTS.md", "CLAUDE.md", ".mcp.json", ".codex/config.toml", ".codex/hooks.json", ".claude/settings.json", "README.md", "package.json", "knowledge-packs/laravel"]) {
+  assert.ok(existsSync(join(freshProject, path)), "fresh install has " + path);
+}
+assert.equal(readJson(join(freshProject, ".astack", "install.json")).mode, "standalone");
+assert.ok(new InteropEngine(freshProject, { home: setupHome }).status().parity, "a fresh install is in parity");
+for (const base of [".claude", ".agents"]) {
+  assert.match(readFileSync(join(setupHome, base, "skills", "astack-setup", "SKILL.md"), "utf8"), /name: astack-setup/, "the global skill is installed for " + base);
+}
+assert.match(readFileSync(join(setupHome, ".codex", "config.toml"), "utf8"), /trust_level = "trusted"/, "the project is trusted in Codex");
+
+// An existing project keeps its own files; AStack is embedded beside them.
+const existingProject = sandbox("astack-existing-");
+write(join(existingProject, "package.json"), "{\"name\":\"my-app\"}\n");
+write(join(existingProject, "README.md"), "# My App\n");
+write(join(existingProject, "AGENTS.md"), "# App rules\n\n- Use tabs.\n");
+write(join(existingProject, "src", "index.js"), "export const x = 1;\n");
+runSetup(existingProject);
+assert.equal(readFileSync(join(existingProject, "package.json"), "utf8"), "{\"name\":\"my-app\"}\n");
+assert.equal(readFileSync(join(existingProject, "README.md"), "utf8"), "# My App\n");
+assert.ok(!existsSync(join(existingProject, ".github")) && !existsSync(join(existingProject, "Dockerfile")), "no AStack CI or Dockerfile in someone else's project");
+assert.equal(readJson(join(existingProject, ".astack", "install.json")).mode, "embedded");
+assert.match(readFileSync(join(existingProject, "AGENTS.md"), "utf8"), /^# App rules[\s\S]*astack:contract:begin/);
+assert.ok(new InteropEngine(existingProject, { home: setupHome }).status().parity);
+const again = runSetup(existingProject);
+assert.ok(!existsSync(join(existingProject, ".github")) && !existsSync(join(existingProject, "Dockerfile")), "a second run still respects the embed");
+assert.match(again, /2\.\d+\.\d+/);
+assert.equal(readFileSync(join(existingProject, "AGENTS.md"), "utf8").split("astack:contract:begin").length - 1, 1, "setup is idempotent");
+
+// An old core is upgraded, migrated and wired in the same command.
+const oldProject = sandbox("astack-old-");
+runSetup(oldProject);
+writeFileSync(join(oldProject, "core", "manifest.json"), JSON.stringify({ name: "AStack", version: "2.1.0" }) + "\n", "utf8");
+rmSync(join(oldProject, "interop-engine"), { recursive: true, force: true });
+rmSync(join(oldProject, ".codex"), { recursive: true, force: true });
+rmSync(join(oldProject, "AGENTS.md"));
+const upgradedOutput = runSetup(oldProject);
+assert.match(upgradedOutput, /2\.1\.0/);
+assert.ok(existsSync(join(oldProject, "interop-engine", "interop-engine.mjs")) && existsSync(join(oldProject, ".codex", "hooks.json")));
+assert.ok(new InteropEngine(oldProject, { home: setupHome }).status().parity, "an old project reaches parity in one step");
 
 console.log("AStack interop verification passed");

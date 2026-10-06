@@ -1,4 +1,3 @@
-<!-- astack:contract:begin — managed by astack setup from system/agent-contract.md; project rules go outside this block -->
 # AStack Enterprise Operating Guide
 
 This is the single operating contract for every agent runtime that works in this project. It ships with the AStack core as `system/agent-contract.md` and is carried into `AGENTS.md` as a managed block, refreshed by every `astack setup` and `astack upgrade`. Codex loads `AGENTS.md` directly; Claude Code loads it through `CLAUDE.md`, which imports it. Project-specific rules belong in `AGENTS.md` outside the managed block, never in a runtime-specific file, so both runtimes always understand the project the same way.
@@ -122,4 +121,3 @@ Departments and agents never coordinate directly. The Chief of Staff and the Orc
 
 ## Verification
 Run `npm test` (six suites) or `astack doctor` after architectural changes. `astack interop status` verifies that both runtimes are wired to the same contract and memory. `npm run test:browser` exercises the internal browser against a real Chromium profile.
-<!-- astack:contract:end -->

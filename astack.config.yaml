@@ -1,7 +1,7 @@
 project:
   name: AStack Enterprise
   product: AI Operating System for Any Practice
-  version: 2.2.0
+  version: 2.3.0
   philosophy: enterprise_modular_platform
   primary_runtime: claude-code
   compatibility:

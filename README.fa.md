@@ -11,6 +11,14 @@ AStack Enterprise یک سیستم‌عامل هوش مصنوعی ماژولار 
 - ارتباط با مالک: فارسی — کد و مستندات فنی: انگلیسی
 - معماری: لایه‌ای، توسعه‌پذیر با پلاگین، مستقل از ارائه‌دهنده، دامنه‌آگاه ([جزئیات](documentation/Architecture.md))
 
+## نصب در هر پروژه
+پروژه جدید یا قدیمی، با یا بدون AStack — یک دستور هسته، Claude Code و Codex، Graphify، ایندکس و مهارت سراسری `astack-setup` را راه‌اندازی می‌کند (از آن به بعد کافی است به هر کدام بگویید «نصب شو» یا «راه‌اندازی شو»):
+```bash
+git clone --depth 1 https://github.com/ARaminco/AStack.git ~/.astack/core   # یا: git -C ~/.astack/core pull
+node ~/.astack/core/bin/astack.mjs setup --target /path/to/project
+```
+در پروژه‌ای که AStack دارد: `node bin/astack.mjs setup --update`.
+
 ## شروع سریع
 ```bash
 npm test

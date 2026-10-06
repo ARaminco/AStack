@@ -23,8 +23,8 @@
     "knowledgeList": "Knowledge Packهای نصب‌شده:",
     "memoryList": "Scopeهای حافظه:",
     "help": {
-      "init": "ساختار لازم برای اجرای AStack داخل Claude Code را آماده می‌کند.",
-      "install": "نصب محلی و بررسی فایل‌های ضروری را انجام می‌دهد.",
+      "init": "نصب یا به‌روزرسانی AStack و راه‌اندازی کامل برای Claude Code و Codex: هسته، مهاجرت‌ها، سیم‌کشی، Graphify، ایندکس و مهارت سراسری.",
+      "install": "نصب یا به‌روزرسانی AStack و راه‌اندازی کامل برای Claude Code و Codex: هسته، مهاجرت‌ها، سیم‌کشی، Graphify، ایندکس و مهارت سراسری.",
       "doctor": "سلامت معماری، localization، providerها، pluginها و Claude Code را بررسی می‌کند.",
       "update": "bootstrap Enterprise را دوباره اجرا می‌کند.",
       "review": "درخواست را به Orchestrator می‌دهد و گزارش فارسی برمی‌گرداند.",
@@ -59,7 +59,8 @@
       "runtime": "runtimeهای نصب‌شده و مسیریابی مدل.",
       "interop": "Claude Code و Codex را روی یک قرارداد، یک حافظه و یک دفترچه رویداد نگه می‌دارد: status، sync، handoff، journal، hook.",
       "mcp": "سرور MCP مشترک astack را برای Claude Code و Codex اجرا می‌کند.",
-      "graphify": "گراف دانش کد با Graphify و بودجه توکن: status، setup، upgrade، build، query، explain، path، affected، benchmark."
+      "graphify": "گراف دانش کد با Graphify و بودجه توکن: status، setup، upgrade، build، query، explain، path، affected، benchmark.",
+      "setup": "نصب یا به‌روزرسانی AStack و راه‌اندازی کامل برای Claude Code و Codex: هسته، مهاجرت‌ها، سیم‌کشی، Graphify، ایندکس و مهارت سراسری."
     },
     "project": {
       "usage": "فرمان‌های پروژه: init، demo، list، status، board، backlog، add، move، start، done، block، unblock، charter، milestone، sprint، risk، gate، advance، baseline، critical-path، forecast، next، digest، decision، scaffold، raci، report، templates",
@@ -370,6 +371,31 @@
       "setupFailed": "راه‌اندازی Graphify کامل نشد؛ مرحله ناموفق بالا را ببینید.",
       "served": "({tokens} توکن از بودجه {budget} توکنی تحویل شد)",
       "unknownAction": "عملیات graphify ناشناخته: {action}"
+    },
+    "setup": {
+      "title": "راه‌اندازی AStack",
+      "core": {
+        "installed": "AStack نسخه {to} در {target} نصب شد ({files} فایل)",
+        "embedded": "AStack نسخه {to} داخل پروژه موجود {target} نصب شد ({files} فایل؛ README، package.json، Dockerfile و CI خود پروژه دست نخورد)",
+        "upgraded": "AStack از {from} به {to} ارتقا یافت ({files} فایل)",
+        "current": "AStack نسخه {to} از قبل به‌روز است",
+        "newer": "هسته نصب‌شده ({from}) از منبع ({to}) جدیدتر است؛ دست نخورد"
+      },
+      "backup": "فایل‌های جایگزین‌شده در {backup} پشتیبان‌گیری شدند",
+      "step": {
+        "migrations": "مهاجرت داده‌ها",
+        "gitignore": "‎.gitignore",
+        "interop": "سیم‌کشی Claude Code و Codex",
+        "codex-trust": "اعتماد Codex به پروژه",
+        "graphify": "گراف کد Graphify",
+        "context-index": "ایندکس context",
+        "global-skill": "مهارت سراسری astack-setup"
+      },
+      "manualTitle": "کارهای دستی یک‌باره (خودکارشدنی نیستند):",
+      "manualCodex": "Codex: پروژه را در Codex باز کنید، ‎/hooks را بزنید و دو هوک astack را trust کنید.",
+      "manualClaude": "Claude Code: اولین بار که پروژه را باز می‌کنید، پیام اعتماد به پوشه را تأیید کنید.",
+      "done": "راه‌اندازی کامل شد: {target}",
+      "failed": "راه‌اندازی با خطا تمام شد؛ مراحل ✗ بالا را ببینید."
     }
   },
   "delivery": {
