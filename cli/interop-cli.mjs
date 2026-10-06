@@ -23,6 +23,9 @@ function readHookPayload() {
 
 function describeEntry(entry) {
   const when = String(entry.at).slice(0, 16).replace("T", " ");
+  if (entry.kind === "update") {
+    return when + " AStack update " + (entry.from ?? "?") + " → " + (entry.to ?? "?") + " (" + (entry.ref ?? "-") + "): " + entry.result;
+  }
   if (entry.kind === "handoff") {
     return when + " " + entry.runtime + " handoff: " + entry.summary + (entry.recommendedNextStep ? " → " + entry.recommendedNextStep : "");
   }

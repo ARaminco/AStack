@@ -17,7 +17,7 @@ AStack Enterprise یک سیستم‌عامل هوش مصنوعی ماژولار 
 git clone --depth 1 https://github.com/ARaminco/AStack.git ~/.astack/core   # یا: git -C ~/.astack/core pull
 node ~/.astack/core/bin/astack.mjs setup --target /path/to/project
 ```
-در پروژه‌ای که AStack دارد: `node bin/astack.mjs setup --update`.
+برای آپدیت هر پروژه کافی است به Claude Code یا Codex بگویید «آپدیت کن» یا [پایپ‌لاین آپدیت](documentation/Upgrade.md) را مستقیم اجرا کنید: `node ~/.astack/core/bin/astack.mjs update --target /path/to/project`.
 
 ## شروع سریع
 ```bash

@@ -1,6 +1,6 @@
 {
   "name": "astack-enterprise",
-  "version": "2.3.1",
+  "version": "2.4.0",
   "private": true,
   "type": "module",
   "description": "AStack Enterprise: a self-learning AI operating system that remembers its owner, forms expert teams, operates software and websites through real tools, and turns experience into reusable skills.",
@@ -20,6 +20,7 @@
     "interop": "node bin/astack.mjs interop status",
     "interop:sync": "node bin/astack.mjs interop sync",
     "setup": "node bin/astack.mjs setup",
+    "update:check": "node bin/astack.mjs update --check",
     "test:browser": "node tests/verify-browser-e2e.mjs",
     "standup": "node bin/astack.mjs standup",
     "tick": "node bin/astack.mjs schedule tick"

@@ -16,13 +16,27 @@ Claude Code and Codex are two hands of the same operator. They share one contrac
 
 Run `astack interop sync` after cloning to (re)generate the runtime wiring: `.mcp.json` and `.claude/settings.json` for Claude Code, `.codex/config.toml` and `.codex/hooks.json` for Codex. `astack setup` does it for you.
 
-## Install and Setup Requests
-When the owner asks to install, set up, update or repair AStack — in any words, for example "install", "set up", "نصب شو", "راه‌اندازی شو", "آپدیت شو", "AStack رو نصب کن" — run the full setup instead of individual steps, then report the result and the remaining one-time manual steps:
+## Install, Setup and Update Requests
+Both kinds of request always go through the canonical core at `~/.astack/core`, a git clone of the AStack repository (`upgrade.source`, by default https://github.com/ARaminco/AStack.git). Refresh it first — it works whether the clone is on a branch or on a release:
 
-1. In a project that already has `bin/astack.mjs`: `node bin/astack.mjs setup --update`.
-2. Anywhere else (no AStack yet, or a core too old to know `setup`): refresh the canonical core with `git clone --depth 1 https://github.com/ARaminco/AStack.git ~/.astack/core` (or `git -C ~/.astack/core pull --ff-only`), then `node ~/.astack/core/bin/astack.mjs setup --target "<project root>"`.
+```bash
+git clone --depth 1 https://github.com/ARaminco/AStack.git ~/.astack/core          # only when it does not exist
+git -C ~/.astack/core fetch --depth 1 origin main && git -C ~/.astack/core checkout -q --force --detach FETCH_HEAD
+```
 
-Setup installs or upgrades the core, runs data migrations, wires Claude Code and Codex, trusts the project in Codex, installs Graphify with its git hooks and builds the code graph, builds the context index, and installs the global `astack-setup` skill for both runtimes. It is idempotent: running it again repairs whatever is missing and changes nothing else.
+**Install or set up** — "install", "set up", "نصب شو", "راه‌اندازی شو", "AStack رو نصب کن": run `node ~/.astack/core/bin/astack.mjs setup --target "<project root>"`. It installs or upgrades the core, runs data migrations, wires Claude Code and Codex, trusts the project in Codex, installs Graphify with its git hooks and builds the code graph, builds the context index, and installs the global `astack-setup` skill. It is idempotent.
+
+**Update** — "update AStack", "آپدیت کن", "آپدیت شو", "AStack رو آپدیت کن", "ای‌استک رو آپدیت کن": run the update pipeline, `node ~/.astack/core/bin/astack.mjs update --target "<project root>"`. It always takes the new core from the git repository and runs the same stages every time:
+
+1. **preflight** — an AStack install, Node 20+, no other update running, never the AStack source repository itself (that one updates with `git pull`);
+2. **fetch** — the newest release tag (`--version 2.4.0` pins one, `--channel main` takes the branch head);
+3. **plan** — versions, file counts, the CHANGELOG entries in between, and any uncommitted managed files that will be replaced; `--check` stops here;
+4. **apply** — every replaced file backed up under `.astack/backups/`;
+5. **setup** — migrations, contract block, runtime wiring, code graph and index, with the new code;
+6. **verify** — doctor and Claude Code/Codex parity (`--test` adds the test suites); a failure rolls the project back automatically;
+7. **record** — `.astack/update-history.jsonl` and the shared journal, so the next session in either runtime knows.
+
+Report every stage to the owner, the versions before and after, and the CHANGELOG titles. `astack update history` lists past runs and `astack update rollback` restores the last backup.
 
 ## Startup Order
 1. Read `astack.config.yaml`.

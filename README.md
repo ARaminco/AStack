@@ -17,7 +17,7 @@ New or old, with or without an existing AStack core — one command sets up the 
 git clone --depth 1 https://github.com/ARaminco/AStack.git ~/.astack/core   # or: git -C ~/.astack/core pull
 node ~/.astack/core/bin/astack.mjs setup --target /path/to/project
 ```
-Inside a project that already has AStack: `node bin/astack.mjs setup --update`.
+To update any project, say "update AStack" (or «آپدیت کن») to Claude Code or Codex, or run the [update pipeline](documentation/Upgrade.md) directly: `node ~/.astack/core/bin/astack.mjs update --target /path/to/project`.
 
 ## Quick Start
 ```bash

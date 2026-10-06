@@ -26,7 +26,7 @@
       "init": "Install or update AStack and set everything up for Claude Code and Codex: core, migrations, wiring, Graphify, index, global skill.",
       "install": "Install or update AStack and set everything up for Claude Code and Codex: core, migrations, wiring, Graphify, index, global skill.",
       "doctor": "Check architecture, localization, providers, plugins, and Claude Code readiness.",
-      "update": "Run the Enterprise bootstrap again.",
+      "update": "Update AStack from its git repository through the pipeline (preflight, fetch, plan, apply, setup, verify, rollback, record): update [--check] [--version X] [--channel stable|main] | history | rollback.",
       "review": "Send a request to the Orchestrator and return a localized report.",
       "project": "Professional project delivery: lifecycle, sprints, risks, forecasting, and health reports.",
       "workflow": "List or inspect workflows.",
@@ -35,7 +35,7 @@
       "memory": "Multi-faceted memory: recall, remember, temporal supersede and consolidate.",
       "knowledge": "List Knowledge Packs.",
       "backup": "Create a memory backup.",
-      "upgrade": "Upgrade the embedded AStack core to the latest version",
+      "upgrade": "Update AStack from its git repository through the pipeline (preflight, fetch, plan, apply, setup, verify, rollback, record): update [--check] [--version X] [--channel stable|main] | history | rollback.",
       "domain": "List or detect engagement domains",
       "team": "Create and manage cross-functional teams",
       "agent": "Create, schedule, and supervise agents",
@@ -396,6 +396,29 @@
       "manualClaude": "Claude Code: accept the workspace trust dialog the first time you open this project.",
       "done": "Setup complete: {target}",
       "failed": "Setup finished with errors; see the ✗ steps above."
+    },
+    "update": {
+      "title": "AStack update pipeline — {target}\n  source: {source} · channel: {channel}",
+      "stage": {
+        "preflight": "preflight",
+        "fetch": "fetch from git",
+        "plan": "plan",
+        "apply": "backup + apply",
+        "setup": "migrations + setup",
+        "verify": "verify",
+        "rollback": "rollback",
+        "record": "record"
+      },
+      "checkOnly": "Check only: nothing was changed. Run without --check to update.",
+      "done": "AStack updated {from} → {to}. Claude Code and Codex will see it at their next session start.",
+      "current": "AStack is already at {to}; setup re-ran and everything verified.",
+      "rolledBack": "Restored {restored} file(s) and removed {removed} from {backup}; installed version: {version}.",
+      "rollbackSetup": "Run {command} to refresh the wiring for the restored version.",
+      "rolledBackSummary": "Update {from} → {to} failed verification and was rolled back; the project is as it was.",
+      "failed": "Update failed; see the ✗ stage above. Nothing was replaced unless an apply stage succeeded (then a backup exists).",
+      "historyTitle": "Update history ({count}, newest first):",
+      "noBackup": "No backup to roll back to; pass --backup <dir>.",
+      "unknownAction": "Unknown update action: {action} (run | history | rollback)"
     }
   },
   "delivery": {

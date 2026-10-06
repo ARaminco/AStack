@@ -1,7 +1,7 @@
 project:
   name: AStack Enterprise
   product: AI Operating System for Any Practice
-  version: 2.3.1
+  version: 2.4.0
   philosophy: enterprise_modular_platform
   primary_runtime: claude-code
   compatibility:
@@ -206,6 +206,9 @@ upgrade:
   engine: upgrade-engine/upgrade-engine.mjs
   manifest: upgrade-engine/manifest.json
   source: https://github.com/ARaminco/AStack.git
+  channel: stable
+  pipeline: upgrade-engine/update-pipeline.mjs
+  canonical_core: ~/.astack/core
   cache: .astack/cache/upstream
   backups: .astack/backups
   standalone: scripts/astack-upgrade.mjs
