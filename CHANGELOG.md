@@ -3,6 +3,13 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 2.5.1
+
+The merge stage skips seed files and preserved data listed in `upgrade.keep`
+(`astack.config.yaml`, `CLAUDE.md`, `README.md`, `memory`, `knowledge-packs`,
+…): the configuration gains new sections on apply and the rest belongs to the
+owner, so a text merge of them could only do harm.
+
 ## 2.5.0 — Customised installs update safely, memory comes back whole
 
 Written while updating a law firm's heavily customised 2.0 fork.
