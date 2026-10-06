@@ -150,7 +150,7 @@ export function runMemoryCommand({ runtime, i18n, tokens }) {
       scope: flags.scope ? String(flags.scope) : null,
       importance: flags.importance ? Number(flags.importance) : undefined,
       confidence: flags.confidence ? Number(flags.confidence) : undefined,
-      source: "cli"
+      source: flags.source ? String(flags.source) : "cli"
     });
     out(t("cli.memory.remembered", { id: record.id, facet: record.facet }));
     return;

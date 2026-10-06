@@ -53,4 +53,5 @@ AStack is a personal AI operating system for any practice — software, legal, f
 ## Assurance
 - [Enterprise Audit](Enterprise-Audit.md) — architecture, scalability, security review
 - [Security Policy](SECURITY.md) — reporting and principles
-- [Claude Code Runtime](Claude-Code.md) — how the primary runtime operates AStack
+- [Codex and Claude Code](Codex-and-Claude-Code.md) — one contract, one memory, one journal for both runtimes
+- [Claude Code Runtime](Claude-Code.md) — how Claude Code operates AStack

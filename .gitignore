@@ -24,3 +24,4 @@ dist/
 .astack/owner/
 .astack/runtimes/
 .astack/tools/
+.astack/interop/

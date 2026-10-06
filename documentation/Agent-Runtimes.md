@@ -18,6 +18,7 @@ task survives a restart.
 | Adapter | Status | Notes |
 | --- | --- | --- |
 | claude-code | implemented | Writes the compact work order the hosting Claude Code session executes: objective, retrieved context, selected skills, tool catalog, authority ceiling. |
+| codex | implemented | Same work order format for a hosted Codex session (AGENTS.md). With `runtime.providers.codex.command` set, Codex runs unattended through the cli adapter instead. |
 | cli | experimental | Any runtime drivable from a command line. Configure `runtime.providers.<id>.command`; the prompt is passed as a file and execution is gated by the automation policy. |
 | mock | mock-only | Deterministic runtime used by tests, dry runs and `astack runtime test`. |
 
@@ -47,4 +48,6 @@ astack runtime performance
 ```
 
 A high authority action is routed up a tier automatically: an irreversible step
-is never decided by the cheapest model.
+is never decided by the cheapest model. The runtime hosting the current session
+(detected from the environment) wins a tie, so hosted work orders go to whoever
+is already at the keyboard; see [Codex and Claude Code](Codex-and-Claude-Code.md).

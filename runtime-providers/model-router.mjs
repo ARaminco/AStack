@@ -30,9 +30,12 @@ const DEFAULT_TIERS = {
  * part of that mapping in configuration.
  */
 export class ModelRouter {
-  constructor(root, { registry, clock, config = {} } = {}) {
+  constructor(root, { registry, clock, config = {}, host = null } = {}) {
     this.root = root;
     this.registry = registry;
+    // The runtime hosting the current session (Claude Code or Codex) wins a tie:
+    // a hosted work order is executed by whoever is already at the keyboard.
+    this.host = host;
     this.clock = clock ?? (() => new Date());
     this.path = join(root, ".astack", "runtimes", "routing.json");
     this.config = config;
@@ -130,7 +133,7 @@ export class ModelRouter {
           ? requiresTools.every((tool) => (runtime.capabilities ?? []).includes("tool-use")) ? 0.2 : -0.3
           : 0;
         const history = performance ? (performance.successRate - 0.5) * 0.6 : 0;
-        const preference = preferred && runtime.id === preferred ? 0.5 : 0;
+        const preference = preferred ? (runtime.id === preferred ? 0.5 : 0) : this.host && runtime.id === this.host ? 0.3 : 0;
         const contextFit = runtime.contextWindow && contextTokens > runtime.contextWindow ? -0.6 : 0.1;
         return { runtime, score: Number((strengthMatch + toolMatch + history + preference + contextFit).toFixed(3)) };
       })

@@ -103,6 +103,19 @@ astack tool list | catalog | search "<capability>" | inspect <id> | stats
 astack runtime list | status | test <id> | route "<task>" | performance
 ```
 
+## Runtime interop (Claude Code and Codex)
+
+```bash
+astack interop status | doctor
+astack interop sync [--dry-run] [--trust-codex]
+astack interop handoff "<summary>" [--done "..."] [--findings "a;b"] [--open "q1;q2"] [--next "..."] [--runtime codex|claude-code]
+astack interop journal [--limit 10] [--runtime <id>]
+astack interop context [--runtime <id>]
+astack interop import-claude-memory
+astack interop hook session-start|session-end --runtime <id>   # called by the runtimes
+astack mcp serve | tools
+```
+
 ## Existing surface (unchanged)
 
 ```bash

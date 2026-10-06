@@ -2,10 +2,11 @@
 
 **زبان‌ها:** [English](README.md) · فارسی · [العربية](README.ar.md) · [Türkçe](README.tr.md) — **مستندات:** [فهرست مستندات](documentation/README.md)
 
-AStack Enterprise یک سیستم‌عامل هوش مصنوعی ماژولار است که در درجه اول داخل Claude Code اجرا می‌شود و با OpenAI Codex، ChatGPT و رانتایم‌های آینده نیز سازگار است. این سیستم هر نوع کاری را مدیریت می‌کند — توسعه نرم‌افزار، پرونده‌های حقوقی، امور مالی، مالیاتی، حسابداری، بازاریابی، عملیات، منابع انسانی، تحقیق و استراتژی کسب‌وکار — با تشکیل تیم‌های تخصصی، ساخت ایجنت‌ها و تفویض مأموریت‌های زمان‌بندی‌شده زیر نظر لایه رهبری.
+AStack Enterprise یک سیستم‌عامل هوش مصنوعی ماژولار است که به‌طور هم‌تراز داخل Claude Code و OpenAI Codex اجرا می‌شود — یک قرارداد، یک حافظه و یک دفترچه رویداد مشترک — و برای ChatGPT و رانتایم‌های آینده نیز باز است. این سیستم هر نوع کاری را مدیریت می‌کند — توسعه نرم‌افزار، پرونده‌های حقوقی، امور مالی، مالیاتی، حسابداری، بازاریابی، عملیات، منابع انسانی، تحقیق و استراتژی کسب‌وکار — با تشکیل تیم‌های تخصصی، ساخت ایجنت‌ها و تفویض مأموریت‌های زمان‌بندی‌شده زیر نظر لایه رهبری.
 
 ## رانتایم
-- رانتایم اصلی: Claude Code ([نحوه کار با AStack](documentation/Claude-Code.md))
+- رانتایم‌ها: Claude Code و Codex به‌صورت هم‌تراز ([مغز مشترک](documentation/Codex-and-Claude-Code.md)، [چرخه کار Claude Code](documentation/Claude-Code.md))
+- قرارداد مشترک: `AGENTS.md` (Codex مستقیم می‌خواند و `CLAUDE.md` آن را import می‌کند)؛ سیم‌کشی هر دو: `node bin/astack.mjs interop sync`
 - ارتباط با مالک: فارسی — کد و مستندات فنی: انگلیسی
 - معماری: لایه‌ای، توسعه‌پذیر با پلاگین، مستقل از ارائه‌دهنده، دامنه‌آگاه ([جزئیات](documentation/Architecture.md))
 
@@ -13,6 +14,7 @@ AStack Enterprise یک سیستم‌عامل هوش مصنوعی ماژولار 
 ```bash
 npm test
 node bin/astack.mjs doctor
+node bin/astack.mjs interop sync && node bin/astack.mjs interop status
 node bin/astack.mjs domain detect "اظهارنامه مالیات ارزش افزوده"
 node bin/astack.mjs lead plan "پرونده حقوقی قرارداد ملکی"
 node bin/astack.mjs lead team "پرونده حقوقی قرارداد ملکی" --name legal-case-team

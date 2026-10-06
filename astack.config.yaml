@@ -1,7 +1,7 @@
 project:
   name: AStack Enterprise
   product: AI Operating System for Any Practice
-  version: 2.1.0
+  version: 2.2.0
   philosophy: enterprise_modular_platform
   primary_runtime: claude-code
   compatibility:
@@ -70,6 +70,7 @@ architecture:
     - delivery-engine
     - team-engine
     - agent-engine
+    - interop-engine
     - upgrade-engine
     - localization-engine
     - configuration-engine
@@ -308,8 +309,26 @@ runtime:
   providers:
     claude-code:
       enabled: true
+    codex:
+      enabled: true
     mock:
       enabled: true
+
+interop:
+  enabled: true
+  engine: interop-engine/interop-engine.mjs
+  contract: AGENTS.md
+  journal: .astack/interop/journal.jsonl
+  mcp_server: astack
+  runtimes:
+    claude-code:
+      instructions: CLAUDE.md
+      mcp: .mcp.json
+      hooks: .claude/settings.json
+    codex:
+      instructions: AGENTS.md
+      mcp: .codex/config.toml
+      hooks: .codex/hooks.json
 
 tools:
   registry: tool-registry/tool-registry.mjs

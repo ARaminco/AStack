@@ -16,6 +16,7 @@
     "domains",
     "event-bus",
     "installer",
+    "interop-engine",
     "knowledge-graph",
     "knowledge-packs/knowledge-pack-registry.mjs",
     "learning-engine",
@@ -49,6 +50,7 @@
   "seed": [
     ".github",
     ".gitignore",
+    "AGENTS.md",
     "CLAUDE.md",
     "Dockerfile",
     "README.md",
@@ -56,11 +58,14 @@
     "package.json"
   ],
   "preserve": [
+    ".agents",
     ".astack",
     ".astackignore",
     ".claude",
+    ".codex",
     ".env",
     ".git",
+    ".mcp.json",
     "knowledge-packs",
     "memory",
     "node_modules",

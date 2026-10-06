@@ -1,0 +1,7 @@
+# >>> astack (managed by `astack interop sync`) >>>
+[mcp_servers.astack]
+command = "node"
+args = ["bin/astack.mjs", "mcp", "serve"]
+startup_timeout_sec = 30
+default_tools_approval_mode = "approve"
+# <<< astack <<<

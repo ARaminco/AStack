@@ -56,7 +56,9 @@
       "audit": "ردّ ممیزی همه اقدام‌های بیرونی.",
       "secret": "مرجع اعتبارنامه‌ها بدون افشای مقدار.",
       "tool": "رجیستری ابزارها با افشای تدریجی.",
-      "runtime": "runtimeهای نصب‌شده و مسیریابی مدل."
+      "runtime": "runtimeهای نصب‌شده و مسیریابی مدل.",
+      "interop": "Claude Code و Codex را روی یک قرارداد، یک حافظه و یک دفترچه رویداد نگه می‌دارد: status، sync، handoff، journal، hook.",
+      "mcp": "سرور MCP مشترک astack را برای Claude Code و Codex اجرا می‌کند."
     },
     "project": {
       "usage": "فرمان‌های پروژه: init، demo، list، status، board، backlog، add، move، start، done، block، unblock، charter، milestone، sprint، risk، gate، advance، baseline، critical-path، forecast، next، digest، decision، scaffold، raci، report، templates",
@@ -323,6 +325,32 @@
       "preference": "ترجیح ثبت شد: {text}",
       "summarized": "خلاصه گفتگو ذخیره شد: {stored} رکورد.",
       "unknownAction": "فرمان ناشناخته برای owner: {action}"
+    },
+    "interop": {
+      "statusTitle": "هم‌سازی AStack: یک قرارداد، یک حافظه، یک دفترچه رویداد",
+      "contract": "قرارداد مشترک: AGENTS.md#{hash} ({bytes} بایت)",
+      "memory": "حافظه مشترک: {path}",
+      "journal": "دفترچه رویداد: {path} ({entries} ورودی)",
+      "runtimeLine": "{instructions} · سیم‌کشی {wired}",
+      "claudeMemory": "حافظه خودکار Claude Code (در شروع هر نشست وارد می‌شود): {path}",
+      "codexTrusted": "پروژه در ‎~/.codex/config.toml مورد اعتماد است ({key})",
+      "codexUntrusted": "پروژه در ‎~/.codex/config.toml مورد اعتماد نیست؛ تا آن زمان Codex پوشه ‎.codex/ را نادیده می‌گیرد: astack interop sync --trust-codex",
+      "codexMissing": "فایل ‎~/.codex/config.toml پیدا نشد (Codex برای این کاربر نصب نیست)",
+      "lastSeen": "آخرین فعالیت {runtime}: {entry}",
+      "pending": "[{runtime}] {path}: {action} معوق است؛ astack interop sync را اجرا کنید",
+      "parityOk": "هم‌ترازی برقرار است: Claude Code و Codex یک قرارداد را می‌خوانند و به حافظه، ابزارها و دفترچه یکسان دسترسی دارند.",
+      "parityMissing": "هم‌ترازی کامل نیست: astack interop sync را اجرا کنید.",
+      "syncPlan": "سیم‌کشی برنامه‌ریزی‌شده (اجرای آزمایشی):",
+      "syncDone": "سیم‌کشی runtimeها همگام شد:",
+      "trustAdded": "Codex اکنون به {key} اعتماد دارد (پشتیبان: {backup}).",
+      "trustPresent": "Codex از قبل به {key} اعتماد دارد.",
+      "trustHint": "تا پروژه مورد اعتماد نباشد Codex لایه ‎.codex/ را نادیده می‌گیرد: astack interop sync --trust-codex (یا از داخل Codex اعتماد کنید).",
+      "handoffSaved": "تحویل کار برای {runtime} ثبت شد (حافظه {memory}).",
+      "journalTitle": "دفترچه رویداد ({count} ورودی، جدیدترین اول):",
+      "imported": "ورود حافظه Claude Code از {directory}: {imported} جدید، {updated} به‌روز، {unchanged} بدون تغییر، {skipped} ردشده.",
+      "noClaudeMemory": "حافظه خودکار Claude Code برای این workspace پیدا نشد.",
+      "unknownAction": "عملیات interop ناشناخته: {action}",
+      "codexHooks": "Codex هوک‌های پروژه را فقط پس از یک‌بار تأیید اجرا می‌کند: Codex را در همین پوشه باز کنید، ‎/hooks را بزنید و دو هوک astack را trust کنید (اگر sync آن‌ها را تغییر داد، دوباره)."
     }
   },
   "delivery": {

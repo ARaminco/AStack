@@ -28,6 +28,8 @@ import { ToolRegistry } from "../tool-registry/tool-registry.mjs";
 import { RuntimeRegistry } from "../runtime-providers/agent-runtime.mjs";
 import { ClaudeCodeRuntime } from "../runtime-providers/adapters/claude-code.mjs";
 import { CliRuntime } from "../runtime-providers/adapters/cli-runtime.mjs";
+import { CodexRuntime } from "../runtime-providers/adapters/codex.mjs";
+import { InteropEngine, detectRuntime } from "../interop-engine/interop-engine.mjs";
 import { MockRuntime } from "../runtime-providers/adapters/mock-runtime.mjs";
 import { ModelRouter } from "../runtime-providers/model-router.mjs";
 import { MissionEngine } from "../mission-engine/mission-engine.mjs";
@@ -96,13 +98,20 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
   const runtimes = new RuntimeRegistry(workspaceRoot, { clock, eventBus });
   runtimes.register(new ClaudeCodeRuntime({ root: workspaceRoot, clock, eventBus }));
   runtimes.register(new MockRuntime({ root: workspaceRoot, clock, eventBus }));
-  for (const [id, providerConfig] of Object.entries(configuration.section("runtime", {}).providers ?? {})) {
-    if (id === "claude-code" || id === "mock") {
+  const runtimeProviders = configuration.section("runtime", {}).providers ?? {};
+  if (!runtimeProviders.codex?.command) {
+    // A hosted Codex session. A configured command switches Codex to unattended
+    // `codex exec` runs through the generic CLI adapter below instead.
+    runtimes.register(new CodexRuntime({ root: workspaceRoot, clock, eventBus }));
+  }
+  for (const [id, providerConfig] of Object.entries(runtimeProviders)) {
+    if (id === "claude-code" || id === "mock" || (id === "codex" && !providerConfig?.command)) {
       continue;
     }
     runtimes.register(new CliRuntime(id, { root: workspaceRoot, clock, eventBus, config: providerConfig, policy: automationPolicy }));
   }
-  const modelRouter = new ModelRouter(workspaceRoot, { registry: runtimes, clock, config: configuration.section("routing", {}) });
+  const host = detectRuntime();
+  const modelRouter = new ModelRouter(workspaceRoot, { registry: runtimes, clock, config: configuration.section("routing", {}), host: host === "unknown" ? null : host });
 
   const services = { memory, graph, context, learning, projects, agents, teams, browser, skills };
   const tools = new ToolRegistry(root, { workspaceRoot, clock, services, policy: automationPolicy, authority, audit, secrets, approvals });
@@ -153,6 +162,8 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
     budgets
   });
 
+  const interop = new InteropEngine(root, { workspaceRoot, memory, clock, standup: () => chief.standup() });
+
   const departments = JSON.parse(readFileSync(join(root, "departments", "departments.json"), "utf8")).departments;
   const providers = providerRegistry.list();
   const orchestrator = new Orchestrator({
@@ -201,6 +212,7 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
     tools,
     runtimes,
     modelRouter,
+    interop,
     missions,
     scheduler,
     signals,

@@ -2,10 +2,11 @@
 
 **Languages:** English · [فارسی](README.fa.md) · [العربية](README.ar.md) · [Türkçe](README.tr.md) — **Docs:** [Documentation Index](documentation/README.md)
 
-AStack Enterprise is a modular AI Operating System designed to run primarily inside Claude Code while remaining compatible with OpenAI Codex, ChatGPT, and future agent runtimes. It manages any kind of engagement — software delivery, legal cases, finance, tax, accounting, marketing, operations, HR, research, and business strategy — by forming domain teams, creating agents, and delegating scheduled missions under a leadership layer.
+AStack Enterprise is a modular AI Operating System that runs natively in both Claude Code and OpenAI Codex — one shared contract, one memory, one journal — while remaining open to ChatGPT and future agent runtimes. It manages any kind of engagement — software delivery, legal cases, finance, tax, accounting, marketing, operations, HR, research, and business strategy — by forming domain teams, creating agents, and delegating scheduled missions under a leadership layer.
 
 ## Runtime
-- Primary runtime: Claude Code ([how it operates AStack](documentation/Claude-Code.md))
+- Runtimes: Claude Code and Codex in parity ([how they share one brain](documentation/Codex-and-Claude-Code.md), [Claude Code loop](documentation/Claude-Code.md))
+- Shared contract: `AGENTS.md` (Codex reads it natively, `CLAUDE.md` imports it); wire both runtimes with `node bin/astack.mjs interop sync`
 - User communication: Persian — software assets and documentation: English
 - Architecture: layered, plugin-ready, provider-agnostic, domain-aware ([details](documentation/Architecture.md))
 
@@ -13,6 +14,7 @@ AStack Enterprise is a modular AI Operating System designed to run primarily ins
 ```bash
 npm test
 node bin/astack.mjs doctor
+node bin/astack.mjs interop sync && node bin/astack.mjs interop status
 node bin/astack.mjs domain detect "اظهارنامه مالیات ارزش افزوده"
 node bin/astack.mjs lead plan "پرونده حقوقی قرارداد ملکی"
 node bin/astack.mjs lead team "پرونده حقوقی قرارداد ملکی" --name legal-case-team
