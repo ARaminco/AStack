@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { createLocalization } from "../localization-engine/service.mjs";
 import { createRuntime } from "../runtime/astack-runtime.mjs";
 import { runProjectCommand } from "../delivery-engine/cli.mjs";
-import { runAgentCommand, runDomainCommand, runLeadCommand, runTeamCommand, runUpgradeCommand } from "../cli/orchestration-cli.mjs";
+import { runAgentCommand, runDomainCommand, runLeadCommand, runTeamCommand } from "../cli/orchestration-cli.mjs";
 import { runContextCommand, runGraphCommand, runLearningCommand, runMemoryCommand, runSkillCommand } from "../cli/intelligence-cli.mjs";
 import { runBrowserCommand, runMissionCommand, runScheduleCommand, runSignalCommand } from "../cli/operations-cli.mjs";
 import { runApprovalCommand, runAuditCommand, runAuthorityCommand, runRuntimeCommand, runSecretCommand, runToolCommand } from "../cli/trust-cli.mjs";
@@ -12,13 +12,14 @@ import { runAskCommand, runOwnerCommand, runStandupCommand } from "../cli/chief-
 import { runInteropCommand, runMcpCommand } from "../cli/interop-cli.mjs";
 import { runGraphifyCommand } from "../cli/graphify-cli.mjs";
 import { runSetupCommand } from "../cli/setup-cli.mjs";
+import { runUpdateCommand } from "../cli/update-cli.mjs";
 import { pendingMigrations } from "../upgrade-engine/migrations.mjs";
 
 const i18n = createLocalization();
 const runtime = createRuntime();
 
 const COMMANDS = [
-  "setup", "init", "install", "doctor", "upgrade", "review", "ask", "standup", "owner",
+  "setup", "init", "install", "doctor", "update", "upgrade", "review", "ask", "standup", "owner",
   "context", "memory", "graph", "learn", "skill",
   "mission", "schedule", "signal", "browser",
   "authority", "approval", "audit", "secret", "tool", "runtime", "interop", "mcp", "graphify",
@@ -134,7 +135,7 @@ async function run() {
       return;
     case "update":
     case "upgrade":
-      runUpgradeCommand(context);
+      runUpdateCommand(context);
       return;
     case "review": {
       const result = runtime.orchestrator.run(tokens.join(" "));

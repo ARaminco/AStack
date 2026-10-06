@@ -116,6 +116,14 @@ astack interop hook session-start|session-end --runtime <id>   # called by the r
 astack mcp serve | tools
 ```
 
+## Setup and update
+
+```bash
+astack setup [--target <dir>] [--no-graphify] [--no-trust-codex] [--no-hooks] [--no-index] [--no-global-skill]
+astack update [--target <dir>] [--check] [--version X.Y.Z] [--channel stable|main] [--from <path>] [--test] [--no-verify] [--no-rollback] [--force] [--keep a,b]
+astack update history | rollback [--backup <dir>]
+```
+
 ## Code graph (Graphify)
 
 ```bash

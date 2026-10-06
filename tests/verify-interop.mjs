@@ -12,6 +12,8 @@ import { CodexRuntime } from "../runtime-providers/adapters/codex.mjs";
 import { ModelRouter } from "../runtime-providers/model-router.mjs";
 import { migrations } from "../upgrade-engine/migrations.mjs";
 import { GraphifyAdapter, fitToBudget } from "../context-engine/graphify.mjs";
+import { UpdatePipeline, changelogBetween, repositoryId } from "../upgrade-engine/update-pipeline.mjs";
+import { latestReleaseTag } from "../upgrade-engine/canonical.mjs";
 
 const repoRoot = process.cwd();
 const sandboxes = [];
@@ -424,5 +426,68 @@ const upgradedOutput = runSetup(oldProject);
 assert.match(upgradedOutput, /2\.1\.0/);
 assert.ok(existsSync(join(oldProject, "interop-engine", "interop-engine.mjs")) && existsSync(join(oldProject, ".codex", "hooks.json")));
 assert.ok(new InteropEngine(oldProject, { home: setupHome }).status().parity, "an old project reaches parity in one step");
+
+// ---------------------------------------------------------------- update pipeline
+
+assert.equal(latestReleaseTag("a\trefs/tags/v2.3.1\nb\trefs/tags/v2.10.0\nc\trefs/tags/v2.9.9\nd\trefs/tags/nightly\n"), "v2.10.0", "tags compare as versions, not strings");
+assert.equal(latestReleaseTag(""), null);
+assert.deepEqual(
+  changelogBetween("## 2.4.0 — Pipeline\n\n## 2.3.1\n\n## 2.3.0 — Setup\n\n## 2.2.0 — Parity\n", "2.2.0", "2.4.0").map((entry) => entry.version),
+  ["2.4.0", "2.3.1", "2.3.0"]
+);
+assert.equal(repositoryId("git@github.com:ARaminco/AStack.git"), repositoryId("https://github.com/ARaminco/AStack"));
+
+process.env.ASTACK_USER_HOME = setupHome;
+const quiet = { "no-graphify": true, "no-index": true };
+const repoVersion = JSON.parse(readFileSync(join(repoRoot, "core", "manifest.json"), "utf8")).version;
+const makeOld = () => {
+  const project = sandbox("astack-update-");
+  runSetup(project);
+  writeFileSync(join(project, "core", "manifest.json"), JSON.stringify({ name: "AStack", version: "2.1.0" }) + "\n", "utf8");
+  rmSync(join(project, "interop-engine"), { recursive: true, force: true });
+  return project;
+};
+
+const checked = makeOld();
+const checkResult = new UpdatePipeline({ target: checked, source: repoRoot, flags: { ...quiet, check: true } }).run();
+assert.ok(checkResult.ok && checkResult.check);
+assert.ok(!existsSync(join(checked, "interop-engine")), "--check changes nothing");
+assert.match(checkResult.stages.find((entry) => entry.stage === "plan").detail, /2\.1\.0 → /);
+
+const updated = makeOld();
+const updateResult = new UpdatePipeline({ target: updated, source: repoRoot, flags: quiet }).run();
+assert.ok(updateResult.ok, JSON.stringify(updateResult.stages));
+assert.deepEqual(updateResult.stages.map((entry) => entry.stage), ["fetch", "plan", "apply", "setup", "verify", "record"]);
+assert.equal(updateResult.to, repoVersion);
+assert.ok(existsSync(join(updated, "interop-engine", "interop-engine.mjs")));
+assert.equal(JSON.parse(readFileSync(join(updated, "core", "manifest.json"), "utf8")).version, repoVersion);
+const updateHistory = new UpdatePipeline({ target: updated }).history();
+assert.equal(updateHistory[0].result, "updated");
+assert.equal(updateHistory[0].from, "2.1.0");
+const updateJournal = new InteropEngine(updated, { home: setupHome });
+assert.equal(updateJournal.journal({ limit: 5 }).find((entry) => entry.kind === "update").to, repoVersion, "the shared journal records the update");
+assert.match(updateJournal.sessionContext({ runtime: "codex" }), /AStack update 2\.1\.0 → /, "both runtimes are told about it");
+assert.ok(!existsSync(join(updated, ".astack", "update.lock")), "the lock is released");
+
+const failing = makeOld();
+const failResult = new UpdatePipeline({ target: failing, source: repoRoot, flags: quiet, hooks: { verify: () => ({ ok: false, detail: "simulated failure" }) } }).run();
+assert.ok(!failResult.ok && failResult.rolledBack, "a failed verification rolls back");
+assert.equal(JSON.parse(readFileSync(join(failing, "core", "manifest.json"), "utf8")).version, "2.1.0", "the old version is restored");
+assert.ok(!existsSync(join(failing, "interop-engine")), "files the update added are removed again");
+assert.equal(new UpdatePipeline({ target: failing }).history()[0].result, "rolled-back");
+
+const locked = makeOld();
+writeFileSync(join(locked, ".astack", "update.lock"), "{}", "utf8");
+const lockedResult = new UpdatePipeline({ target: locked, source: repoRoot, flags: quiet }).run();
+assert.ok(lockedResult.locked && !lockedResult.ok, "a running update blocks a second one");
+
+const sourceRepository = sandbox("astack-source-");
+write(join(sourceRepository, "astack.config.yaml"), "project:\n  name: x\n");
+spawnSync("git", ["init", "-q"], { cwd: sourceRepository });
+spawnSync("git", ["remote", "add", "origin", "git@github.com:ARaminco/AStack.git"], { cwd: sourceRepository });
+const sourceResult = new UpdatePipeline({ target: sourceRepository, source: "https://github.com/ARaminco/AStack.git" }).run();
+assert.ok(sourceResult.sourceRepository && !sourceResult.ok, "the AStack source repository is never overwritten by its own releases");
+assert.ok(!new UpdatePipeline({ target: sandbox("astack-empty-"), source: repoRoot }).run().ok, "no install, no update");
+delete process.env.ASTACK_USER_HOME;
 
 console.log("AStack interop verification passed");

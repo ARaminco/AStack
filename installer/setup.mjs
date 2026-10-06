@@ -1,9 +1,11 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { DEFAULT_SOURCE, REPOSITORY_FURNITURE, UpgradeEngine, compareVersions, installRecordPath, readVersion } from "../upgrade-engine/upgrade-engine.mjs";
+import { REPOSITORY_FURNITURE, UpgradeEngine, compareVersions, installRecordPath } from "../upgrade-engine/upgrade-engine.mjs";
 import { runMigrations } from "../upgrade-engine/migrations.mjs";
+import { userHome } from "../upgrade-engine/canonical.mjs";
+
+export { canonicalCore, userHome } from "../upgrade-engine/canonical.mjs";
 
 /**
  * One command for "install and set up", in a new project or an old one.
@@ -21,14 +23,6 @@ import { runMigrations } from "../upgrade-engine/migrations.mjs";
 export const FILL_ON_INSTALL = ["knowledge-packs", "plugins"];
 const ESSENTIAL_IGNORES = [".astack/cache/", ".astack/backups/", ".astack/interop/", "graphify-out/"];
 
-export function userHome(env = process.env) {
-  return env.ASTACK_USER_HOME || homedir();
-}
-
-export function canonicalCore(env = process.env) {
-  return env.ASTACK_CORE || join(userHome(env), ".astack", "core");
-}
-
 export function isInstall(dir) {
   return existsSync(join(dir, "astack.config.yaml")) || existsSync(join(dir, "core", "manifest.json"));
 }
@@ -44,21 +38,6 @@ function isGitRepo(dir) {
   } catch {
     return false;
   }
-}
-
-/** A local directory is used as is; anything else refreshes the canonical clone. */
-export function refreshCanonical(source = DEFAULT_SOURCE, env = process.env) {
-  if (existsSync(source)) {
-    return resolve(source);
-  }
-  const core = canonicalCore(env);
-  if (existsSync(join(core, ".git"))) {
-    execFileSync("git", ["-C", core, "pull", "--ff-only", "--quiet"], { stdio: "pipe", windowsHide: true });
-  } else {
-    mkdirSync(dirname(core), { recursive: true });
-    execFileSync("git", ["clone", "--depth", "1", "--quiet", source, core], { stdio: "pipe", windowsHide: true });
-  }
-  return core;
 }
 
 /** Install or upgrade the core in `target` from the core at `sourceDir`. */
@@ -138,14 +117,6 @@ export function setupCore({ coreRoot, flags }) {
   const target = resolve(String(flags.target ?? coreRoot));
   if (target !== resolve(coreRoot)) {
     return { target, core: installCore({ sourceDir: coreRoot, target }), respawn: true };
-  }
-  if (flags.update) {
-    const sourceDir = refreshCanonical(String(flags.from ?? process.env.ASTACK_SOURCE ?? DEFAULT_SOURCE));
-    if (resolve(sourceDir) === target) {
-      return { target, core: { action: "current", from: readVersion(target), to: readVersion(target), files: 0 }, respawn: false };
-    }
-    const core = installCore({ sourceDir, target });
-    return { target, core, respawn: core.files > 0 };
   }
   return { target, core: null, respawn: false };
 }

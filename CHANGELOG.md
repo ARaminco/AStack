@@ -3,6 +3,38 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 2.4.0 — The update pipeline
+
+"Update AStack" is now one defined pipeline that always takes the new core from
+the AStack git repository.
+
+### Added
+
+**`astack update`** (alias `upgrade`; `setup --update` runs it too):
+preflight → fetch → plan → apply → setup → verify → record. Fetch resolves the
+newest release tag from the repository (`--version` pins one, `--channel main`
+follows the branch) into the canonical clone at `~/.astack/core`. Plan shows
+versions, file counts, the CHANGELOG titles in between and uncommitted managed
+files; `--check` stops there. Apply backs everything up; setup runs with the
+new code; verify runs doctor and Claude Code/Codex parity (`--test` adds the
+suites) and **rolls back automatically** on failure. Each run is recorded in
+`.astack/update-history.jsonl` and in the shared journal, which both runtimes
+see at their next session start. `update history` and `update rollback`
+complete it; a lock prevents concurrent updates.
+
+**Safety** — the AStack source repository itself refuses the pipeline (it would
+overwrite work in progress with a release) and updates with `git pull`.
+
+**Triggers** — the shared contract and the global `astack-setup` skill map
+"update AStack", «آپدیت کن» and similar requests to the pipeline, run from the
+canonical core so it works for projects on any older version.
+`installer/update.sh` and `update.ps1` do the same from a shell.
+
+### Changed
+
+The canonical clone is refreshed with fetch + detached checkout, which works
+on a branch or a release; the installers and the skill use the same commands.
+
 ## 2.3.1
 
 The global `astack-setup` skill now states that a bare "نصب شو", "راه‌اندازی شو",

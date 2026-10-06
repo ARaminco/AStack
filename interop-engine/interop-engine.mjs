@@ -599,12 +599,14 @@ export class InteropEngine {
     if (graphLine) {
       lines.push(graphLine);
     }
-    const recent = this.journal({ limit: 6 }).filter((entry) => entry.kind === "handoff" || entry.kind === "session-end");
+    const recent = this.journal({ limit: 8 }).filter((entry) => ["handoff", "session-end", "update"].includes(entry.kind)).slice(0, 6);
     if (recent.length) {
       lines.push("", "## Recent work (both runtimes, newest first)");
       for (const entry of recent) {
         const when = String(entry.at).slice(0, 16).replace("T", " ");
-        if (entry.kind === "handoff") {
+        if (entry.kind === "update") {
+          lines.push("- " + when + " AStack update " + (entry.from ?? "?") + " → " + (entry.to ?? "?") + " (" + (entry.ref ?? "-") + "): " + entry.result);
+        } else if (entry.kind === "handoff") {
           lines.push("- " + when + " " + entry.runtime + " handoff: " + entry.summary + (entry.recommendedNextStep ? " → next: " + entry.recommendedNextStep : ""));
         } else {
           const files = entry.workspace?.changedFiles;

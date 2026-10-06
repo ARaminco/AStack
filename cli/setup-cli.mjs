@@ -1,11 +1,17 @@
 import { parseArgs } from "../delivery-engine/cli.mjs";
 import { respawnLocal, setupCore, setupLocal } from "../installer/setup.mjs";
+import { runUpdateCommand } from "./update-cli.mjs";
 
 const out = (line) => console.log(line);
 
 export function runSetupCommand({ runtime, i18n, tokens }) {
   const t = i18n.t.bind(i18n);
   const { flags } = parseArgs(tokens);
+  if (flags.update) {
+    // "Set up and update" is the update pipeline, which runs setup itself.
+    runUpdateCommand({ runtime, i18n, tokens: tokens.filter((token) => token !== "--update") });
+    return;
+  }
 
   if (flags.stage !== "local") {
     out(t("cli.setup.title"));

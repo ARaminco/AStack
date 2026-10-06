@@ -2,17 +2,38 @@
 
 Any project that embeds an AStack core can update itself to the latest version while keeping its own data and customizations.
 
-## In current installs
+## The update pipeline
+
+"Update AStack" means the same thing every time, in every project: the new core comes from the AStack git repository (`upgrade.source`, by default https://github.com/ARaminco/AStack.git) through the canonical clone at `~/.astack/core`, and runs through fixed stages.
+
+| Stage | What it does | Stops the update when |
+| --- | --- | --- |
+| preflight | AStack install present, Node 20+, update lock taken | not an install, old Node, another update running, or the target is the AStack source repository itself |
+| fetch | resolves the ref — newest release tag (`stable`), `--version X.Y.Z`, or `--channel main` — and checks it out in `~/.astack/core` | git or network fails |
+| plan | versions, add/update/seed counts, new config sections, CHANGELOG titles in between, uncommitted managed files | a downgrade without `--force`; `--check` ends here |
+| apply | backs up every replaced file to `.astack/backups/upgrade-<stamp>/`, then writes | — |
+| setup | migrations, the contract block, Claude Code/Codex wiring, Graphify, index — with the new code in a new process | — |
+| verify | `doctor` and `interop doctor` (parity); `--test` adds the test suites | any check fails → automatic **rollback** to the backup |
+| record | `.astack/update-history.jsonl` and the shared journal | — |
 
 ```bash
-astack upgrade --check        # dry run: show what would change
-astack upgrade                # fetch, back up, apply
-astack upgrade --from C:\Projects\AStack   # use a local checkout instead of git
-astack upgrade --keep departments,roles    # protect extra paths this run
-astack doctor                 # verify afterwards
+# from anywhere — works for every core version, including ones without the pipeline
+git -C ~/.astack/core fetch --depth 1 origin main && git -C ~/.astack/core checkout -q --force --detach FETCH_HEAD
+node ~/.astack/core/bin/astack.mjs update --target /path/to/project [--check] [--version 2.4.0] [--channel main] [--test]
+
+# inside a project on 2.4.0 or newer
+node bin/astack.mjs update            # alias: upgrade; setup --update runs the same pipeline
+node bin/astack.mjs update history
+node bin/astack.mjs update rollback   # restore the last backup (data migrations are additive and stay)
+
+# scripts that refresh the canonical core first
+sh installer/update.sh /path/to/project
+powershell -File installer/update.ps1 C:path	oproject
 ```
 
-`astack update` is kept as an alias. The source defaults to the canonical repository (`upgrade.source` in `astack.config.yaml`, override with `--from` or the `ASTACK_SOURCE` environment variable). Git sources are cloned into `.astack/cache/upstream`.
+Asking either runtime to "update AStack" — or «آپدیت کن» — runs this pipeline: the shared contract and the global `astack-setup` skill both map the request to it. The channel can be pinned per project with `upgrade.channel` in `astack.config.yaml`; `--from <path>` uses a local checkout instead of git, and `--keep a,b` protects extra paths for one run.
+
+The AStack source repository itself is never updated by the pipeline (it would overwrite work in progress with a release); it updates with `git pull`.
 
 ## What is touched and what is not
 The manifest `upgrade-engine/manifest.json` (always taken from the new version) defines three sets:
