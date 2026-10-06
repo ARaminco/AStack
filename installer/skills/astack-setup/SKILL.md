@@ -1,9 +1,11 @@
 ---
 name: astack-setup
-description: Install, set up, update or repair AStack in the current project so Claude Code and Codex share one contract, one memory, one journal and the Graphify code graph. Use whenever the owner asks to install or set up AStack or the project — "install", "set up", "update AStack", "نصب شو", "راه‌اندازی شو", "آپدیت شو", "AStack رو نصب کن", "راه‌اندازیش کن" — in a new project or an old one, with or without an existing AStack core.
+description: Install, set up, update or repair AStack in the current project so Claude Code and Codex share one contract, one memory, one journal and the Graphify code graph. A bare request to install or set up — "نصب شو", "راه‌اندازی شو", "نصبش کن", "راه‌اندازیش کن", "آپدیت شو", "install", "set up", "install yourself" — with no other object always means this skill; run it right away without asking what to install. Also use it for "AStack رو نصب کن", "update AStack" or "repair AStack", in a new project or an old one, with or without an existing AStack core.
 ---
 
 # AStack setup
+
+The owner's bare "نصب شو" / "راه‌اندازی شو" / "install" / "set up" is a request to run this — do not ask what to install or set up; run the steps and report.
 
 One command does everything and is safe to repeat: it installs or upgrades the core, runs data migrations, wires Claude Code and Codex, trusts the project in Codex, installs Graphify with its git hooks and builds the code graph, builds the context index, and refreshes this skill.
 

@@ -3,6 +3,13 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 2.3.1
+
+The global `astack-setup` skill now states that a bare "نصب شو", "راه‌اندازی شو",
+"install" or "set up" means AStack setup and must run without a clarifying
+question. Verified with real runs: Codex and Claude Code each installed AStack
+into a plain project from that single phrase.
+
 ## 2.3.0 — One command to install and set up
 
 "Install and set up" is now one idempotent command for any project — empty,
