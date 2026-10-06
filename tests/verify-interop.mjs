@@ -14,6 +14,8 @@ import { migrations } from "../upgrade-engine/migrations.mjs";
 import { GraphifyAdapter, fitToBudget } from "../context-engine/graphify.mjs";
 import { UpdatePipeline, changelogBetween, repositoryId } from "../upgrade-engine/update-pipeline.mjs";
 import { latestReleaseTag } from "../upgrade-engine/canonical.mjs";
+import { mergeJson, mergeKept, refreshBase, undoMerge } from "../upgrade-engine/kept-merge.mjs";
+import { facetForPath, importLegacyMemory, sections } from "../interop-engine/memory-sources.mjs";
 
 const repoRoot = process.cwd();
 const sandboxes = [];
@@ -492,6 +494,89 @@ spawnSync("git", ["remote", "add", "origin", "git@github.com:ARaminco/AStack.git
 const sourceResult = new UpdatePipeline({ target: sourceRepository, source: "https://github.com/ARaminco/AStack.git" }).run();
 assert.ok(sourceResult.sourceRepository && !sourceResult.ok, "the AStack source repository is never overwritten by its own releases");
 assert.ok(!new UpdatePipeline({ target: sandbox("astack-empty-"), source: repoRoot }).run().ok, "no install, no update");
+// ---------------------------------------------------------------- protected paths merge three ways
+
+assert.deepEqual(mergeJson({ a: 1, b: 1, c: 1 }, { a: 2, b: 1, c: 1 }, { a: 1, b: 3, c: 1, d: 4 }).value, { a: 2, b: 3, c: 1, d: 4 });
+assert.deepEqual(mergeJson({ a: 1 }, { a: 2 }, { a: 3 }).conflicts, ["/a"], "both changed the same leaf: owner kept, reported");
+const mergeTarget = sandbox("astack-kept-");
+const mergeSource = sandbox("astack-kept-src-");
+const mergeBackup = join(mergeTarget, ".astack", "backups", "t");
+const baseLines = "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\n";
+write(join(mergeTarget, ".astack", "upstream-base", "engine", "core.mjs"), baseLines);
+write(join(mergeTarget, ".astack", "upstream-base", "engine", "plain.mjs"), "old\n");
+write(join(mergeTarget, ".astack", "upstream-base", "engine", "clash.mjs"), "x = 1\n");
+write(join(mergeTarget, "engine", "core.mjs"), baseLines.replace("line 1", "owner line 1"));
+write(join(mergeTarget, "engine", "plain.mjs"), "old\n");
+write(join(mergeTarget, "engine", "clash.mjs"), "x = 2\n");
+write(join(mergeTarget, "engine", "owned.md"), "owner only\n");
+write(join(mergeSource, "engine", "core.mjs"), baseLines.replace("line 6", "upstream line 6"));
+write(join(mergeSource, "engine", "plain.mjs"), "new\n");
+write(join(mergeSource, "engine", "clash.mjs"), "x = 3\n");
+write(join(mergeSource, "engine", "helper.mjs"), "export const helper = 1;\n");
+write(join(mergeSource, "engine", "curated.md"), "upstream content\n");
+write(join(mergeSource, "engine", "needed.md"), "required\n");
+const keptReport = mergeKept({ target: mergeTarget, sourceDir: mergeSource, keep: ["engine"], required: ["engine/needed.md"], backupDir: mergeBackup });
+assert.equal(readFileSync(join(mergeTarget, "engine", "core.mjs"), "utf8"), "owner line 1\nline 2\nline 3\nline 4\nline 5\nupstream line 6\n", "both sides' edits survive");
+assert.equal(readFileSync(join(mergeTarget, "engine", "plain.mjs"), "utf8"), "new\n", "untouched owner copy follows upstream");
+assert.equal(readFileSync(join(mergeTarget, "engine", "clash.mjs"), "utf8"), "x = 2\n", "a conflict keeps the owner's version");
+assert.ok(keptReport.conflicts.some((entry) => entry.startsWith("engine/clash.mjs")));
+assert.ok(existsSync(join(mergeTarget, "engine", "helper.mjs")) && existsSync(join(mergeTarget, "engine", "needed.md")), "new code and required files arrive");
+assert.ok(!existsSync(join(mergeTarget, "engine", "curated.md")), "new curated content does not");
+assert.equal(readFileSync(join(mergeTarget, "engine", "owned.md"), "utf8"), "owner only\n");
+undoMerge({ target: mergeTarget, backupDir: mergeBackup });
+assert.equal(readFileSync(join(mergeTarget, "engine", "core.mjs"), "utf8"), baseLines.replace("line 1", "owner line 1"), "a rollback undoes the merge");
+assert.ok(!existsSync(join(mergeTarget, "engine", "helper.mjs")));
+refreshBase({ target: mergeTarget, sourceDir: mergeSource, keep: ["engine"] });
+assert.equal(readFileSync(join(mergeTarget, ".astack", "upstream-base", "engine", "plain.mjs"), "utf8"), "new\n", "the release becomes the next base");
+
+// ---------------------------------------------------------------- markdown memory comes back whole
+
+const legacyRoot = sandbox("astack-legacy-memory-");
+const legacyMemory = new MemoryEngine(legacyRoot, { clock });
+write(join(legacyRoot, "memory", "FIRM-MEMORY.md"), "# Firm\n\nIntro line.\n\n## Fees\n\nHourly rate AED 1,500.\n\n## Courts\n\nDubai Courts portal.\n");
+write(join(legacyRoot, "memory", "clients", "ACME.md"), "# ACME Trading\n\nClient since 2024. Contact: Ali.\n");
+write(join(legacyRoot, "memory", "ACCESS-CREDENTIALS.md"), "# Portal\n\npassword: hunter2\n");
+write(join(legacyRoot, "memory", "global.md"), "# global\n\nThis memory scope stores durable AStack Enterprise context for global.\n");
+write(join(legacyRoot, "extra", "notes.md"), "Plain note without headings.\n");
+const firstLegacy = importLegacyMemory({ memory: legacyMemory, workspaceRoot: legacyRoot, paths: ["memory", "extra"], exclude: ["notes-skip.md"] });
+assert.equal(firstLegacy.skippedSecret, 1, "credential files are never read");
+assert.equal(firstLegacy.files, 3);
+assert.equal(firstLegacy.skippedStock, 1, "AStack's own template files are not owner memory");
+assert.equal(firstLegacy.added, 5, "one record per section");
+assert.equal(legacyMemory.recall({ query: "hourly rate AED" })[0].facet, "semantic");
+assert.equal(legacyMemory.recall({ query: "ACME Trading client" })[0].facet, "entity");
+assert.ok(!JSON.stringify(legacyMemory.facets.everything()).includes("hunter2"));
+assert.equal(importLegacyMemory({ memory: legacyMemory, workspaceRoot: legacyRoot, paths: ["memory", "extra"] }).unchanged, 3, "re-running is a no-op");
+write(join(legacyRoot, "memory", "FIRM-MEMORY.md"), "# Firm\n\nIntro line.\n\n## Fees\n\nHourly rate AED 1,800.\n");
+const changedLegacy = importLegacyMemory({ memory: legacyMemory, workspaceRoot: legacyRoot, paths: ["memory", "extra"] });
+assert.deepEqual([changedLegacy.updated, changedLegacy.retired], [1, 1], "a changed section supersedes, a removed one retires");
+assert.match(legacyMemory.recall({ query: "hourly rate AED" })[0].body, /1,800/);
+assert.equal(facetForPath("memory/CASE-LOG.md"), "episodic");
+assert.deepEqual(sections("pre\n# A\na\n## B\nb").map((part) => part.heading), [null, "A", "B"]);
+
+// ---------------------------------------------------------------- a core embedded below the project
+
+const hostProject = sandbox("astack-host-");
+const embeddedCore = join(hostProject, "astack");
+write(join(embeddedCore, "system", "agent-contract.md"), "# Guide\n");
+write(join(hostProject, "CLAUDE.md"), "# Firm guide\n");
+const embedded = new InteropEngine(embeddedCore, { projectRoot: "..", home: setupHome });
+embedded.sync();
+assert.ok(existsSync(join(hostProject, "AGENTS.md")) && existsSync(join(hostProject, ".mcp.json")), "wiring goes where the runtimes are opened");
+assert.deepEqual(readJson(join(hostProject, ".mcp.json")).mcpServers.astack.args, ["astack/bin/astack.mjs", "mcp", "serve"]);
+assert.match(readJson(join(hostProject, ".claude", "settings.json")).hooks.SessionStart[0].hooks[0].command, /\$CLAUDE_PROJECT_DIR\/astack\/bin\/astack\.mjs/);
+assert.match(readFileSync(join(hostProject, "CLAUDE.md"), "utf8"), /^# Firm guide[\s\S]*@AGENTS\.md/);
+assert.equal(embedded.claudeMemoryDirectory(), null);
+
+// ---------------------------------------------------------------- owner command aliases
+
+const aliasProject = sandbox("astack-alias-");
+runSetup(aliasProject);
+writeFileSync(join(aliasProject, "astack.config.yaml"), readFileSync(join(aliasProject, "astack.config.yaml"), "utf8").replace(/\ncli:\n/, "\ncli:\n  aliases:\n    matter: project\n"), "utf8");
+const aliasRun = spawnSync(process.execPath, [join(aliasProject, "bin", "astack.mjs"), "matter", "templates"], { cwd: aliasProject, encoding: "utf8", windowsHide: true });
+assert.equal(aliasRun.status, 0, aliasRun.stderr);
+assert.equal(aliasRun.stdout, spawnSync(process.execPath, [join(aliasProject, "bin", "astack.mjs"), "project", "templates"], { cwd: aliasProject, encoding: "utf8", windowsHide: true }).stdout, "an alias runs its command");
+
 delete process.env.ASTACK_USER_HOME;
 
 console.log("AStack interop verification passed");

@@ -164,7 +164,17 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
   });
 
   const graphify = new GraphifyAdapter(workspaceRoot, { config: configuration.section("graphify", {}), clock });
-  const interop = new InteropEngine(root, { workspaceRoot, memory, clock, graphify, standup: () => chief.standup() });
+  const interopConfig = configuration.section("interop", {});
+  const memoryConfig = configuration.section("memory", {});
+  const interop = new InteropEngine(root, {
+    workspaceRoot,
+    projectRoot: interopConfig.project_root ?? null,
+    legacyMemory: { paths: memoryConfig.import_paths ?? ["memory"], exclude: memoryConfig.import_exclude ?? [] },
+    memory,
+    clock,
+    graphify,
+    standup: () => chief.standup()
+  });
 
   const departments = JSON.parse(readFileSync(join(root, "departments", "departments.json"), "utf8")).departments;
   const providers = providerRegistry.list();

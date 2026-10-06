@@ -12,6 +12,7 @@ Any project that embeds an AStack core can update itself to the latest version w
 | fetch | resolves the ref — newest release tag (`stable`), `--version X.Y.Z`, or `--channel main` — and checks it out in `~/.astack/core` | git or network fails |
 | plan | versions, add/update/seed counts, new config sections, CHANGELOG titles in between, uncommitted managed files | a downgrade without `--force`; `--check` ends here |
 | apply | backs up every replaced file to `.astack/backups/upgrade-<stamp>/`, then writes | — |
+| merge | paths in `upgrade.keep` merged three ways: owner version, upstream release, and the base in `.astack/upstream-base/` (the release the project last received). Only-owner changes stay, only-upstream changes arrive, both → `git merge-file` (JSON leaf by leaf); a real conflict keeps the owner version and is listed. New upstream code (`.mjs`) and `manifest.required` files arrive; new curated content does not. Without a base yet, owner files are kept and required files added. | — (conflicts are reported, not fatal; verify decides) |
 | setup | migrations, the contract block, Claude Code/Codex wiring, Graphify, index — with the new code in a new process | — |
 | verify | `doctor` and `interop doctor` (parity); `--test` adds the test suites | any check fails → automatic **rollback**: core files, configuration and the wiring setup wrote (`AGENTS.md`, `CLAUDE.md`, `.mcp.json`, `.claude/`, `.codex/`, `.gitignore`, `graphify-out`) are restored |
 | record | `.astack/update-history.jsonl` and the shared journal | — |

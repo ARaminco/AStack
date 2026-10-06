@@ -36,6 +36,9 @@ function printHelp() {
   for (const command of COMMANDS) {
     console.log("  " + command.padEnd(12) + i18n.t("cli.help." + command));
   }
+  for (const [alias, target] of Object.entries(runtime.configuration.section("cli", {}).aliases ?? {})) {
+    console.log("  " + alias.padEnd(12) + "→ " + target);
+  }
 }
 
 function doctor({ verbose = false } = {}) {
@@ -107,7 +110,10 @@ function list(title, items) {
 }
 
 async function run() {
-  const [command, ...rest] = process.argv.slice(2);
+  const [typed, ...rest] = process.argv.slice(2);
+  // Owner-defined command names (cli.aliases in astack.config.yaml) survive
+  // every upgrade, unlike an edit to this managed file.
+  const command = (runtime.configuration.section("cli", {}).aliases ?? {})[typed] ?? typed;
   const tokens = rest.filter(Boolean);
   if (!command || command === "help" || command === "--help" || command === "-h") {
     printHelp();

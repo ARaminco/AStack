@@ -174,6 +174,12 @@ export function setupLocal({ runtime, flags, home = userHome() }) {
     }
     return changed.length ? changed.map((entry) => entry.path + " " + entry.action).join(", ") : "in parity";
   });
+  step("memory-import", false, () => {
+    const legacy = runtime.interop.importLegacy();
+    const claude = runtime.interop.importClaudeMemory();
+    return (legacy ? legacy.files + " memory files, " + legacy.sections + " sections (" + legacy.added + " new, " + legacy.updated + " updated)" : "no legacy memory") +
+      (claude.directory ? "; Claude Code auto-memory " + (claude.imported + claude.updated + claude.unchanged) + " facts" : "");
+  });
   if (!has("no-trust-codex")) {
     step("codex-trust", true, () => {
       if (!existsSync(join(home, ".codex"))) {

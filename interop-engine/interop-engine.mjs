@@ -1,8 +1,9 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { hashId, redactSecrets } from "../lib/text.mjs";
+import { importLegacyMemory } from "./memory-sources.mjs";
 
 /**
  * Runtime interoperability: one contract, one memory, one journal.
@@ -118,10 +119,14 @@ function parseFrontmatter(text) {
 }
 
 export class InteropEngine {
-  constructor(root, { workspaceRoot = root, memory = null, standup = null, graphify = null, clock, home = homedir(), env = process.env } = {}) {
+  constructor(root, { workspaceRoot = root, projectRoot = null, legacyMemory = null, memory = null, standup = null, graphify = null, clock, home = homedir(), env = process.env } = {}) {
     this.root = root;
     this.graphify = graphify;
     this.workspaceRoot = workspaceRoot;
+    // Where the runtimes are opened. Usually the install itself; for a core
+    // embedded in a subfolder (interop.project_root), the folder above it.
+    this.projectRoot = projectRoot ? resolve(workspaceRoot, projectRoot) : workspaceRoot;
+    this.legacyMemory = legacyMemory;
     this.memory = memory;
     this.standupProvider = standup;
     this.clock = clock ?? (() => new Date());
@@ -136,12 +141,12 @@ export class InteropEngine {
   }
 
   path(...segments) {
-    return join(this.workspaceRoot, ...segments);
+    return join(this.projectRoot, ...segments);
   }
 
   /** The command a runtime launches to reach this core, relative to the workspace root. */
   cli() {
-    const bin = relative(this.workspaceRoot, join(this.root, "bin", "astack.mjs")).split("\\").join("/");
+    const bin = relative(this.projectRoot, join(this.root, "bin", "astack.mjs")).split("\\").join("/");
     return bin || "bin/astack.mjs";
   }
 
@@ -364,7 +369,7 @@ export class InteropEngine {
   }
 
   codexTrustKey() {
-    const path = this.workspaceRoot;
+    const path = this.projectRoot;
     return process.platform === "win32" ? path.toLowerCase() : path;
   }
 
@@ -448,7 +453,7 @@ export class InteropEngine {
 
   git(args) {
     try {
-      return execFileSync("git", args, { cwd: this.workspaceRoot, encoding: "utf8", timeout: 5000, windowsHide: true, stdio: ["ignore", "pipe", "ignore"] }).trim();
+      return execFileSync("git", args, { cwd: this.projectRoot, encoding: "utf8", timeout: 5000, windowsHide: true, stdio: ["ignore", "pipe", "ignore"] }).trim();
     } catch {
       return null;
     }
@@ -517,7 +522,7 @@ export class InteropEngine {
     if (!existsSync(projects)) {
       return null;
     }
-    const wanted = claudeProjectSlug(this.workspaceRoot).toLowerCase();
+    const wanted = claudeProjectSlug(this.projectRoot).toLowerCase();
     const match = readdirSync(projects).find((name) => name.toLowerCase() === wanted);
     if (!match) {
       return null;
@@ -654,7 +659,20 @@ export class InteropEngine {
     }
   }
 
+  /** Markdown memory from memory.import_paths into the shared store (idempotent). */
+  importLegacy() {
+    if (!this.memory || !this.legacyMemory) {
+      return null;
+    }
+    return importLegacyMemory({ memory: this.memory, workspaceRoot: this.workspaceRoot, clock: this.clock, ...this.legacyMemory });
+  }
+
   sessionStart({ runtime, payload = {} } = {}) {
+    try {
+      this.importLegacy();
+    } catch {
+      // A memory file being written mid-session is picked up next time.
+    }
     let imported = null;
     if (runtime === "claude-code" && this.memory) {
       try {

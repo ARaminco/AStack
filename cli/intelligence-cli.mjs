@@ -188,6 +188,12 @@ export function runMemoryCommand({ runtime, i18n, tokens }) {
     out(runtime.chief.contextRouter.render(package_));
     return;
   }
+  if (action === "import-legacy" || action === "import") {
+    const report = runtime.interop.importLegacy();
+    const claude = runtime.interop.importClaudeMemory();
+    out(t("cli.memory.legacyImported", { ...report, claude: claude.directory ? claude.imported + claude.updated : 0 }));
+    return;
+  }
   if (action === "consolidate") {
     const report = memory.consolidate();
     out(t("cli.memory.consolidated", report));

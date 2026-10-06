@@ -2,7 +2,8 @@ import { spawnSync } from "node:child_process";
 import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { DEFAULT_SOURCE, canonicalCore, resolveRef, syncCanonical } from "./canonical.mjs";
-import { UpgradeEngine, compareVersions, readVersion } from "./upgrade-engine.mjs";
+import { UpgradeEngine, compareVersions, readKeepList, readVersion } from "./upgrade-engine.mjs";
+import { mergeKept, refreshBase, undoMerge } from "./kept-merge.mjs";
 
 /**
  * The update pipeline: what "update AStack" means, every time, everywhere.
@@ -17,7 +18,7 @@ import { UpgradeEngine, compareVersions, readVersion } from "./upgrade-engine.mj
  * and in the shared journal, so Claude Code and Codex both know it happened.
  */
 
-export const STAGES = ["preflight", "fetch", "plan", "apply", "setup", "verify", "record"];
+export const STAGES = ["preflight", "fetch", "plan", "apply", "merge", "setup", "verify", "record"];
 const LOCK_STALE_MS = 30 * 60 * 1000;
 const SETUP_FLAGS = ["no-graphify", "no-trust-codex", "no-global-skill", "no-hooks", "no-index"];
 // Files and directories the setup stage writes outside the managed core. They
@@ -158,6 +159,7 @@ export class UpdatePipeline {
         }
       }
     }
+    restored += undoMerge({ target: this.target, backupDir });
     restored += this.restoreWiring(backupDir);
     if (existsSync(join(backupDir, "astack.config.yaml"))) {
       cpSync(join(backupDir, "astack.config.yaml"), join(this.target, "astack.config.yaml"));
@@ -365,6 +367,19 @@ export class UpdatePipeline {
         this.stage("apply", true, result.appliedCount + " file(s) written, backup " + backupDir);
       }
 
+      // merge: the owner's protected paths, three ways against the last base
+      const ownerKeep = [...new Set([...readKeepList(this.target), ...keep])];
+      if (backupDir && ownerKeep.length) {
+        const merged = mergeKept({ target: this.target, sourceDir, keep: ownerKeep, required: engine.manifest.required ?? [], backupDir });
+        this.stage(
+          "merge",
+          true,
+          ownerKeep.length + " protected path(s): " + merged.merged + " merged, " + merged.updated + " taken from upstream, " + merged.added + " added, " + merged.deleted + " removed, " + merged.kept + " kept as owned" +
+            (merged.hasBase ? "" : " (no merge base yet: owner files kept, required files added)") +
+            (merged.conflicts.length ? " | needs a manual merge: " + merged.conflicts.join("; ") : "")
+        );
+      }
+
       // setup (migrations, contract, wiring, Graphify, index) with the new code
       if (backupDir) {
         this.snapshotWiring(backupDir);
@@ -384,6 +399,10 @@ export class UpdatePipeline {
 
       // record
       const outcome = verify.ok && setup.ok ? (plan.upToDate ? "current" : "updated") : "failed";
+      if (outcome === "updated" && ownerKeep.length) {
+        // This release is now the base the next update merges against.
+        refreshBase({ target: this.target, sourceDir, keep: ownerKeep });
+      }
       this.record({ from, to, ref, result: outcome, backup: backupDir });
       this.stage("record", true, ".astack/update-history.jsonl and the shared journal");
       return this.finish({ ok: outcome !== "failed", from, to, ref, backup: backupDir, changelog, result: outcome });
