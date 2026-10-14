@@ -37,6 +37,7 @@ import { MissionEngine } from "../mission-engine/mission-engine.mjs";
 import { SchedulerEngine } from "../scheduler-engine/scheduler-engine.mjs";
 import { SignalEngine } from "../signal-engine/signal-engine.mjs";
 import { ChiefOfStaff } from "../chief-of-staff/chief-of-staff.mjs";
+import { RunnerEngine } from "../runner-engine/runner-engine.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -163,6 +164,24 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
     budgets
   });
 
+  // Unattended execution (AStack 3.0, P1): the same work order a hosted
+  // session receives, executed by Claude Code headless, codex exec or a local
+  // model. Scheduled `agent` jobs and `run-agent` signal reactions enqueue here.
+  const runner = new RunnerEngine(workspaceRoot, {
+    clock,
+    eventBus,
+    config: configuration.section("runner", {}),
+    missions,
+    approvals,
+    audit,
+    authority,
+    policy: automationPolicy,
+    chief,
+    router: modelRouter
+  });
+  scheduler.services = { ...scheduler.services, runner };
+  signals.services = { ...signals.services, runner };
+
   const graphify = new GraphifyAdapter(workspaceRoot, { config: configuration.section("graphify", {}), clock });
   const interopConfig = configuration.section("interop", {});
   const memoryConfig = configuration.section("memory", {});
@@ -230,6 +249,7 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
     scheduler,
     signals,
     chief,
+    runner,
     departments,
     providers,
     orchestrator

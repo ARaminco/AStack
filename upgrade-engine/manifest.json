@@ -45,7 +45,9 @@
     "trust-engine",
     "upgrade-engine",
     "workflow-engine",
-    "workflows"
+    "workflows",
+    "runner-engine",
+    "daemon-engine"
   ],
   "seed": [
     ".github",

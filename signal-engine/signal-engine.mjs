@@ -15,7 +15,8 @@ export const reactionActions = [
   "create-work-item",
   "browser-task",
   "open-incident",
-  "reply"
+  "reply",
+  "run-agent"
 ];
 
 /**
@@ -481,6 +482,26 @@ export class SignalEngine {
             signal: AbortSignal.timeout(10000)
           });
           return { action, ok: response.ok, summary: "reply HTTP " + response.status };
+        }
+        case "run-agent": {
+          // The objective comes from the owner's rule as written, never from
+          // the message: the message travels to the runner as inbound data.
+          // Disabled until the owner opts in: astack runner enable-signal-runs
+          const runner = this.services.runner;
+          if (!runner) {
+            return { action, ok: false, summary: "runner engine is not available" };
+          }
+          const objective = reaction.params?.objective ?? ("Triage the inbound " + event.source + " signal " + event.id + " and propose the next step");
+          const queued = runner.enqueue({
+            objective,
+            source: "signal:" + hook.id,
+            engine: reaction.params?.engine ?? null,
+            ceiling: reaction.params?.ceiling ?? null,
+            domain: event.domain,
+            project: event.project,
+            input: { text: event.text ?? "", from: event.from ?? event.source }
+          });
+          return { action, ok: true, summary: "queued runner run " + queued.id, runId: queued.id };
         }
         default:
           return { action, ok: false, summary: "unsupported reaction" };
