@@ -1,4 +1,5 @@
 import { parseArgs } from "../delivery-engine/cli.mjs";
+import { appendSessionMatches } from "../search-engine/hooks.mjs";
 
 const out = (line) => console.log(line);
 
@@ -58,6 +59,7 @@ export function runContextCommand({ runtime, i18n, tokens }) {
         out("    " + hit.members.join(" · "));
       }
     }
+    appendSessionMatches({ runtime, query, out, t, flags });
     return;
   }
   if (action === "expand") {
@@ -139,6 +141,7 @@ export function runMemoryCommand({ runtime, i18n, tokens }) {
       out("- [" + hit.facet + " " + hit.score + "] " + hit.title + (hit.body ? " — " + hit.body.split("\n")[0].slice(0, 120) : ""));
       out("    id=" + hit.id + " confidence=" + hit.confidence + " at=" + hit.at + (hit.validTo ? " validTo=" + hit.validTo : ""));
     }
+    appendSessionMatches({ runtime, query, out, t, flags });
     return;
   }
   if (action === "remember") {

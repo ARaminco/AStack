@@ -37,6 +37,7 @@ import { MissionEngine } from "../mission-engine/mission-engine.mjs";
 import { SchedulerEngine } from "../scheduler-engine/scheduler-engine.mjs";
 import { SignalEngine } from "../signal-engine/signal-engine.mjs";
 import { ChiefOfStaff } from "../chief-of-staff/chief-of-staff.mjs";
+import { SearchEngine } from "../search-engine/search-engine.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -195,6 +196,9 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
     context
   });
 
+  // Smarter recall (v3 P3). Opens nothing until first used.
+  const search = new SearchEngine(workspaceRoot, { config: configuration.section("search", {}), memory, skills, memoryConfig, clock });
+
   return {
     root,
     workspaceRoot,
@@ -232,6 +236,7 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
     chief,
     departments,
     providers,
-    orchestrator
+    orchestrator,
+    search
   };
 }
