@@ -13,6 +13,38 @@ security scanner (shipping the Hermes Agent skills as a separate auxiliary pack)
 the **Aramin** console, a durable multi-agent board, a Docker sandbox, OS vault
 backends and an A2A endpoint.
 
+### Highlights
+
+- **Works while you are away.** `astack run` executes an objective or a mission
+  unattended through Claude Code headless, `codex exec` or a local Ollama
+  model, within a daily and a per-run budget; anything irreversible still stops
+  for your approval.
+- **One background process.** `astack daemon start` keeps the runner queue,
+  scheduled jobs, webhooks, the gateway, search reindexing, the board and the
+  console running; `astack daemon install-service` starts it at logon on
+  Windows, macOS and Linux.
+- **AStack in your pocket.** Command it from Telegram or WhatsApp, receive its
+  reports, and approve with «بفرست» / "approve" (or decline with «نه» /
+  "deny"); several owner accounts per channel; Persian voice notes transcribed
+  locally.
+- **Aramin, the console.** A local, installable app for approvals, missions,
+  memory, runs, jobs, audit, skills and the board, Persian by default;
+  `astack console open` opens it already signed in.
+- **Smarter recall.** `astack search` finds things across memory, past Claude
+  Code and Codex sessions, reports, skills and missions, Persian-aware, with
+  optional semantic ranking through Ollama, and builds an owner profile.
+- **Skill hub.** Import `SKILL.md` skills into scanned auxiliary packs that rank
+  below AStack's own; ships the Hermes Agent pack (211 MIT skills), with
+  high-risk skills never auto-selected and two blocked outright.
+- **Board, sandbox, vault, A2A.** A multi-agent board with retries and a
+  reviewer lane, Docker-isolated commands, OS vault backends for credentials,
+  and an Agent-to-Agent endpoint that only plans unless you allow more.
+- **Hardened for unattended work.** Authority ceilings enforced in the tools,
+  approval forgery blocked, strict approval-by-message rules, redaction of
+  every new output (Persian credential words included).
+- **Purely additive.** Every 2.5.1 command, file and test works unchanged;
+  `astack update` brings 3.0 and every new engine stays off until you turn it on.
+
 It is strictly additive: every 2.5.1 command, file format and test keeps working
 unchanged (the original suites run unmodified, apart from a CRLF-tolerant regex
 in the interop alias test and excluding third-party `skill-packs/` from the
@@ -208,6 +240,46 @@ every writer signs; the ASTACK_UNATTENDED gate and the mandatory `.astack/**`
 denies close the forgery path for runner children in the meantime. A process
 that runs as the owner outside the runner can still append to
 `.astack/approvals/requests.jsonl` directly.
+
+#### 3.0.0 fixes after review
+
+- **Gateway and console commands.** `astack gateway …` no longer falls through
+  into the console command (a missing `return` from merging the two
+  packages).
+- **Context index.** The context engine ignores the third-party `skill-packs/`
+  folder, so pack text never enters the workspace map or context search.
+- **Skill search stays built-in.** `astack skill search` returns built-in and
+  learned skills only, exactly as in 2.5.1, unless `--packs` is given; the
+  catalog resolves a `<pack>/<id>` only while packs are enabled.
+- **Agent job payload.** `--objective`, `--mission`, `--engine`, `--ceiling` and
+  `--mode` are stored only for scheduler jobs of kind `agent`; other job kinds
+  keep their 2.5.1 payload.
+- **Migration `2026.8-ignore-v3-state`.** An existing `.gitignore` that does not
+  ignore `.astack/` as a whole learns the 3.0 state folders (gateway, runner,
+  daemon, search, board, sandbox, vault, a2a, skill-hub, console), so the
+  search index of past sessions or a WhatsApp session can never be committed.
+- **Gateway test in installed projects.** The gateway suite reads the
+  documented `gateway:` block only in the core repository; an installed
+  project's own `astack.config.yaml` no longer fails `astack update --test`.
+- **Vault and Windows PowerShell.** `astack secret vault set` strips the UTF-8
+  byte-order mark that Windows PowerShell puts in front of piped input; a
+  Telegram token stored that way had been one character long (Telegram
+  answered 404). Store such a token again after updating.
+- **High-risk pack skills are never auto-selected.** Skills with scan status
+  `review` (such as curl-pipe installers) stay listed but are found only by an
+  explicit raw search or `show`; `skills.packs.auto_select_review: true`
+  restores the old ranking.
+
+#### `astack console open`
+
+- New `astack console open`: while the console runs (inside the daemon or
+  `astack console start`), it opens the browser already signed in. It issues a
+  one-time ticket shared across processes through
+  `.astack/console/tickets.json`, which stores only the ticket's SHA-256 hash
+  and expiry; the ticket travels in the URL fragment and is good for one login
+  within a minute. Without a running console it says so and exits with an
+  error. `astack console start --open` keeps its in-process ticket.
+- Docs: "How to sign in" now opens `documentation/Aramin-Console.md`.
 
 ## 2.5.1
 
