@@ -43,6 +43,7 @@ import { SearchEngine } from "../search-engine/search-engine.mjs";
 import { BoardEngine } from "../board-engine/board-engine.mjs";
 import { SandboxEngine } from "../sandbox-engine/sandbox-engine.mjs";
 import { A2AServer } from "../interop-engine/a2a-server.mjs";
+import { GatewayEngine } from "../gateway-engine/gateway-engine.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -243,7 +244,10 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
   // Smarter recall (v3 P3). Opens nothing until first used.
   const search = new SearchEngine(workspaceRoot, { config: configuration.section("search", {}), memory, skills, memoryConfig, clock });
 
-  return {
+  // Owner messaging gateway (v3 P2).
+  const gateway = new GatewayEngine(workspaceRoot, { clock, eventBus, configuration, approvals, audit, authority, automationPolicy, secrets, chief, missions });
+
+  const api = {
     root,
     workspaceRoot,
     configuration,
@@ -290,6 +294,11 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
     },
     get a2a() {
       return a2a.bind(this);
-    }
+    },
+    gateway
   };
+  // The gateway reaches runtime.runner and the other late engines through the
+  // finished runtime object.
+  gateway.bind(api);
+  return api;
 }

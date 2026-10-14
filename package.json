@@ -10,7 +10,7 @@
   "scripts": {
     "bootstrap": "node scripts/bootstrap-enterprise.mjs",
     "doctor": "node bin/astack.mjs doctor",
-    "test": "node tests/verify-astack.mjs && node tests/verify-delivery.mjs && node tests/verify-orchestration.mjs && node tests/verify-intelligence.mjs && node tests/verify-autonomy.mjs && node tests/verify-interop.mjs && node tests/verify-runner.mjs && node tests/verify-search.mjs && node tests/verify-board.mjs && node tests/verify-skillhub.mjs",
+    "test": "node tests/verify-astack.mjs && node tests/verify-delivery.mjs && node tests/verify-orchestration.mjs && node tests/verify-intelligence.mjs && node tests/verify-autonomy.mjs && node tests/verify-interop.mjs && node tests/verify-runner.mjs && node tests/verify-search.mjs && node tests/verify-board.mjs && node tests/verify-skillhub.mjs && node tests/verify-gateway.mjs",
     "upgrade": "node bin/astack.mjs upgrade",
     "claude:doctor": "node bin/astack.mjs doctor --claude-code",
     "list:knowledge": "node bin/astack.mjs knowledge list",
@@ -27,7 +27,8 @@
     "tick": "node bin/astack.mjs schedule tick",
     "test:search": "node tests/verify-search.mjs",
     "test:board": "node tests/verify-board.mjs",
-    "test:skillhub": "node tests/verify-skillhub.mjs"
+    "test:skillhub": "node tests/verify-skillhub.mjs",
+    "test:gateway": "node tests/verify-gateway.mjs"
   },
   "engines": {
     "node": ">=20"

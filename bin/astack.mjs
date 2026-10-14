@@ -21,6 +21,7 @@ import { runBoardCommand } from "../cli/board-cli.mjs";
 import { runSandboxCommand } from "../cli/sandbox-cli.mjs";
 import { runVaultCommand } from "../cli/vault-cli.mjs";
 import { runA2ACommand } from "../cli/a2a-cli.mjs";
+import { runGatewayCommand } from "../cli/gateway-cli.mjs";
 
 const i18n = createLocalization();
 const runtime = createRuntime();
@@ -35,6 +36,7 @@ const COMMANDS = [
   "board", "sandbox", "a2a"
 ];
 COMMANDS.push("run", "runner", "daemon");
+COMMANDS.push("gateway");
 
 function printHelp() {
   console.log(i18n.t("cli.title"));
@@ -100,6 +102,7 @@ function doctor({ verbose = false } = {}) {
   console.log("Browser: " + runtime.browser.status().driver);
   console.log("Authority default: " + runtime.authority.describe().defaultLevel);
   console.log("Search: " + searchDoctorLine());
+  console.log("Gateway: " + runtime.gateway.describe());
   console.log("Telemetry: disabled");
   // An install that upgraded from an older core ran the previous upgrade command,
   // which had no migration step. Report what is still waiting rather than letting
@@ -275,6 +278,8 @@ async function run() {
       return;
     case "search":
       await runSearchCommand(context);
+    case "gateway":
+      await runGatewayCommand(context);
       return;
     case "backup":
       console.log(i18n.t("cli.backupCreated", { path: runtime.memory.backup() }));
