@@ -78,6 +78,9 @@ export class ChiefOfStaff {
       intent
     });
     const skills = this.learning?.match(request, { domain: intent.domain, limit: 3 }) ?? [];
+    // Catalog skills for the request: built-in and learned first, auxiliary
+    // pack skills (skill-hub) below them. Set by the runtime when available.
+    const catalogSkills = this.skillCatalog?.select ? this.skillCatalog.select(request, { limit: 3, auxiliaryLimit: 2 }) : null;
     const experience = this.learning?.experience?.similar(request, { domain: intent.domain, limit: 3 }) ?? [];
     const toolMatches = (intent.needs ?? []).flatMap((need) => this.tools?.search(need, { limit: 2 }) ?? []);
     const uniqueTools = [...new Map(toolMatches.map((tool) => [tool.id, tool])).values()];
@@ -105,6 +108,7 @@ export class ChiefOfStaff {
       entities: contextPackage.entities,
       context: contextPackage,
       skills,
+      catalogSkills,
       experience,
       tools: uniqueTools,
       authority: decision,

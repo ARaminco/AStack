@@ -78,6 +78,13 @@ export async function runAskCommand({ runtime, i18n, tokens }) {
     out(t("cli.chief.experience"));
     table(brief.experience.map((episode) => episode.id + " (" + episode.outcome + ", " + episode.similarity + "): " + episode.task.slice(0, 70)));
   }
+  // Shown only while skill packs are enabled, so the brief is unchanged otherwise.
+  if (brief.catalogSkills?.auxiliary?.length && runtime.skills?.packsActive?.()) {
+    out(t("cli.skillHub.askTitle"));
+    table(brief.catalogSkills.all.map((hit) => hit.id + " (" + (hit.auxiliary
+      ? t("cli.skillHub.askAuxiliary") + ", " + hit.source + ", risk " + hit.risk + (hit.compat === "hermes-runtime" ? ", hermes-runtime" : "")
+      : hit.source + ", " + hit.status) + ", score " + hit.score + ") " + hit.path));
+  }
   out(t("cli.chief.plannedSteps"));
   table(brief.plan.steps.map((step) => step.title + " (" + (step.authority ?? "L1") + ")"));
   if (flags.context) {
