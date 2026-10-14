@@ -30,9 +30,42 @@ Pick the first line that fits:
 
 3. **By hand** — open `http://127.0.0.1:7717`, run `astack console token` in a
    terminal, and paste the token on the sign-in screen.
+4. **Username and password** (3.1) — create a user once, and turn on
+   two-factor sign-in:
 
-A signed-in browser stays signed in for `console.session_days` (30 days).
-`astack console token --rotate` signs every device out.
+   ```bash
+   astack console user set ali      # hidden prompt; only an scrypt hash is kept
+   astack console user totp ali     # prints the key and an otpauth:// URI for an authenticator app
+   ```
+
+   The sign-in screen then offers "username" and "token" side by side; with
+   TOTP on it also asks for the 6-digit code.
+
+A signed-in browser stays signed in for `console.session_days` (30 days), or
+until it has been idle for `console.session_idle` when that is set.
+`astack console token --rotate` signs every device out; so does Settings →
+"Sign out everywhere".
+
+### Sign-in options (3.1)
+
+| Method | Where | Notes |
+|---|---|---|
+| Owner token | local listener | `console.auth: token` or `both` |
+| One-time ticket (`console open`, `start --open`) | local listener, **from this computer only** | the request must come from a loopback peer with no proxy header (`CF-Connecting-IP`, `X-Forwarded-For`, `Forwarded`, …); a ticket through a tunnel is refused |
+| Username + password (+ TOTP when on) | local listener | `console.auth: password` or `both` |
+| Username + password + TOTP | internet listener | the only method there; TOTP is mandatory |
+
+`console.auth` defaults to `both` once a console user exists, else `token`
+(`password` with no user falls back to `token`, so the owner is never locked
+out). Passwords are hashed with scrypt (N = 2^15, r = 8, p = 1, a salt per
+user); an unknown username costs the same scrypt as a known one. TOTP is RFC
+6238 (SHA-1, 30 s, 6 digits, one step of drift) and every code works once.
+
+Every failure answers the same `invalid credentials`, is written to the audit
+log (`console-login-failed`, never the secret) and counts against the address
+and the username: `console.lockout.attempts` failures (5) within
+`console.lockout.minutes` (15) lock both for that long (HTTP 429). The older
+ten-per-minute limit per address stays in place.
 
 **Install it as an app (PWA).** In Chrome or Edge, use the install icon in the
 address bar (or the menu's "Install Aramin"); on a phone, "Add to Home screen".
@@ -43,15 +76,18 @@ install shows the same option inside Aramin.
 from elsewhere only through a tunnel or reverse proxy that you control and that
 serves HTTPS (installing as an app on a phone needs HTTPS too):
 
-- keep the console on loopback, point the tunnel at `127.0.0.1:7717`, and add
-  the tunnel's host name to `console.allowed_hosts` so the Host-header check
-  accepts it; or
-- bind another address deliberately: `console.allow_remote: true` with
-  `console.host` for the daemon, or `astack console start --host <addr>` by hand
-  (a warning is printed).
+- **from the internet** (a public host name through Cloudflare Tunnel or
+  similar): use the separate internet listener, `console.remote` — see
+  [Internet exposure](#internet-exposure-31). Port 7717 never answers the
+  public host name, even when it is listed in `allowed_hosts`;
+- **inside a network you control** (a VPN, a LAN name): keep the console on
+  loopback, point the private proxy at `127.0.0.1:7717` and add its host name
+  to `console.allowed_hosts`, or bind another address deliberately:
+  `console.allow_remote: true` with `console.host` for the daemon, or
+  `astack console start --host <addr>` by hand (a warning is printed).
 
-Then sign in on the phone with the token (option 3). Never expose the console
-on a public address without HTTPS in front of it.
+Then sign in on the phone with the token or a console user. Never expose the
+console on a public address without HTTPS in front of it.
 
 ## Start it
 
@@ -92,7 +128,8 @@ error.
 | تابلوی کار / Board | `runtime.board` columns and cards | — |
 | درگاه پیام / Gateway | `runtime.gateway.status()` | — |
 | سیستم / System | versions, doctor counts, optional engines, `*/service.mjs` presence, daemon state (`.astack/daemon/state.json`), runtimes, this console | — |
-| تنظیمات / Settings | theme (light/dark/system), language, device notifications, install, sign out | — |
+| تنظیمات / Settings | theme (light/dark/system), language, device notifications, install, account, sign out, sign out everywhere | end every session |
+| گفت‌وگوها / Conversations (3.1, first tab) | Claude Code sessions of the configured projects: list, read, continue, start new | send a message, stop, allow/deny a tool |
 
 Optional engines are feature-detected on every request (`runtime.runner`,
 `runtime.gateway`, `runtime.search`, `runtime.skillHub`, `runtime.board`,
@@ -128,6 +165,151 @@ Values are shown exactly, except that anything shaped like a secret is masked;
 tokens never leave the server. Inbound text (messages, memory, skill files) is
 rendered escaped and is never interpreted.
 
+## Conversations (3.1)
+
+The first tab (bottom tab on phones, first rail item on desktop) lists and
+drives Claude Code sessions, like the sessions panel of Claude Code in VS Code.
+
+**List.** Transcripts are read from `~/.claude/projects/<slug>/*.jsonl` (or
+`CLAUDE_CONFIG_DIR`) for every folder in `console.chats.projects` (default:
+this workspace). The slug is Claude Code's own rule — every character that is
+not a letter or digit becomes `-` (`C:\Projects\shop` → `C--Projects-shop`);
+`c--…` and `C--…` both match, and on Windows the whole name is compared
+without case. Sessions are grouped by project, newest first, with a title (the
+owner's `/rename` title, a `summary` entry, Claude Code's generated title, or
+else the first real user message), the last activity (DD/MM/YYYY HH:mm), the
+message count and the git branch. Sidechain transcripts and old-style
+`agent-*.jsonl` files stay out of the list; a session's sub-agents
+(`<session>/subagents/*.jsonl`) open read-only from the conversation. Search
+filters titles; pages hold 30.
+
+**Reading.** User and assistant text is rendered as safe markdown — everything
+is escaped first, then headings, lists, quotes, tables, links (http/https
+only), inline code and fenced code blocks (with a copy button) are recognised;
+no raw HTML survives. Each block picks its direction from its first strong
+letter (Persian is right-to-left). Tool calls become one-line chips (tool name
+and a short target) that expand to a redacted preview of the input and the
+result. Thinking blocks, meta entries and injected tags (`<system-reminder>`,
+IDE file/selection tags, command wrappers, task notifications) are left out.
+The last 12 turns load first; "earlier messages" loads 12 more. Everything
+that leaves the server passes `redactSecretsStrict` (provider keys, URL
+credentials, card numbers, IBANs, Persian and English credential phrases,
+opaque tokens).
+
+**Continuing and starting.** The composer sends with Enter (Shift+Enter for a
+new line) on desktop and with the send button on phones. A message spawns
+Claude Code headless in the session's project folder through the runner's
+spawn rules (Windows npm shims unwrapped, no shell, nothing on argv but
+flags):
+
+```text
+claude -p --resume <session id> | --session-id <new uuid>
+       --output-format stream-json --verbose --include-partial-messages
+       --permission-mode default --strict-mcp-config --mcp-config <turn file>
+       --permission-prompt-tool mcp__astack__permission_prompt
+       --disallowedTools <console.chats.disallowed_tools + the runner's mandatory .astack/** and approval denies>
+       --allowedTools Read Grep Glob [--max-budget-usd <what is left today>]
+```
+
+The prompt goes to stdin. Events stream to the browser over `/api/events`
+(`chat` events: start, partial text, assistant text, tool, tool result,
+permission, done with cost and duration). One turn per session runs at a
+time (a second message gets 409); Stop ends the process tree (`taskkill /T`
+on Windows, the process group elsewhere). A new conversation picks a project
+and starts with `--session-id <uuid>`; it appears in the list as soon as
+Claude Code writes its transcript. `ASTACK_UNATTENDED` is **not** set for
+conversations — they are the owner's own — but the mandatory denies always
+apply, so a conversation cannot write `.astack/**` or run `astack approval`.
+The binary must pass the automation policy (`astack schedule policy
+allow-command claude`), like the runner's.
+
+**Permissions.** With `permission_mode: default`, every tool use outside
+`console.chats.allowed_tools` (default `Read,Grep,Glob`) is sent to
+`mcp__astack__permission_prompt`: the astack MCP server (started for the turn
+with `ASTACK_UNATTENDED=1`, so it can ask but never decide) records an
+approval with action `claude.tool`, the tool, a redacted input preview and
+`requestedBy: console-chat:<session>`, and waits. The approval shows in the
+conversation as an inline Allow / Deny card, in Approvals, as a console
+notification and — through `runtime.gateway.notify` — on the owner's phone.
+The answer goes through the same approvals engine (`owner@console`); an
+irreversible-looking request (`git push`, `deploy`, …) needs the typed code.
+Claude Code receives `{"behavior":"allow","updatedInput":…}` (the exact input
+that was shown) or `{"behavior":"deny","message":…}`; an approval is consumed
+by the one tool use it allowed. An unanswered request expires after
+`approval_timeout_minutes` (10) and is a deny; when a turn ends, its open
+cards are denied. `bypassPermissions` (and `--dangerously-skip-permissions`)
+is never used.
+
+**Budget.** Every turn's cost is appended to `.astack/console/chats/ledger.jsonl`;
+the list shows today's total. With `console.chats.daily_budget_usd` set, a turn
+is refused once the day's spend reaches it and otherwise gets
+`--max-budget-usd` for what is left.
+
+## Internet exposure (3.1)
+
+The console has a second, optional listener for a tunnel such as Cloudflare
+Tunnel. Port 7717 stays exactly as before and keeps refusing the public host
+name; the tunnel points at the internet listener instead:
+
+```yaml
+console:
+  remote:
+    enabled: true
+    host: 127.0.0.1          # loopback only: cloudflared runs on this machine
+    port: 7718
+    hostname: console.example.com
+    access:                  # optional, recommended: Cloudflare Access in front
+      team: example          # example.cloudflareaccess.com
+      aud: <application AUD tag>
+```
+
+```yaml
+# cloudflared config.yml
+ingress:
+  - hostname: console.example.com
+    service: http://127.0.0.1:7718
+  - service: http_status:404
+```
+
+What the internet listener does differently:
+
+- answers only `Host: <hostname>` (anything else: 421) and only on loopback;
+- takes the client address from `CF-Connecting-IP` (never on 7717), so the
+  lockout applies per real client;
+- signs in with username + password + TOTP only — token and one-time-ticket
+  sign-in get 403 — and refuses to start (with a clear message in the log
+  and in `astack console status`) until a console user has TOTP on;
+- sessions last at most 12 hours (`session_hours`) and end after
+  `idle_minutes` (60) unused; the cookie is `__Host-aramin_sid` with
+  `Secure; HttpOnly; SameSite=Strict`; a session belongs to the listener
+  that created it;
+- every write needs the CSRF token and `Origin: https://<hostname>`;
+- approving anything irreversible (L4+, or a send/pay/delete/publish…
+  verb) asks for a fresh TOTP code as well as the typed confirmation;
+- with `access.team` and `access.aud` set, every request (the app shell
+  included) must carry a valid `Cf-Access-Jwt-Assertion`: an RS256 JWT
+  checked against `https://<team>.cloudflareaccess.com/cdn-cgi/access/certs`
+  (keys cached for an hour), with `aud`, `iss`, `exp` and `nbf` verified —
+  defence in depth next to cloudflared's own enforcement;
+- conversations are closed (`remote.chat: false`: every `/api/chats` call is
+  403 and the tab is hidden with a short explanation). If `remote.chat: true`
+  is ever set after a further review, internet turns get no pre-allowed tools,
+  each tool approval needs a fresh TOTP code, and reads/writes of `.env*`,
+  `.astack/**`, `.ssh`, `.claude` and `Z:/**` are denied;
+- the SSE stream sends a keep-alive comment every 20 seconds (Cloudflare drops
+  idle connections after about 100).
+
+Checklist before exposing it:
+
+1. `astack console user set <name>` and `astack console user totp <name>`; add
+   the key to an authenticator app.
+2. Put a Cloudflare Access application (one allowed e-mail, a short session)
+   in front of the host name and copy its AUD tag into `console.remote.access`.
+3. Set `console.remote` as above; keep `allowed_hosts` free of the public name.
+4. `astack console status` shows both listeners; open
+   `https://<hostname>` from a phone and sign in with the code.
+5. Optional: `console.session_idle: 12h` for the local listener too.
+
 ## Security
 
 - Binds `127.0.0.1` by default. A non-loopback host must be typed with
@@ -139,7 +321,12 @@ rendered escaped and is never interpreted.
   OS supports it). Never logged in full; the start banner shows a masked form.
 - Login exchanges the token for a session cookie: `HttpOnly; SameSite=Strict`.
   Only SHA-256 hashes of session ids are written (`.astack/console/sessions.json`).
-  Failed logins are limited to ten per address per minute.
+  Failed logins are limited to ten per address per minute; since 3.1 five
+  failures in fifteen minutes also lock the address and the username for
+  fifteen minutes (see [Sign-in options](#sign-in-options-31)).
+- 3.1: the internet listener adds `Secure` `__Host-` cookies, a 12-hour cap,
+  mandatory TOTP, step-up TOTP for irreversible approvals and optional
+  Cloudflare Access verification (see [Internet exposure](#internet-exposure-31)).
 - Every write needs the session's CSRF token in `x-csrf-token` and a same-origin
   request.
 - Strict CSP (`default-src 'self'`, no inline script or style, `frame-ancestors 'none'`),
@@ -175,11 +362,18 @@ caches or intercepts `/api/*`. The server stamps a content hash of
 | GET | `/api/health` | public, no data |
 | GET | `/api/i18n?lang=fa\|en` | public, UI strings from `locales/*.json` → `console` |
 | GET | `/api/session` | public; `authenticated`, `csrf`, `features` |
-| POST | `/api/login` | `{ token }` or `{ ticket }` |
+| POST | `/api/login` | `{ token }`, `{ ticket }` (local, this computer only) or `{ username, password, code? }` |
 | POST | `/api/logout` | |
+| POST | `/api/logout-all` | 3.1: end every session |
+| GET | `/api/chats?q=&project=&page=&size=` | 3.1: conversation list, projects, today's spend |
+| GET | `/api/chats/:id?before=&turns=&agent=` | 3.1: one conversation (a window of turns; `agent=` a sub-agent) and the running turn |
+| POST | `/api/chats` | 3.1: `{ project, prompt }` starts a new session |
+| POST | `/api/chats/:id/messages` | 3.1: `{ prompt }` continues a session |
+| POST | `/api/chats/:id/stop` | 3.1: stop the running turn |
+| GET | `/api/chats/status` | 3.1: running turns and today's spend |
 | GET | `/api/home`, `/api/counts`, `/api/notifications` | |
 | GET | `/api/approvals?state=pending\|all`, `/api/approvals/:id` | |
-| POST | `/api/approvals/:id/decide` | `{ decision: "approve"\|"deny", confirm?, note? }` |
+| POST | `/api/approvals/:id/decide` | `{ decision: "approve"\|"deny", confirm?, note?, totp? }` (`totp`: the step-up code on the internet listener) |
 | GET | `/api/missions?state=`, `/api/missions/:id` | |
 | POST | `/api/missions/:id/pause\|resume\|cancel` | `{ reason? }` |
 | GET | `/api/runs`, `/api/runs/:id` | |
@@ -196,7 +390,13 @@ caches or intercepts `/api/*`. The server stamps a content hash of
 
 All optional (see the commented `console:` block in `astack.config.yaml`):
 `enabled`, `host`, `port` (7717), `allow_remote`, `allowed_hosts`,
-`poll_interval` (3s), `session_days` (30), `locale` (`fa`).
+`poll_interval` (3s), `session_days` (30), `locale` (`fa`); 3.1 adds `auth`,
+`session_idle`, `lockout.attempts|minutes`, `remote.*` (enabled, host, port,
+hostname, session_hours, idle_minutes, chat, access.team, access.aud) and
+`chats.*` (enabled, projects, permission_mode, allowed_tools,
+disallowed_tools, tools, approval_timeout_minutes, daily_budget_usd,
+max_parallel, model, strict_mcp, partial_messages, command, claude_home).
+Write Windows project paths with forward slashes (`C:/Projects/shop`).
 
 ## Files
 
@@ -204,5 +404,8 @@ All optional (see the commented `console:` block in `astack.config.yaml`):
 (runtime adapters and owner decisions), `console/auth.mjs` (token, sessions,
 CSRF, tickets), `console/events.mjs` (SSE hub and poller),
 `console/service.mjs` (daemon contract), `console/cli.mjs`
-(`astack console`), `console/public/` (the app). Tests:
-`tests/verify-console.mjs`.
+(`astack console`), `console/public/` (the app); 3.1: `console/users.mjs`
+(users, scrypt, TOTP, lockout), `console/access.mjs` (Cloudflare Access JWT),
+`console/chats.mjs` (transcripts and turns), `lib/tool-summary.mjs` and the
+permission tool in `interop-engine/mcp-server.mjs`. Tests:
+`tests/verify-console.mjs`, `tests/verify-console-chats.mjs`.
