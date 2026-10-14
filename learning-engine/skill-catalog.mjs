@@ -99,7 +99,7 @@ export class SkillCatalog {
   }
 
   get(id) {
-    const skill = this.list().find((entry) => entry.id === id) ?? (this.hub && String(id).includes("/") ? this.packSkill(id) : null);
+    const skill = this.list().find((entry) => entry.id === id) ?? (this.packsActive() && String(id).includes("/") ? this.packSkill(id) : null);
     if (!skill) {
       throw new Error("Unknown skill: " + id);
     }

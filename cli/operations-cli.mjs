@@ -183,21 +183,14 @@ function buildPayload(flags) {
   if (flags.profile) {
     payload.profile = String(flags.profile);
   }
-  // kind "agent": what the unattended runner should do.
-  if (flags.objective) {
-    payload.objective = String(flags.objective);
-  }
-  if (flags.mission) {
-    payload.mission = String(flags.mission);
-  }
-  if (flags.engine) {
-    payload.engine = String(flags.engine);
-  }
-  if (flags.ceiling) {
-    payload.ceiling = String(flags.ceiling);
-  }
-  if (flags.mode) {
-    payload.mode = String(flags.mode);
+  // kind "agent": what the unattended runner should do. Other kinds keep
+  // their 2.5 payload exactly.
+  if (flags.kind === "agent") {
+    for (const key of ["objective", "mission", "engine", "ceiling", "mode"]) {
+      if (flags[key]) {
+        payload[key] = String(flags[key]);
+      }
+    }
   }
   return payload;
 }

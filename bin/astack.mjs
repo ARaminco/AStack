@@ -286,6 +286,7 @@ async function run() {
       return;
     case "gateway":
       await runGatewayCommand(context);
+      return;
     case "console":
       await runConsoleCommand(context);
       return;

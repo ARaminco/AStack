@@ -5,6 +5,7 @@
     "maxScanLines": 4000,
     "ignore": [
       ".git",
+      "skill-packs",
       "node_modules",
       "vendor",
       "dist",
