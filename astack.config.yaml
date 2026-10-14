@@ -385,6 +385,7 @@ signals:
     port: 8787
     require_signature: true
     rate_limit_per_minute: 60
+    # allow_remote: false   # true is needed to bind anything but loopback
 
 browser:
   enabled: true
@@ -438,8 +439,11 @@ secrets:
 #     coding: claude
 #   claude:
 #     command: claude
-#     permission_mode: dontAsk    # bypassPermissions is refused
-#     # read-only by default
+#     permission_mode: dontAsk    # one of default, dontAsk, acceptEdits, plan
+#     # read-only by default; wider tools apply only at ceiling L3+ for the
+#     # owner's own requests (cli, console, gateway). A2A and signal runs are
+#     # always Read/Grep/Glob. Writes to .astack/ and `astack approval` are
+#     # always denied, whatever disallowed_tools says.
 #     allowed_tools:
 #       - Read
 #       - Grep
@@ -451,7 +455,8 @@ secrets:
 #     model: null
 #   codex:
 #     command: codex
-#     sandbox: read-only          # danger-full-access is refused
+#     sandbox: read-only          # danger-full-access is refused; forced to read-only below L3
+#     args: []                    # --yolo, --dangerously-bypass-approvals-and-sandbox, -c sandbox_mode=... are refused
 #   ollama:
 #     url: http://127.0.0.1:11434 # loopback; any other host must pass the network policy
 #     model: null                 # null = first installed chat model
@@ -558,7 +563,8 @@ secrets:
 #   send_spacing_ms: 800
 #   send_level: L2
 #   ack: true
-#   single_pending_without_code: true
+#   single_pending_without_code: true   # private chats only; groups always need a quote or the code
+#   approval_window_minutes: 30         # a bare «بفرست» counts only for a prompt sent to that chat this recently
 #   owners:
 #     telegram:
 #       - "100000001"
@@ -575,6 +581,7 @@ secrets:
 #   listener:
 #     host: 127.0.0.1
 #     port: 8788
+#     allow_remote: false         # true is needed to bind anything but loopback
 #   channels:
 #     telegram:
 #       enabled: false

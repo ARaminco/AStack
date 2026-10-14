@@ -52,6 +52,13 @@ bridge would be reading a private account it has no business reading.
 
 - Pinned dependencies (`@whiskeysockets/baileys 7.0.0-rc13`, `qrcode-terminal 0.12.0`)
   live only in `.astack/gateway/bridge/app/node_modules`; the core stays dependency free.
+- Installed with `npm install --ignore-scripts`: no dependency runs code at
+  install time. Baileys needs none (`npm view @whiskeysockets/baileys@7.0.0-rc13
+  scripts`: its only install hook, `preinstall`, is a Node version check that
+  `engines` already states; protobufjs' `postinstall` only concerns its CLI).
+- `/send-media` only sends files whose real path lies inside the bridge's
+  `outbox/` or `media/` folder; the gateway copies a file into `outbox/`,
+  sends it, and deletes the copy. Session credentials can never be sent.
 - Session credentials: `.astack/gateway/bridge/auth/` (gitignored with the rest of `.astack/gateway/`).
 - Loopback only: binds `127.0.0.1`, rejects non-loopback `Host` headers, and
   requires the shared token header `x-astack-bridge-token`.
@@ -135,6 +142,20 @@ Keep real ids out of a committed config with
   «قبلاً تصمیم گرفته شد» with who and when, and nothing happens.
 - Several open requests and a bare «بفرست» → the gateway lists the codes and
   decides nothing.
+- In a group a decision always needs a reply to the request's message or its
+  code; a bare word there decides nothing.
+- In a private chat a bare word (no quote, no code) counts only when exactly
+  one request is open and its prompt was delivered to that same chat, before
+  the reply, within `gateway.approval_window_minutes` (default 30). Otherwise
+  the gateway asks for the quote or the code.
+- A forwarded message is never a decision (Telegram `forward_origin` and the
+  older `forward_*` fields, WhatsApp `contextInfo.isForwarded` /
+  `forwardingScore`, wapi and Cloud API `forwarded` flags).
+- Every prompt says where the work came from: command line, your gateway
+  message, an external agent (A2A), an inbound signal, a scheduled job, the
+  console, the board or a mission.
+- Everything the gateway sends passes the strict pattern redactor and the
+  resolved-secret guard before it is formatted or queued.
 - Voice notes cannot approve unless `gateway.voice.allow_approvals: true`.
 
 ## Output rules
@@ -181,6 +202,12 @@ listener for push channels, bridge start/adoption, live approval prompts from
 approvals requested in other processes. It does nothing unless
 `gateway.enabled: true`. Call `runtime.gateway.bind(runtime)` before using the
 gateway outside the service and CLI, so it can reach `runtime.runner`.
+
+The webhook listener binds `127.0.0.1` by default and refuses any other host
+unless `gateway.listener.allow_remote: true` is set deliberately (put a TLS
+tunnel or reverse proxy in front). Its per-address rate-limit map is bounded,
+and a failure answers `500 {"error": "internal error"}` with the detail only in
+the log.
 
 ## State
 `.astack/gateway/`: `state.json` (cursors, seen ids, approval prompts and codes,
