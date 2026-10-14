@@ -406,3 +406,57 @@ secrets:
   registry: .astack/security/credentials.json
   source: environment_variables
   reference_scheme: credential://<provider>/<name>
+
+# Unattended runner (AStack 3.0). Optional: every value below is the default
+# used when the section is absent. Spawned engines must also pass the
+# automation policy: astack schedule policy allow-command claude
+# runner:
+#   default_engine: auto          # auto | claude | codex | ollama | mock
+#   daily_budget_usd: 5           # refuse new runs once today's spend reaches this
+#   per_run_budget_usd: 1         # passed to claude as --max-budget-usd
+#   max_concurrent: 1
+#   timeout: 15m
+#   poll_interval: 15s            # how often the daemon drains the queue
+#   brief_budget: 6000            # context tokens in the work order
+#   local_brief_budget: 2500      # smaller work order for the local model
+#   # auto: model-router tier -> engine
+#   routing:
+#     fast: ollama
+#     standard: claude
+#     strong: claude
+#     coding: claude
+#   claude:
+#     command: claude
+#     permission_mode: dontAsk    # bypassPermissions is refused
+#     # read-only by default
+#     allowed_tools:
+#       - Read
+#       - Grep
+#       - Glob
+#     tools: null                 # built-in tools loaded; null = derived from allowed_tools
+#     strict_mcp: true            # load no MCP servers ...
+#     mcp_config: null            # ... unless this file names some
+#     skills: false               # --disable-slash-commands unless true
+#     model: null
+#   codex:
+#     command: codex
+#     sandbox: read-only          # danger-full-access is refused
+#   ollama:
+#     url: http://127.0.0.1:11434 # loopback; any other host must pass the network policy
+#     model: null                 # null = first installed chat model
+
+# One background process for runner, scheduler and webhooks (AStack 3.0).
+# daemon:
+#   # default: every <engine>/service.mjs that exists
+#   services:
+#     - runner-engine
+#     - scheduler-engine
+#     - signal-engine
+#   restart_backoff_ms: 1000
+#   restart_backoff_max_ms: 60000
+#   health_interval_ms: 5000
+#   windows_launcher: conhost-headless   # or: direct
+#   scheduler-engine:
+#     interval: 60s               # default: scheduler.tick_interval
+#   signal-engine:
+#     port: 8787                  # default: signals.server

@@ -11,7 +11,8 @@ export const jobKinds = [
   "project-digest",
   "signal-process",
   "browser-task",
-  "heartbeat"
+  "heartbeat",
+  "agent"
 ];
 
 function ok(summary, extra = {}) {
@@ -241,6 +242,41 @@ async function heartbeat(job) {
   return ok("heartbeat " + (job.payload?.label ?? job.id));
 }
 
+/**
+ * Hand an objective (or a mission) to the unattended runner. By default the
+ * work is queued and the daemon's runner service executes it; `mode: "run"`
+ * executes it inside this tick instead.
+ */
+async function agentRun(job, context) {
+  const runner = context.services?.runner;
+  if (!runner) {
+    return failed("runner engine is not available");
+  }
+  const payload = job.payload ?? {};
+  if (!payload.objective && !payload.mission) {
+    return failed("agent job needs payload.objective or payload.mission");
+  }
+  const request = {
+    objective: payload.objective ?? null,
+    missionId: payload.mission ?? null,
+    source: "schedule:" + job.id,
+    engine: payload.engine ?? null,
+    ceiling: payload.ceiling ?? null,
+    domain: job.domain ?? null,
+    project: job.project ?? null
+  };
+  if (payload.mode === "run") {
+    const run = await runner.execute(request);
+    const passed = ["completed", "awaiting-approval"].includes(run.status);
+    return (passed ? ok : failed)("runner " + run.id + " " + run.status + ": " + String(run.summary ?? "").slice(0, 200), {
+      metrics: { costUsd: run.cost?.usd ?? 0 },
+      output: run.id
+    });
+  }
+  const queued = runner.enqueue(request);
+  return ok("queued runner run " + queued.id, { metrics: { queued: 1 }, output: queued.id });
+}
+
 export const handlers = {
   "http-check": httpCheck,
   command: runCommand,
@@ -251,7 +287,8 @@ export const handlers = {
   "project-digest": projectDigest,
   "signal-process": signalProcess,
   "browser-task": browserTask,
-  heartbeat
+  heartbeat,
+  agent: agentRun
 };
 
 export function describeKind(kind) {
@@ -265,6 +302,7 @@ export function describeKind(kind) {
     "project-digest": "گزارش سلامت پروژه‌های باز",
     "signal-process": "پردازش صف هوک‌های ورودی",
     "browser-task": "اجرای سناریوی مرورگر داخلی و ثبت شواهد",
-    heartbeat: "ضربان زنده‌بودن زمان‌بند"
+    heartbeat: "ضربان زنده‌بودن زمان‌بند",
+    agent: "سپردن یک هدف یا مأموریت به اجراکننده خودکار (runner)"
   }[kind] ?? kind;
 }
