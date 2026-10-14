@@ -105,6 +105,9 @@ export class TelegramChannel {
       timestamp: Number(raw.date ?? 0),
       voice: voice ? { ref: voice.file_id, mime: voice.mime_type ?? "audio/ogg" } : null,
       unsupported: !raw.text && !raw.caption && !voice ? "media" : null,
+      // Bot API 7+: forward_origin; older: forward_from / forward_from_chat /
+      // forward_sender_name / forward_date. Never accepted as a decision.
+      forwarded: Boolean(raw.forward_origin || raw.forward_from || raw.forward_from_chat || raw.forward_sender_name || raw.forward_date || raw.is_automatic_forward),
       fromMe: Boolean(raw.from?.is_bot)
     };
   }

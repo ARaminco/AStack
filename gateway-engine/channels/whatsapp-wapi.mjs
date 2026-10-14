@@ -126,6 +126,8 @@ export class WapiChannel {
       timestamp: Number(raw.timestamp ?? 0),
       voice: raw.type === "voice" || raw.type === "audio" ? { ref: String(raw.id), mime: media?.mimetype ?? "audio/ogg" } : null,
       unsupported: !raw.text?.body && !caption && !["voice", "audio"].includes(raw.type) ? raw.type ?? "unknown" : null,
+      // wapi exposes WhatsApp's forwarded flag in a few spellings.
+      forwarded: Boolean(raw.forwarded || raw.is_forwarded || raw.isForwarded || raw.context?.forwarded || raw.context?.is_forwarded || Number(raw.forwarding_score ?? raw.context?.forwarding_score ?? 0) > 0),
       fromMe: false
     };
   }

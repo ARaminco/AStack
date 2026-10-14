@@ -64,7 +64,7 @@ export function createService({ runtime, config = null, log = console.log } = {}
       }
       if (channels.some((id) => engine.channel(id).mode === "webhook")) {
         const options = settings().listener;
-        listener = new GatewayListener(engine, { host: options.host, port: options.port, log });
+        listener = new GatewayListener(engine, { host: options.host, port: options.port, log, allowRemote: options.allow_remote === true });
         await listener.start();
         log("[gateway] webhook listener on http://" + listener.host + ":" + listener.port);
       }

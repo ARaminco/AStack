@@ -15,6 +15,7 @@ export function createService({ runtime, config = {}, log = () => {} }) {
     port,
     log,
     processImmediately: config.process_immediately ?? true,
+    allowRemote: (config.allow_remote ?? server.allow_remote) === true,
     rateLimit: Number(config.rate_limit ?? server.rate_limit_per_minute ?? 60)
   });
   const state = { state: "stopped", host, port, startedAt: null };

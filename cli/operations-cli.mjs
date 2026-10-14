@@ -273,7 +273,9 @@ export async function runSignalCommand({ runtime, i18n, tokens }) {
       port: Number(flags.port ?? 8787),
       host: String(flags.host ?? "127.0.0.1"),
       log: out,
-      processImmediately: !flags.queueOnly
+      processImmediately: !flags.queueOnly,
+      // A non-loopback --host needs --allow-remote (or signals.server.allow_remote).
+      allowRemote: Boolean(flags.allowRemote || flags["allow-remote"]) || runtime.configuration?.get?.("signals.server.allow_remote", false) === true
     });
     await server.start();
     await new Promise(() => {});

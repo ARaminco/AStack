@@ -33,7 +33,7 @@ export class CliChannel {
     return new Set([this.normalizeId(value)].filter(Boolean));
   }
 
-  receive({ id = null, from, chatId = null, text = "", isGroup = false, quotedId = null, timestamp = null, voice = null }) {
+  receive({ id = null, from, chatId = null, text = "", isGroup = false, quotedId = null, timestamp = null, voice = null, forwarded = false }) {
     const message = {
       id: id ?? "cli-" + randomBytes(4).toString("hex"),
       chatId: chatId ?? from,
@@ -43,6 +43,7 @@ export class CliChannel {
       quotedId,
       timestamp: timestamp ?? Math.floor(Date.now() / 1000),
       voice,
+      forwarded: Boolean(forwarded),
       fromMe: false
     };
     this.inbox.push(message);

@@ -213,6 +213,8 @@ export class WhatsAppCloudChannel {
       timestamp: Number(raw.timestamp ?? 0),
       voice: media?.id ? { ref: String(media.id), mime: media.mime_type ?? "audio/ogg" } : null,
       unsupported: !text && !media ? raw.type ?? "unknown" : null,
+      // Cloud API: context.forwarded / context.frequently_forwarded.
+      forwarded: Boolean(raw.context?.forwarded || raw.context?.frequently_forwarded),
       fromMe: false
     };
   }
