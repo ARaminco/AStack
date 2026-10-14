@@ -183,6 +183,22 @@ function buildPayload(flags) {
   if (flags.profile) {
     payload.profile = String(flags.profile);
   }
+  // kind "agent": what the unattended runner should do.
+  if (flags.objective) {
+    payload.objective = String(flags.objective);
+  }
+  if (flags.mission) {
+    payload.mission = String(flags.mission);
+  }
+  if (flags.engine) {
+    payload.engine = String(flags.engine);
+  }
+  if (flags.ceiling) {
+    payload.ceiling = String(flags.ceiling);
+  }
+  if (flags.mode) {
+    payload.mode = String(flags.mode);
+  }
   return payload;
 }
 

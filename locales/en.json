@@ -60,7 +60,10 @@
       "interop": "Keep Claude Code and Codex on one contract, one memory and one journal: status, sync, handoff, journal, hook.",
       "mcp": "Serve the astack MCP server over stdio for Claude Code and Codex.",
       "graphify": "Code knowledge graph via Graphify with token budgets: status, setup, upgrade, build, query, explain, path, affected, benchmark.",
-      "setup": "Install or update AStack and set everything up for Claude Code and Codex: core, migrations, wiring, Graphify, index, global skill."
+      "setup": "Install or update AStack and set everything up for Claude Code and Codex: core, migrations, wiring, Graphify, index, global skill.",
+      "run": "Run an objective or a mission unattended now: Claude Code headless, codex exec or a local model (--engine, --dry-run, --mission, --queue).",
+      "runner": "Unattended runs: list, show, resume after an approval, status, drain the queue, engines.",
+      "daemon": "One background process for the runner, scheduler and webhooks: start, stop, status, logs, install-service."
     },
     "project": {
       "usage": "Project commands: init, demo, list, status, board, backlog, add, move, start, done, block, unblock, charter, milestone, sprint, risk, gate, advance, baseline, critical-path, forecast, next, digest, decision, scaffold, raci, report, templates",
@@ -422,6 +425,34 @@
       "historyTitle": "Update history ({count}, newest first):",
       "noBackup": "No backup to roll back to; pass --backup <dir>.",
       "unknownAction": "Unknown update action: {action} (run | history | rollback)"
+    },
+    "runner": {
+      "needsObjective": "Give an objective in quotes, or --mission <id>.",
+      "result": "Run {id} | {status} | engine {engine} | cost {cost}",
+      "approvalsWaiting": "Waiting for the owner: {ids}. Decide with astack approval approve|reject <id>, then: astack runner resume {id}",
+      "refused": "Refused: {reason}",
+      "ceilingClamped": "The requested authority was above the configured ceiling; this run used {ceiling}.",
+      "queued": "Queued as {id}. The daemon runs it, or now: astack runner drain",
+      "listTitle": "Runner runs ({count}):",
+      "drained": "Ran {count} queued runs.",
+      "enginesTitle": "Runner engines ({count}):",
+      "signalRunsEnabled": "Signal rules may now queue runner work (run-agent). Every run still stops before anything irreversible.",
+      "statusTitle": "Runs: {runs} | queued {queued} | active {active} | awaiting approval {waiting} | spent today ${spent} of ${budget}",
+      "unknownAction": "Unknown runner action: {action}",
+      "command": "Command: {command}"
+    },
+    "daemon": {
+      "started": "The AStack daemon started in the background (pid {pid}).",
+      "notStarted": "The daemon did not start (pid {pid}): {reason}",
+      "stopped": "Daemon stop: {stopped} (pid {pid}) {reason}",
+      "running": "The daemon is running: pid {pid}, since {since}, last heartbeat {heartbeat}",
+      "notRunning": "The daemon is not running. Start it: astack daemon start",
+      "logPath": "Log: {path}",
+      "noLogs": "The daemon has not written a log yet.",
+      "servicePlan": "Operating-system service, {action} on {platform}:",
+      "dryRun": "Dry run: nothing was created or changed.",
+      "serviceDone": "Done: {action} {name}",
+      "unknownAction": "Unknown daemon action: {action}"
     }
   },
   "delivery": {

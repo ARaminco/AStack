@@ -14,6 +14,8 @@ import { runGraphifyCommand } from "../cli/graphify-cli.mjs";
 import { runSetupCommand } from "../cli/setup-cli.mjs";
 import { runUpdateCommand } from "../cli/update-cli.mjs";
 import { pendingMigrations } from "../upgrade-engine/migrations.mjs";
+import { runDaemonCommand, runRunCommand, runRunnerCommand } from "../cli/runner-cli.mjs";
+import { DaemonEngine } from "../daemon-engine/daemon-engine.mjs";
 
 const i18n = createLocalization();
 const runtime = createRuntime();
@@ -25,6 +27,7 @@ const COMMANDS = [
   "authority", "approval", "audit", "secret", "tool", "runtime", "interop", "mcp", "graphify",
   "domain", "team", "agent", "lead", "project", "workflow", "provider", "plugin", "knowledge", "backup"
 ];
+COMMANDS.push("run", "runner", "daemon");
 
 function printHelp() {
   console.log(i18n.t("cli.title"));
@@ -81,6 +84,8 @@ function doctor({ verbose = false } = {}) {
   console.log("Jobs: " + runtime.scheduler.list().length);
   console.log("Hooks: " + runtime.signals.list().length);
   console.log("Missions: " + runtime.missions.list().length);
+  console.log("Runner: " + runtime.runner.status().runs + " runs, " + runtime.runner.status().queued + " queued");
+  console.log("Daemon: " + (new DaemonEngine({ runtime }).status().running ? "running" : "stopped"));
   console.log("Browser: " + runtime.browser.status().driver);
   console.log("Authority default: " + runtime.authority.describe().defaultLevel);
   console.log("Telemetry: disabled");
@@ -245,6 +250,15 @@ async function run() {
       return;
     case "backup":
       console.log(i18n.t("cli.backupCreated", { path: runtime.memory.backup() }));
+      return;
+    case "run":
+      await runRunCommand(context);
+      return;
+    case "runner":
+      await runRunnerCommand(context);
+      return;
+    case "daemon":
+      await runDaemonCommand(context);
       return;
     default:
       throw new Error(i18n.t("cli.unknownCommand", { command }));

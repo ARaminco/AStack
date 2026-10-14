@@ -60,7 +60,10 @@
       "interop": "Claude Code و Codex را روی یک قرارداد، یک حافظه و یک دفترچه رویداد نگه می‌دارد: status، sync، handoff، journal، hook.",
       "mcp": "سرور MCP مشترک astack را برای Claude Code و Codex اجرا می‌کند.",
       "graphify": "گراف دانش کد با Graphify و بودجه توکن: status، setup، upgrade، build، query، explain، path، affected، benchmark.",
-      "setup": "نصب یا به‌روزرسانی AStack و راه‌اندازی کامل برای Claude Code و Codex: هسته، مهاجرت‌ها، سیم‌کشی، Graphify، ایندکس و مهارت سراسری."
+      "setup": "نصب یا به‌روزرسانی AStack و راه‌اندازی کامل برای Claude Code و Codex: هسته، مهاجرت‌ها، سیم‌کشی، Graphify، ایندکس و مهارت سراسری.",
+      "run": "اجرای یک هدف یا مأموریت بدون حضور شما، همین حالا: Claude Code بی‌رابط، codex exec یا مدل محلی (‎--engine، ‎--dry-run، ‎--mission، ‎--queue).",
+      "runner": "اجراهای خودکار: فهرست، نمایش، ادامه پس از تأیید، وضعیت، اجرای صف، موتورها.",
+      "daemon": "یک پردازش پس‌زمینه برای اجراکننده، زمان‌بند و هوک‌ها: شروع، توقف، وضعیت، گزارش، نصب سرویس."
     },
     "project": {
       "usage": "فرمان‌های پروژه: init، demo، list، status، board، backlog، add، move، start، done، block، unblock، charter، milestone، sprint، risk، gate، advance، baseline، critical-path، forecast، next، digest، decision، scaffold، raci، report، templates",
@@ -422,6 +425,34 @@
       "historyTitle": "تاریخچه آپدیت ({count}، جدیدترین اول):",
       "noBackup": "پشتیبانی برای بازگردانی نیست؛ --backup <dir> بدهید.",
       "unknownAction": "عملیات update ناشناخته: {action} (run | history | rollback)"
+    },
+    "runner": {
+      "needsObjective": "هدف را داخل گیومه بنویسید یا ‎--mission <id> بدهید.",
+      "result": "اجرای {id} | {status} | موتور {engine} | هزینه {cost}",
+      "approvalsWaiting": "منتظر تصمیم شما: {ids}. با astack approval approve|reject <id> تصمیم بگیرید و بعد: astack runner resume {id}",
+      "refused": "رد شد: {reason}",
+      "ceilingClamped": "سطح اختیار درخواستی بالاتر از سقف تعیین‌شده بود؛ این اجرا با {ceiling} انجام شد.",
+      "queued": "در صف گذاشته شد: {id}. پردازش پس‌زمینه آن را اجرا می‌کند، یا همین حالا: astack runner drain",
+      "listTitle": "اجراهای خودکار ({count}):",
+      "drained": "{count} کار از صف اجرا شد.",
+      "enginesTitle": "موتورهای اجرا ({count}):",
+      "signalRunsEnabled": "از این پس قانون‌های هوک می‌توانند کار به صف اجرا بفرستند (run-agent). هر اجرا همچنان پیش از هر کار برگشت‌ناپذیر می‌ایستد.",
+      "statusTitle": "اجراها: {runs} | در صف {queued} | در حال اجرا {active} | منتظر تأیید {waiting} | خرج امروز ${spent} از ${budget}",
+      "unknownAction": "دستور ناشناخته برای runner: {action}",
+      "command": "فرمان اجرا: {command}"
+    },
+    "daemon": {
+      "started": "پردازش پس‌زمینه AStack شروع شد (pid {pid}).",
+      "notStarted": "پردازش پس‌زمینه شروع نشد (pid {pid}): {reason}",
+      "stopped": "توقف پردازش پس‌زمینه: {stopped} (pid {pid}) {reason}",
+      "running": "پردازش پس‌زمینه روشن است: pid {pid}، از {since}، آخرین علامت حیات {heartbeat}",
+      "notRunning": "پردازش پس‌زمینه خاموش است. برای روشن کردن: astack daemon start",
+      "logPath": "فایل گزارش: {path}",
+      "noLogs": "پردازش پس‌زمینه هنوز گزارشی ننوشته است.",
+      "servicePlan": "سرویس سیستم‌عامل، {action} روی {platform}:",
+      "dryRun": "اجرای آزمایشی: چیزی ساخته یا تغییر داده نشد.",
+      "serviceDone": "انجام شد: {action} {name}",
+      "unknownAction": "دستور ناشناخته برای daemon: {action}"
     }
   },
   "delivery": {
