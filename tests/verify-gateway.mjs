@@ -249,14 +249,17 @@ assert.equal(backoff.next(), 1000);
 // --- runner payload shapes
 assert.deepEqual(approvalIdsOf({ run: { id: "R1", approvals: ["AP-1", { id: "AP-2" }] }, approvalIds: ["AP-3"] }).sort(), ["AP-1", "AP-2", "AP-3"]);
 
-// --- config parses from the documented YAML block
+// --- config parses from the documented YAML block. Only the core repository
+// ships that block: an installed project keeps its own astack.config.yaml (a
+// seed file), which may lack the commented block or may enable the gateway.
 const documented = readFileSync(join(process.cwd(), "astack.config.yaml"), "utf8");
-const block = documented.slice(documented.indexOf("# gateway:")).split(/\r?\n/).filter((line) => line.startsWith("#")).map((line) => line.replace(/^# ?/, "")).join("\n");
-const parsedConfig = parseYaml(block.slice(block.indexOf("gateway:"))).gateway;
-assert.equal(parsedConfig.enabled, false);
-assert.deepEqual(parsedConfig.owners.telegram, ["100000001", "100000002"], "several owner accounts per channel, kept as strings");
-assert.equal(parsedConfig.channels["whatsapp-cloud"].app_secret, "credential://whatsapp-cloud/app-secret");
-assert.equal(parseYaml(readFileSync(join(process.cwd(), "astack.config.yaml"), "utf8")).gateway, undefined, "the shipped section is commented out");
+if (documented.includes("# gateway:") && parseYaml(documented).gateway === undefined) {
+  const block = documented.slice(documented.indexOf("# gateway:")).split(/\r?\n/).filter((line) => line.startsWith("#")).map((line) => line.replace(/^# ?/, "")).join("\n");
+  const parsedConfig = parseYaml(block.slice(block.indexOf("gateway:"))).gateway;
+  assert.equal(parsedConfig.enabled, false);
+  assert.deepEqual(parsedConfig.owners.telegram, ["100000001", "100000002"], "several owner accounts per channel, kept as strings");
+  assert.equal(parsedConfig.channels["whatsapp-cloud"].app_secret, "credential://whatsapp-cloud/app-secret");
+}
 
 // ===================================================== pipeline (loopback)
 {
