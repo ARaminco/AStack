@@ -601,3 +601,15 @@ secrets:
 #     python: python
 #     timeout_s: 300
 #     allow_approvals: false
+
+# Aramin, the AStack console (`astack console start`). Optional: every value
+# below is the default used when this section is absent.
+# console:
+#   enabled: true            # false keeps the daemon from starting it
+#   host: 127.0.0.1          # loopback only; anything else needs --host or allow_remote
+#   port: 7717
+#   allow_remote: false      # let the daemon bind a non-loopback host from this file
+#   allowed_hosts: []        # extra Host header names accepted on loopback (e.g. a local DNS name)
+#   poll_interval: 3s        # how often durable state is compared for live updates
+#   session_days: 30         # how long a signed-in device stays signed in
+#   locale: fa               # default UI language (fa | en); the app remembers the owner's choice
