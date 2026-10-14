@@ -584,7 +584,7 @@ assert.equal(embedded.claudeMemoryDirectory(), null);
 
 const aliasProject = sandbox("astack-alias-");
 runSetup(aliasProject);
-writeFileSync(join(aliasProject, "astack.config.yaml"), readFileSync(join(aliasProject, "astack.config.yaml"), "utf8").replace(/\ncli:\n/, "\ncli:\n  aliases:\n    matter: project\n"), "utf8");
+writeFileSync(join(aliasProject, "astack.config.yaml"), readFileSync(join(aliasProject, "astack.config.yaml"), "utf8").replace(/\r?\ncli:\r?\n/, "\ncli:\n  aliases:\n    matter: project\n"), "utf8");
 const aliasRun = spawnSync(process.execPath, [join(aliasProject, "bin", "astack.mjs"), "matter", "templates"], { cwd: aliasProject, encoding: "utf8", windowsHide: true });
 assert.equal(aliasRun.status, 0, aliasRun.stderr);
 assert.equal(aliasRun.stdout, spawnSync(process.execPath, [join(aliasProject, "bin", "astack.mjs"), "project", "templates"], { cwd: aliasProject, encoding: "utf8", windowsHide: true }).stdout, "an alias runs its command");
