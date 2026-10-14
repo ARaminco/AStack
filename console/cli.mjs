@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process";
 import { parseArgs } from "../delivery-engine/cli.mjs";
 import { ConsoleAuth } from "./auth.mjs";
+import { ConsoleUsers } from "./users.mjs";
+import { readSecretValue } from "../cli/vault-cli.mjs";
 import { ConsoleServer, consoleStateDirectory, readServerRecord, resolveConsoleSettings } from "./server.mjs";
 
 const out = (line) => console.log(line);
@@ -26,8 +28,9 @@ function openBrowser(url) {
  * `astack console token [--rotate]`
  * `astack console open` — sign in from the browser with a one-time ticket
  * `astack console status`
+ * `astack console user set|list|remove|totp <username> [--disable]`
  */
-export async function runConsoleCommand({ runtime, i18n, tokens }) {
+export async function runConsoleCommand({ runtime, i18n, tokens, stdin = process.stdin }) {
   const t = i18n.t.bind(i18n);
   const [action = "status", ...rest] = tokens;
   const { flags } = parseArgs(rest);
@@ -49,6 +52,11 @@ export async function runConsoleCommand({ runtime, i18n, tokens }) {
     return;
   }
 
+  if (action === "user") {
+    await runUserCommand({ runtime, t, rest, flags, stdin });
+    return;
+  }
+
   if (action === "status") {
     const record = readServerRecord(runtime.workspaceRoot);
     let healthy = false;
@@ -65,10 +73,17 @@ export async function runConsoleCommand({ runtime, i18n, tokens }) {
       const pad = (value) => String(value).padStart(2, "0");
       const stamp = pad(since.getDate()) + "/" + pad(since.getMonth() + 1) + "/" + since.getFullYear() + " " + pad(since.getHours()) + ":" + pad(since.getMinutes());
       out(t("cli.console.running", { url: record.url, pid: record.pid, since: stamp }));
+      if (record.remote) {
+        out(record.remote.running
+          ? t("cli.console.remoteRunning", { url: record.remote.url, publicUrl: record.remote.publicUrl, chat: record.remote.chat ? "on" : "off", access: record.remote.access ? "on" : "off" })
+          : t("cli.console.remoteStopped", { reason: record.remote.error ?? "-" }));
+      }
     } else {
       out(t("cli.console.stopped"));
     }
     out(t("cli.console.tokenState", { state: auth.hasToken() ? "present" : "missing", sessions: auth.count() }));
+    const users = new ConsoleUsers(consoleStateDirectory(runtime.workspaceRoot)).list();
+    out(t("cli.console.usersState", { count: users.length, totp: users.filter((user) => user.totp).length }));
     return;
   }
 
@@ -114,6 +129,10 @@ export async function runConsoleCommand({ runtime, i18n, tokens }) {
       throw error;
     }
     out(t("cli.console.started", { url: server.origin }));
+    const remote = server.describe().remote;
+    if (remote?.running) {
+      out(t("cli.console.remoteStarted", { url: remote.url, publicUrl: remote.publicUrl }));
+    }
     out(t("cli.console.tokenMasked", { token: auth.masked() }));
     if (flags.open) {
       // A one-time ticket in the URL fragment: the fragment never reaches a
@@ -136,4 +155,69 @@ export async function runConsoleCommand({ runtime, i18n, tokens }) {
   }
 
   throw new Error(t("cli.console.unknownAction", { action }));
+}
+
+/**
+ * Console users for password sign-in. The password is read from a hidden
+ * prompt (twice, on a terminal) or from stdin; only its scrypt hash is kept.
+ */
+async function runUserCommand({ runtime, t, rest, flags, stdin = process.stdin }) {
+  const users = new ConsoleUsers(consoleStateDirectory(runtime.workspaceRoot));
+  const positionals = rest.filter((token) => !String(token).startsWith("--"));
+  const [verb = "list", name] = positionals;
+  if (verb === "list") {
+    const list = users.list();
+    if (!list.length) {
+      out(t("cli.console.userNone"));
+      return;
+    }
+    for (const user of list) {
+      out("- " + user.username + "  totp: " + (user.totp ? "on" : "off") + "  " + t("cli.console.userUpdated", { at: user.updatedAt ?? "-" }));
+    }
+    return;
+  }
+  if (!name) {
+    throw new Error(t("cli.console.userUsage"));
+  }
+  if (verb === "set") {
+    const password = await readSecretValue({ prompt: t("cli.console.passwordPrompt"), stdin });
+    if (stdin.isTTY) {
+      const again = await readSecretValue({ prompt: t("cli.console.passwordAgain"), stdin });
+      if (again !== password) {
+        throw new Error(t("cli.console.passwordMismatch"));
+      }
+    }
+    const result = await users.set(name, password);
+    out(t(result.created ? "cli.console.userCreated" : "cli.console.userUpdatedNow", { username: result.username }));
+    runtime.audit?.record({ actor: "owner@cli", action: "console-user-set", target: result.username, riskLevel: "L2", result: result.created ? "created" : "password changed" });
+    if (!users.hasTotp(result.username)) {
+      out(t("cli.console.totpHint", { username: result.username }));
+    }
+    return;
+  }
+  if (verb === "remove") {
+    const removed = users.remove(name);
+    out(t(removed ? "cli.console.userRemoved" : "cli.console.userUnknown", { username: name }));
+    if (removed) {
+      runtime.audit?.record({ actor: "owner@cli", action: "console-user-removed", target: String(name).toLowerCase(), riskLevel: "L2", result: "removed" });
+    }
+    return;
+  }
+  if (verb === "totp") {
+    if (flags.disable) {
+      users.disableTotp(name);
+      out(t("cli.console.totpDisabled", { username: name }));
+      runtime.audit?.record({ actor: "owner@cli", action: "console-user-totp", target: String(name).toLowerCase(), riskLevel: "L2", result: "disabled" });
+      return;
+    }
+    const enabled = users.enableTotp(name);
+    out(t("cli.console.totpEnabled", { username: enabled.username }));
+    out(t("cli.console.totpSecret", { secret: enabled.secret.replace(/(.{4})/g, "$1 ").trim() }));
+    out(t("cli.console.totpUri"));
+    out(enabled.uri);
+    out(t("cli.console.totpWarning"));
+    runtime.audit?.record({ actor: "owner@cli", action: "console-user-totp", target: enabled.username, riskLevel: "L2", result: "enabled" });
+    return;
+  }
+  throw new Error(t("cli.console.userUsage"));
 }

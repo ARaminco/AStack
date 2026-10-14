@@ -14,7 +14,7 @@ const DAY = 24 * 60 * 60 * 1000;
  * be replayed as a live session.
  */
 export class ConsoleAuth {
-  constructor(directory, { clock = null, sessionDays = 30 } = {}) {
+  constructor(directory, { clock = null, sessionDays = 30, idleMs = null } = {}) {
     this.directory = directory;
     this.tokenPath = join(directory, "token");
     this.sessionsPath = join(directory, "sessions.json");
@@ -23,6 +23,8 @@ export class ConsoleAuth {
     this.ticketsPath = join(directory, "tickets.json");
     this.clock = clock ?? (() => new Date());
     this.sessionMs = Math.max(1, Number(sessionDays) || 30) * DAY;
+    // Optional idle timeout (console.session_idle); null keeps sessions alive until they expire.
+    this.idleMs = Number(idleMs) > 0 ? Number(idleMs) : null;
     this.sessions = null;
     this.tickets = new Map();
     this.failures = new Map();
@@ -166,23 +168,34 @@ export class ConsoleAuth {
     atomicWrite(this.sessionsPath, JSON.stringify(live, null, 2) + "\n");
   }
 
-  createSession({ userAgent = null } = {}) {
+  /**
+   * `channel` is the listener the session belongs to ("local" or "remote"):
+   * a session is only ever valid on the listener that created it. `idleMs`
+   * ends a session that has not been used for that long; `maxAgeMs` caps it.
+   */
+  createSession({ userAgent = null, user = null, channel = "local", method = "token", maxAgeMs = null, idleMs = null } = {}) {
     const sessions = this.loadSessions();
     const id = randomBytes(32).toString("base64url");
     const csrf = randomBytes(24).toString("base64url");
     const now = this.now();
+    const lifetime = Math.min(this.sessionMs, Number(maxAgeMs) > 0 ? Number(maxAgeMs) : this.sessionMs);
+    const idle = Number(idleMs) > 0 ? Number(idleMs) : this.idleMs;
     sessions[hash(id)] = {
       csrf,
       createdAt: now,
       lastSeenAt: now,
-      expiresAt: now + this.sessionMs,
-      device: userAgent ? String(userAgent).slice(0, 120) : null
+      expiresAt: now + lifetime,
+      device: userAgent ? String(userAgent).slice(0, 120) : null,
+      ...(user ? { user } : {}),
+      ...(channel !== "local" ? { channel } : {}),
+      ...(method !== "token" ? { method } : {}),
+      ...(idle ? { idleMs: idle } : {})
     };
     this.saveSessions();
-    return { id, csrf, maxAgeSeconds: Math.floor(this.sessionMs / 1000) };
+    return { id, csrf, maxAgeSeconds: Math.floor(lifetime / 1000) };
   }
 
-  session(id) {
+  session(id, { channel = "local" } = {}) {
     if (!id) {
       return null;
     }
@@ -192,13 +205,29 @@ export class ConsoleAuth {
     if (!session) {
       return null;
     }
-    if (session.expiresAt <= this.now()) {
+    if ((session.channel ?? "local") !== channel) {
+      return null;
+    }
+    const now = this.now();
+    if (session.expiresAt <= now || (session.idleMs && now - session.lastSeenAt > session.idleMs)) {
       delete sessions[key];
       this.saveSessions();
       return null;
     }
-    session.lastSeenAt = this.now();
+    const persist = session.idleMs && now - session.lastSeenAt > 60 * 1000;
+    session.lastSeenAt = now;
+    if (persist) {
+      this.saveSessions();
+    }
     return { key, ...session };
+  }
+
+  /** Sign every device out, on every listener. Returns how many sessions ended. */
+  destroyAll() {
+    const count = Object.keys(this.loadSessions()).length;
+    this.sessions = {};
+    this.saveSessions();
+    return count;
   }
 
   destroySession(id) {
