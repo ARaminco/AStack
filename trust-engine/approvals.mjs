@@ -8,6 +8,22 @@ export const approvalStates = ["pending", "approved", "rejected", "expired", "co
 const HOUR = 60 * 60 * 1000;
 
 /**
+ * True inside a process the unattended runner started (Claude Code, Codex and
+ * anything they spawn inherit `ASTACK_UNATTENDED=1`). Such a process may
+ * request approvals and use granted ones, but it can never decide one.
+ */
+export function isUnattended(env = process.env) {
+  const value = String(env?.ASTACK_UNATTENDED ?? "").trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes";
+}
+
+export function assertAttended(what = "decide an approval", env = process.env) {
+  if (isUnattended(env)) {
+    throw new Error("Refusing to " + what + ": this process runs unattended (ASTACK_UNATTENDED is set). Only the owner decides approvals, from the command line, the console or the gateway.");
+  }
+}
+
+/**
  * Human in the loop, made durable.
  *
  * A request describes exactly what will happen if the owner says yes: the
@@ -137,6 +153,7 @@ export class ApprovalEngine {
   }
 
   decide(id, { approve, by = "owner", note = null, scope = "single-action", extendMs = 0 }) {
+    assertAttended((approve ? "approve " : "reject ") + id);
     const record = this.get(id);
     if (record.state !== "pending") {
       throw new Error("Approval " + id + " is already " + record.state);

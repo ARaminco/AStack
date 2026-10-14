@@ -497,7 +497,9 @@ export class SignalEngine {
             source: "signal:" + hook.id,
             engine: reaction.params?.engine ?? null,
             ceiling: reaction.params?.ceiling ?? null,
-            domain: event.domain,
+            // Only the owner's own hook setting, never a domain detected from
+            // the inbound text: a message must not pick its own ceiling.
+            domain: hook.defaults?.domain ?? null,
             project: event.project,
             input: { text: event.text ?? "", from: event.from ?? event.source }
           });
