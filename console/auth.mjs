@@ -18,6 +18,9 @@ export class ConsoleAuth {
     this.directory = directory;
     this.tokenPath = join(directory, "token");
     this.sessionsPath = join(directory, "sessions.json");
+    // Tickets issued by another process (`astack console open` while the daemon
+    // serves the console). Only hashes and expiry times reach the disk.
+    this.ticketsPath = join(directory, "tickets.json");
     this.clock = clock ?? (() => new Date());
     this.sessionMs = Math.max(1, Number(sessionDays) || 30) * DAY;
     this.sessions = null;
@@ -80,17 +83,49 @@ export class ConsoleAuth {
    * opened with the ticket in the URL fragment (never sent to the server in a
    * request line, never logged), and it is good for one login within a minute.
    */
-  issueTicket({ ttlMs = 60 * 1000 } = {}) {
+  issueTicket({ ttlMs = 60 * 1000, shared = false } = {}) {
     const ticket = randomBytes(18).toString("base64url");
-    this.tickets.set(hash(ticket), this.now() + ttlMs);
+    const expires = this.now() + ttlMs;
+    if (shared) {
+      const stored = this.readTickets();
+      stored[hash(ticket)] = expires;
+      this.writeTickets(stored);
+    } else {
+      this.tickets.set(hash(ticket), expires);
+    }
     return ticket;
   }
 
   redeemTicket(candidate) {
     const key = hash(String(candidate ?? ""));
-    const expires = this.tickets.get(key);
+    let expires = this.tickets.get(key);
     this.tickets.delete(key);
+    if (!expires) {
+      const stored = this.readTickets();
+      if (stored[key]) {
+        expires = stored[key];
+        delete stored[key];
+        this.writeTickets(stored);
+      }
+    }
     return Boolean(expires && expires > this.now());
+  }
+
+  readTickets() {
+    if (!existsSync(this.ticketsPath)) {
+      return {};
+    }
+    try {
+      const now = this.now();
+      return Object.fromEntries(Object.entries(JSON.parse(readFileSync(this.ticketsPath, "utf8"))).filter(([, expires]) => Number(expires) > now));
+    } catch {
+      return {};
+    }
+  }
+
+  writeTickets(stored) {
+    this.ensureDirectory();
+    atomicWrite(this.ticketsPath, JSON.stringify(stored) + "\n");
   }
 
   /** Failed logins per address per minute; the eleventh is refused outright. */

@@ -69,7 +69,7 @@
       "sandbox": "Docker-isolated command execution: status, images, require, exec -- <command>.",
       "a2a": "Agent-to-Agent (A2A) endpoint: serve, card, status.",
       "gateway": "Owner messaging gateway: commands from WhatsApp and Telegram, reports and approvals on the phone, local Persian voice notes.",
-      "console": "Aramin console: installable app for approvals, missions, memory and monitoring (start | token | status)."
+      "console": "Aramin console: installable app for approvals, missions, memory and monitoring (open | start | token | status)."
     },
     "project": {
       "usage": "Project commands: init, demo, list, status, board, backlog, add, move, start, done, block, unblock, charter, milestone, sprint, risk, gate, advance, baseline, critical-path, forecast, next, digest, decision, scaffold, raci, report, templates",
@@ -596,7 +596,8 @@
       "alreadyRunning": "Aramin is already running: {url} (pid {pid})",
       "portBusy": "Port {port} is in use; pass another one with --port.",
       "openFailed": "Could not open a browser; open this address yourself: {url}",
-      "unknownAction": "Unknown console action: {action} (start | token | status)"
+      "unknownAction": "Unknown console action: {action} (start | token | status)",
+      "opened": "Aramin opened in your browser, signed in automatically: {url} (the one-time ticket expires after a minute)."
     }
   },
   "delivery": {
