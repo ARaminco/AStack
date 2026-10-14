@@ -74,3 +74,11 @@ astack skill pack search "<query>" --pack hermes
 astack skill pack show hermes/<skill-id>
 astack skill pack scan hermes
 ```
+
+## Local overrides
+
+`OVERRIDES.json` (written by the AStack maintainers, kept across re-imports) blocks these skills. Their files stay in the folder
+but they are never listed, searched or offered to an agent:
+
+- godmode: LLM jailbreak toolkit (GODMODE / Parseltongue): its purpose is to bypass model safety rules. Blocked by the AStack 3.0 security review.
+- obliteratus: Removes refusal behaviour from model weights (abliteration). Blocked by the AStack 3.0 security review.
