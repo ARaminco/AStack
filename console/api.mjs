@@ -46,6 +46,16 @@ export function features(runtime) {
   };
 }
 
+/** A console conversation's tool request (approval action `claude.tool`). */
+export function isChatApproval(record) {
+  return record?.action === "claude.tool";
+}
+
+/** `hideChat`: the listener has conversations closed, so their tool requests are not shown there. */
+function visibleTo(hideChat) {
+  return (record) => !hideChat || !isChatApproval(record);
+}
+
 export function isIrreversible(record) {
   let level = 0;
   try {
@@ -270,10 +280,10 @@ export class ConsoleApi {
 
   // ------------------------------------------------------------------ home
 
-  async home() {
+  async home({ hideChat = false } = {}) {
     const runtime = this.runtime;
     const standup = attempt(() => runtime.chief.standup(), null);
-    const pending = attempt(() => runtime.approvals.pending(), []);
+    const pending = attempt(() => runtime.approvals.pending(), []).filter(visibleTo(hideChat));
     const missions = attempt(() => runtime.missions.list({ limit: 200 }), []);
     const active = missions.filter((mission) => ["running", "waiting-approval", "paused", "blocked"].includes(mission.state));
     const scheduler = attempt(() => runtime.scheduler.status(), null);
@@ -310,20 +320,25 @@ export class ConsoleApi {
 
   // ------------------------------------------------------------- approvals
 
-  approvals({ state = "pending", q = "", limit = 100 } = {}) {
+  approvals({ state = "pending", q = "", limit = 100 } = {}, { hideChat = false } = {}) {
     const list = state === "all"
       ? this.runtime.approvals.list({ limit: Math.min(500, Number(limit) || 100) })
       : this.runtime.approvals.list({ state, limit: Math.min(500, Number(limit) || 100) });
-    const items = list.filter((record) => matches(q, record.id, record.action, record.summary, record.target, record.mission)).map(decorateApproval);
-    return { items, pending: this.runtime.approvals.pending().length };
+    const items = list.filter(visibleTo(hideChat)).filter((record) => matches(q, record.id, record.action, record.summary, record.target, record.mission)).map(decorateApproval);
+    return { items, pending: this.runtime.approvals.pending().filter(visibleTo(hideChat)).length };
   }
 
-  approval(id) {
+  approval(id, { hideChat = false } = {}) {
+    let record;
     try {
-      return decorateApproval(this.runtime.approvals.get(id));
+      record = this.runtime.approvals.get(id);
     } catch (error) {
       throw new HttpError(404, error.message);
     }
+    if (!visibleTo(hideChat)(record)) {
+      throw new HttpError(404, "Unknown approval request: " + id);
+    }
+    return decorateApproval(record);
   }
 
   decide(id, { decision, note = null, confirm = null } = {}) {
@@ -851,12 +866,13 @@ export class ConsoleApi {
 
   // ------------------------------------------------------------ palette
 
-  async search({ q = "" } = {}) {
+  async search({ q = "" } = {}, { hideChat = false } = {}) {
     const query = String(q ?? "").trim().slice(0, 200);
     if (!query) {
       return { query, approvals: [], missions: [], memory: [], skills: [], runs: [] };
     }
     const approvals = attempt(() => this.runtime.approvals.list({ limit: 200 }), [])
+      .filter(visibleTo(hideChat))
       .filter((record) => matches(query, record.id, record.action, record.summary, record.target))
       .slice(0, 5)
       .map((record) => ({ id: record.id, label: record.summary || record.action, meta: record.action, state: record.state }));

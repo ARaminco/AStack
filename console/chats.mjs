@@ -5,7 +5,7 @@ import { basename, join, resolve } from "node:path";
 import { redactSecretsStrict } from "../lib/text.mjs";
 import { toolInputPreview, toolTarget } from "../lib/tool-summary.mjs";
 import { claudeSlug, cleanUserText } from "../search-engine/sources/sessions.mjs";
-import { MANDATORY_CLAUDE_DENIED, killProcessTree, resolveCommand, startProcess } from "../runner-engine/engines.mjs";
+import { MANDATORY_CLAUDE_DENIED, killProcessTree, resolveCommand, startProcess, unattendedEnv } from "../runner-engine/engines.mjs";
 import { PERMISSION_TOOL_NAME } from "../interop-engine/mcp-server.mjs";
 
 /**
@@ -24,6 +24,12 @@ import { PERMISSION_TOOL_NAME } from "../interop-engine/mcp-server.mjs";
  * decided by the owner: `--permission-prompt-tool mcp__astack__permission_prompt`
  * turns every permission request into an AStack approval. The runner's
  * mandatory `.astack/**` denies always apply, so a chat can never forge one.
+ *
+ * 3.1.1: the Claude Code child runs with `ASTACK_UNATTENDED=1` (it and
+ * everything it starts can request approvals but never decide one, and
+ * `astack console user|token` refuse to run); decisions are made by the
+ * console server process, which is not unattended. Every turn also denies
+ * the console's, vault's and gateway's state folders (CHAT_STATE_DENIES).
  */
 
 export const PERMISSION_TOOL = "mcp__astack__" + PERMISSION_TOOL_NAME;
@@ -34,6 +40,39 @@ const AGENT_FILE = /^agent-[A-Za-z0-9_-]{1,64}$/;
 const MAX_PROMPT = 100000;
 const BUFFER_LIMIT = 600;
 const STDERR_TAIL = 4000;
+
+/**
+ * Denied in every conversation turn, local or remote: the console's sessions,
+ * users, token and TOTP state, the vault and the gateway's state, plus the
+ * `astack console` commands that manage sign-in.
+ *
+ * Rule syntax as Claude Code 2.1.x documents it (code.claude.com/docs/en/permissions):
+ * file access is checked against `Read(path)` and `Edit(path)` rules only. A
+ * Read deny also covers Grep and Glob (best effort) and blocks Edit and Write
+ * on the same path; an Edit deny covers every editing tool (Write,
+ * NotebookEdit). `Write(…)`, `Grep(…)` and `Glob(…)` path rules are
+ * accepted but never consulted, so they are not used here. Paths use
+ * gitignore syntax: `//` anchors at the filesystem root (`//**` spans every
+ * drive on Windows, where paths are normalised to `/c/...`), a pattern without
+ * a prefix is relative to the working directory. In Bash and PowerShell rules
+ * `*` matches any text, spaces included, at any position.
+ */
+export const CHAT_STATE_DIRECTORIES = ["console", "vault", "gateway"];
+export const CHAT_STATE_DENIES = [
+  ...CHAT_STATE_DIRECTORIES.flatMap((name) => [
+    "Read(//**/.astack/" + name + "/**)",
+    "Edit(//**/.astack/" + name + "/**)",
+    "Read(**/.astack/" + name + "/**)",
+    "Edit(**/.astack/" + name + "/**)"
+  ]),
+  // The workspace may sit outside the project folder a turn runs in.
+  "Edit(//**/.astack/**)",
+  ...CHAT_STATE_DIRECTORIES.flatMap((name) => ["Bash(*.astack/" + name + "*)", "PowerShell(*.astack*" + name + "*)"]),
+  "Bash(*astack* console*)",
+  "Bash(*astack.mjs* console*)",
+  "PowerShell(*astack* console*)",
+  "PowerShell(*astack.mjs* console*)"
+];
 
 /**
  * Extra denies for a turn started from the remote (internet) listener when
@@ -654,7 +693,7 @@ export class ChatManager {
       // Only these built-in tools are loaded (fewer tool schemas per turn).
       args.push("--tools", tools.join(","));
     }
-    const denies = [...new Set([...toList(this.config.disallowed_tools, []), ...MANDATORY_CLAUDE_DENIED, ...(remote ? remoteChatDenies() : [])])];
+    const denies = [...new Set([...toList(this.config.disallowed_tools, []), ...MANDATORY_CLAUDE_DENIED, ...CHAT_STATE_DENIES, ...(remote ? remoteChatDenies() : [])])];
     const allowed = remote ? [] : this.allowedTools().filter((tool) => !/^mcp__astack__permission/.test(tool));
     args.push("--disallowedTools", ...denies);
     if (allowed.length) {
@@ -755,7 +794,8 @@ export class ChatManager {
     const mcpConfigPath = join(this.directory, "mcp-" + turnId + ".json");
     writeFileSync(mcpConfigPath, JSON.stringify(this.mcpConfig({ sessionId }), null, 2) + "\n", "utf8");
     const args = this.args({ sessionId, isNew, mcpConfigPath, channel, budgetUsd: remaining });
-    const env = { ...process.env, MCP_TOOL_TIMEOUT: String(this.approvalTimeoutMs() + 60 * 1000) };
+    // Unattended like a runner child: the child can ask, only this server decides.
+    const env = unattendedEnv({ ...process.env, MCP_TOOL_TIMEOUT: String(this.approvalTimeoutMs() + 60 * 1000) });
     let child;
     try {
       child = startProcess(resolved, args, { input: text, cwd: target.path, env });

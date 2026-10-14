@@ -1,7 +1,8 @@
-import { createHmac, randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { promisify } from "node:util";
+import { VaultBackends } from "../trust-engine/vault.mjs";
 
 const scrypt = promisify(scryptCallback);
 
@@ -9,16 +10,25 @@ const scrypt = promisify(scryptCallback);
  * Console users: username + password (+ optional TOTP) for Aramin.
  *
  * `.astack/console/users.json` holds, per user, an scrypt hash with its own
- * salt and parameters (never the password) and, when two-factor sign-in is
- * on, the TOTP secret. The file is written atomically with mode 0600 where
- * the OS supports it.
+ * salt and parameters (never the password), a credential version and, when
+ * two-factor sign-in is on, where the TOTP secret lives. On Windows the
+ * secret itself is kept DPAPI-encrypted for the current Windows user
+ * (`vault:windows`, `.astack/vault/console-totp.<user>.dpapi`); on other
+ * platforms it stays in this file. The file is written atomically with mode
+ * 0600 where the OS supports it.
+ *
+ * The credential version changes whenever the password or the TOTP setting
+ * changes (and a removed user has none), so a session signed in with the old
+ * credentials is refused.
  */
 
-export const SCRYPT_PARAMS = { N: 2 ** 15, r: 8, p: 1, keylen: 64 };
+// 3.1.1: N=2^17 for new and changed hashes. Older hashes keep their own
+// parameters, still verify, and are rehashed on the next successful sign-in.
+export const SCRYPT_PARAMS = { N: 2 ** 17, r: 8, p: 1, keylen: 64 };
 export const MIN_PASSWORD_LENGTH = 10;
 const USERNAME = /^[a-z0-9][a-z0-9._-]{1,31}$/;
-// scrypt with N=2^15, r=8 needs 32 MiB; give it room.
-const MAXMEM = 96 * 1024 * 1024;
+// scrypt needs 128 * N * r bytes: 128 MiB at N=2^17, r=8; give it room.
+const MAXMEM = 256 * 1024 * 1024;
 
 export function normalizeUsername(value) {
   const name = String(value ?? "").trim().toLowerCase();
@@ -28,6 +38,15 @@ export function normalizeUsername(value) {
 export async function hashPassword(password, { N = SCRYPT_PARAMS.N, r = SCRYPT_PARAMS.r, p = SCRYPT_PARAMS.p, keylen = SCRYPT_PARAMS.keylen, salt = randomBytes(16) } = {}) {
   const key = await scrypt(String(password).normalize("NFC"), salt, keylen, { N, r, p, maxmem: MAXMEM });
   return ["scrypt", N, r, p, salt.toString("base64"), key.toString("base64")].join("$");
+}
+
+/** True when a stored hash uses weaker parameters than SCRYPT_PARAMS. */
+export function needsRehash(stored) {
+  const parts = String(stored ?? "").split("$");
+  if (parts.length !== 6 || parts[0] !== "scrypt") {
+    return false;
+  }
+  return Number(parts[1]) < SCRYPT_PARAMS.N || Number(parts[2]) < SCRYPT_PARAMS.r || Number(parts[3]) < SCRYPT_PARAMS.p;
 }
 
 export async function verifyPassword(password, stored) {
@@ -143,11 +162,42 @@ async function dummy() {
   return dummyHash;
 }
 
+function newCredentialVersion() {
+  return randomBytes(12).toString("base64url");
+}
+
+/**
+ * Where TOTP secrets live on this machine: the Windows DPAPI vault
+ * (`vault:windows`) on Windows, nowhere else (they stay in users.json).
+ * `run` is the vault's injectable process runner (tests).
+ */
+export function createTotpVault({ root, platform = process.platform, env = process.env, run = null } = {}) {
+  if (platform !== "win32" || !root) {
+    return null;
+  }
+  const backends = new VaultBackends(root, { platform, env, ...(run ? { run } : {}) });
+  const record = (name) => ({ provider: "console-totp", name, source: "vault:windows", reference: "credential://console-totp/" + name });
+  return {
+    source: "vault:windows",
+    write: (name, secret) => backends.write(record(name), secret),
+    read: (name) => backends.read(record(name)),
+    remove: (name) => backends.remove(record(name))
+  };
+}
+
 export class ConsoleUsers {
-  constructor(directory, { clock = null } = {}) {
+  /**
+   * `vault`: undefined picks the platform default (DPAPI on Windows), null
+   * keeps secrets in users.json, an object `{ source, read, write, remove }`
+   * is used as given.
+   */
+  constructor(directory, { clock = null, vault = undefined, workspaceRoot = null } = {}) {
     this.directory = directory;
     this.path = join(directory, "users.json");
     this.clock = clock ?? (() => new Date());
+    this.vault = vault === undefined ? createTotpVault({ root: workspaceRoot ?? dirname(dirname(directory)) }) : vault || null;
+    // Decrypted secrets, keyed by user and enrolment time, so DPAPI runs once per enrolment.
+    this.secrets = new Map();
   }
 
   read() {
@@ -179,13 +229,19 @@ export class ConsoleUsers {
       username: name,
       createdAt: user.createdAt ?? null,
       updatedAt: user.updatedAt ?? null,
-      totp: Boolean(user.totp?.enabled)
+      totp: Boolean(user.totp?.enabled),
+      totpStore: user.totp?.enabled ? (user.totp.store ?? "file") : null
     }));
   }
 
   get(username) {
     const name = normalizeUsername(username);
     return name ? this.read().users[name] ?? null : null;
+  }
+
+  /** The user's current credential version; null for an unknown user or a pre-3.1.1 record. */
+  credentialVersion(username) {
+    return this.get(username)?.credentialVersion ?? null;
   }
 
   count() {
@@ -208,7 +264,7 @@ export class ConsoleUsers {
     const data = this.read();
     const now = this.clock().toISOString();
     const existing = data.users[name];
-    data.users[name] = { ...(existing ?? {}), hash, createdAt: existing?.createdAt ?? now, updatedAt: now };
+    data.users[name] = { ...(existing ?? {}), hash, credentialVersion: newCredentialVersion(), createdAt: existing?.createdAt ?? now, updatedAt: now };
     this.write(data);
     return { username: name, created: !existing };
   }
@@ -219,11 +275,32 @@ export class ConsoleUsers {
     if (!name || !data.users[name]) {
       return false;
     }
+    this.forgetSecret(name, data.users[name].totp);
     delete data.users[name];
     this.write(data);
     return true;
   }
 
+  /** Drop a cached secret and remove a vault-held one (best effort). */
+  forgetSecret(name, totpState) {
+    for (const key of [...this.secrets.keys()]) {
+      if (key.startsWith(name + "\n")) {
+        this.secrets.delete(key);
+      }
+    }
+    if (totpState?.store && this.vault && totpState.store === this.vault.source) {
+      try {
+        this.vault.remove(name);
+      } catch {
+        // already gone
+      }
+    }
+  }
+
+  /**
+   * Turn TOTP on (or reset it) with a fresh secret. The secret is returned
+   * once, for enrolment, and kept in the vault when there is one.
+   */
   enableTotp(username) {
     const name = normalizeUsername(username);
     const data = this.read();
@@ -231,10 +308,18 @@ export class ConsoleUsers {
       throw new Error("Unknown console user: " + username);
     }
     const secret = base32Encode(randomBytes(20));
-    data.users[name].totp = { secret, enabled: true, createdAt: this.clock().toISOString(), lastCounter: -1 };
-    data.users[name].updatedAt = this.clock().toISOString();
+    const now = this.clock().toISOString();
+    this.forgetSecret(name, data.users[name].totp);
+    let stored = { secret };
+    if (this.vault) {
+      this.vault.write(name, secret);
+      stored = { store: this.vault.source };
+    }
+    data.users[name].totp = { ...stored, enabled: true, createdAt: now, lastCounter: -1 };
+    data.users[name].updatedAt = now;
+    data.users[name].credentialVersion = newCredentialVersion();
     this.write(data);
-    return { username: name, secret, uri: otpauthUri({ secret, username: name }) };
+    return { username: name, secret, uri: otpauthUri({ secret, username: name }), store: stored.store ?? "file" };
   }
 
   disableTotp(username) {
@@ -243,25 +328,73 @@ export class ConsoleUsers {
     if (!name || !data.users[name]) {
       throw new Error("Unknown console user: " + username);
     }
+    this.forgetSecret(name, data.users[name].totp);
     data.users[name].totp = null;
     data.users[name].updatedAt = this.clock().toISOString();
+    data.users[name].credentialVersion = newCredentialVersion();
     this.write(data);
     return true;
   }
 
-  /** Always costs one scrypt, known user or not. */
+  /** Always costs one scrypt, known user or not. A weaker hash is upgraded after a match. */
   async checkPassword(username, password) {
     const name = normalizeUsername(username);
     const user = name ? this.read().users[name] : null;
     const ok = await verifyPassword(password, user?.hash ?? (await dummy()));
-    return ok && user ? name : null;
+    if (!ok || !user) {
+      return null;
+    }
+    if (needsRehash(user.hash)) {
+      try {
+        const hash = await hashPassword(password);
+        const data = this.read();
+        // Same password, so the credential version stays; skip if it changed meanwhile.
+        if (data.users[name]?.hash === user.hash) {
+          data.users[name].hash = hash;
+          this.write(data);
+        }
+      } catch {
+        // the old hash still verifies
+      }
+    }
+    return name;
   }
 
   hasTotp(username) {
     return Boolean(this.get(username)?.totp?.enabled);
   }
 
-  /** Check a code and burn its time step so it cannot be replayed. */
+  /** The plaintext TOTP secret of an enabled user, or null when it cannot be read here. */
+  secretOf(name, totpState) {
+    if (!totpState?.enabled) {
+      return null;
+    }
+    if (totpState.secret) {
+      return totpState.secret;
+    }
+    if (!this.vault || totpState.store !== this.vault.source) {
+      return null;
+    }
+    const key = name + "\n" + (totpState.createdAt ?? "");
+    if (this.secrets.has(key)) {
+      return this.secrets.get(key);
+    }
+    let secret = null;
+    try {
+      secret = this.vault.read(name);
+    } catch {
+      secret = null;
+    }
+    if (secret) {
+      this.secrets.set(key, secret);
+    }
+    return secret;
+  }
+
+  /**
+   * Check a code and burn its time step so it cannot be replayed. A secret
+   * still kept in users.json moves into the vault after a good code.
+   */
   useTotp(username, code) {
     const name = normalizeUsername(username);
     const data = this.read();
@@ -269,11 +402,25 @@ export class ConsoleUsers {
     if (!user?.totp?.enabled) {
       return false;
     }
-    const counter = verifyTotp(user.totp.secret, code, { time: this.clock().getTime(), lastCounter: Number(user.totp.lastCounter ?? -1) });
+    const secret = this.secretOf(name, user.totp);
+    if (!secret) {
+      return false;
+    }
+    const counter = verifyTotp(secret, code, { time: this.clock().getTime(), lastCounter: Number(user.totp.lastCounter ?? -1) });
     if (counter === null) {
       return false;
     }
     user.totp.lastCounter = counter;
+    if (user.totp.secret && this.vault) {
+      try {
+        this.vault.write(name, user.totp.secret);
+        delete user.totp.secret;
+        user.totp.store = this.vault.source;
+        this.secrets.set(name + "\n" + (user.totp.createdAt ?? ""), secret);
+      } catch {
+        // stays in the file until the vault works
+      }
+    }
     this.write(data);
     return true;
   }
@@ -284,18 +431,70 @@ export class ConsoleUsers {
 /**
  * Failed sign-ins per key (an address, a username). `attempts` failures
  * inside `windowMs` lock the key for `lockMs`. A success clears the key.
+ * With `path`, the counters survive a restart: only SHA-256 hashes of the
+ * keys and the times are written, and expired entries are dropped.
  */
 export class LoginGuard {
-  constructor({ attempts = 5, windowMs = 15 * 60 * 1000, lockMs = 15 * 60 * 1000, clock = null } = {}) {
+  constructor({ attempts = 5, windowMs = 15 * 60 * 1000, lockMs = 15 * 60 * 1000, clock = null, path = null } = {}) {
     this.attempts = Math.max(1, Number(attempts) || 5);
     this.windowMs = windowMs;
     this.lockMs = lockMs;
     this.clock = clock ?? (() => new Date());
+    this.path = path;
     this.entries = new Map();
+    this.load();
   }
 
   now() {
     return this.clock().getTime();
+  }
+
+  static keyOf(key) {
+    return createHash("sha256").update("aramin-lockout\n" + String(key)).digest("hex").slice(0, 40);
+  }
+
+  live(entry, now) {
+    return entry.lockedUntil > now || entry.failures.some((at) => now - at < this.windowMs);
+  }
+
+  load() {
+    if (!this.path || !existsSync(this.path)) {
+      return;
+    }
+    try {
+      const data = JSON.parse(readFileSync(this.path, "utf8"));
+      const now = this.now();
+      for (const [key, entry] of Object.entries(data.entries ?? {})) {
+        const clean = { failures: (Array.isArray(entry?.failures) ? entry.failures : []).map(Number).filter(Number.isFinite), lockedUntil: Number(entry?.lockedUntil) || 0 };
+        if (/^[0-9a-f]{40}$/.test(key) && this.live(clean, now)) {
+          this.entries.set(key, clean);
+        }
+      }
+    } catch {
+      // a damaged file starts empty
+    }
+  }
+
+  save() {
+    if (!this.path) {
+      return;
+    }
+    const now = this.now();
+    const entries = {};
+    for (const [key, entry] of this.entries) {
+      if (this.live(entry, now)) {
+        const lastFailure = entry.failures.length ? Math.max(...entry.failures) : 0;
+        entries[key] = { failures: entry.failures, lockedUntil: entry.lockedUntil, expiresAt: Math.max(entry.lockedUntil, lastFailure + this.windowMs) };
+      }
+    }
+    try {
+      mkdirSync(dirname(this.path), { recursive: true });
+      const temporary = this.path + "." + process.pid + ".tmp";
+      writeFileSync(temporary, JSON.stringify({ version: 1, entries }) + "\n", { encoding: "utf8", mode: 0o600 });
+      renameSync(temporary, this.path);
+    } catch {
+      // the in-memory counters still apply
+    }
   }
 
   /** `{ allowed, retryAfterMs }` for every key together. */
@@ -303,7 +502,7 @@ export class LoginGuard {
     const now = this.now();
     let retryAfterMs = 0;
     for (const key of keys.filter(Boolean)) {
-      const entry = this.entries.get(key);
+      const entry = this.entries.get(LoginGuard.keyOf(key));
       if (entry?.lockedUntil && entry.lockedUntil > now) {
         retryAfterMs = Math.max(retryAfterMs, entry.lockedUntil - now);
       }
@@ -314,27 +513,33 @@ export class LoginGuard {
   fail(keys) {
     const now = this.now();
     for (const key of keys.filter(Boolean)) {
-      const entry = this.entries.get(key) ?? { failures: [], lockedUntil: 0 };
+      const hashed = LoginGuard.keyOf(key);
+      const entry = this.entries.get(hashed) ?? { failures: [], lockedUntil: 0 };
       entry.failures = entry.failures.filter((at) => now - at < this.windowMs);
       entry.failures.push(now);
       if (entry.failures.length >= this.attempts) {
         entry.lockedUntil = now + this.lockMs;
         entry.failures = [];
       }
-      this.entries.set(key, entry);
+      this.entries.set(hashed, entry);
     }
     if (this.entries.size > 5000) {
       for (const [key, entry] of this.entries) {
-        if (!entry.failures.length && entry.lockedUntil <= now) {
+        if (!this.live(entry, now)) {
           this.entries.delete(key);
         }
       }
     }
+    this.save();
   }
 
   succeed(keys) {
+    let changed = false;
     for (const key of keys.filter(Boolean)) {
-      this.entries.delete(key);
+      changed = this.entries.delete(LoginGuard.keyOf(key)) || changed;
+    }
+    if (changed) {
+      this.save();
     }
   }
 }

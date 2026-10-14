@@ -38,6 +38,9 @@ export const FORWARDED_EVENTS = [
 
 const NOTIFY_LIMIT = 60;
 
+/** The approval action a console conversation's tool request carries. */
+export const CHAT_APPROVAL_ACTION = "claude.tool";
+
 export class ConsoleEvents {
   constructor(runtime, { pollMs = 3000, log = () => {}, clock = null } = {}) {
     this.runtime = runtime;
@@ -46,7 +49,8 @@ export class ConsoleEvents {
     this.clock = clock ?? (() => new Date());
     this.clients = new Set();
     // Per-client options: `chat: false` keeps conversation events away from
-    // a listener where conversations are not available.
+    // a listener where conversations are not available; `hideChatApprovals`
+    // also keeps their tool approvals out of activity, notifications and counts.
     this.clientOptions = new WeakMap();
     this.notifications = [];
     this.sequence = 0;
@@ -108,10 +112,11 @@ export class ConsoleEvents {
   }
 
   addClient(response, options = {}) {
+    const settings = { chat: options.chat !== false, hideChatApprovals: options.hideChatApprovals === true };
     this.clients.add(response);
-    this.clientOptions.set(response, { chat: options.chat !== false });
+    this.clientOptions.set(response, settings);
     response.on("close", () => this.clients.delete(response));
-    this.write(response, "hello", { at: this.clock().toISOString(), counts: this.counts() });
+    this.write(response, "hello", { at: this.clock().toISOString(), counts: this.counts({ hideChat: settings.hideChatApprovals }) });
   }
 
   write(response, type, data) {
@@ -124,9 +129,24 @@ export class ConsoleEvents {
   }
 
   broadcast(type, data) {
+    let hiddenCounts = null;
     for (const client of this.clients) {
-      if (type === "chat" && this.clientOptions.get(client)?.chat === false) {
+      const options = this.clientOptions.get(client) ?? {};
+      if (type === "chat" && options.chat === false) {
         continue;
+      }
+      if (options.hideChatApprovals) {
+        if (type === "activity" && data?.payload?.action === CHAT_APPROVAL_ACTION) {
+          continue;
+        }
+        if (type === "notification" && data?.chat) {
+          continue;
+        }
+        if (type === "counts") {
+          hiddenCounts = hiddenCounts ?? this.counts({ hideChat: true });
+          this.write(client, type, hiddenCounts);
+          continue;
+        }
       }
       this.write(client, type, data);
     }
@@ -142,7 +162,7 @@ export class ConsoleEvents {
     }
   }
 
-  notify(kind, { title, body = null, level = "info", link = null, ref = null }) {
+  notify(kind, { title, body = null, level = "info", link = null, ref = null, chat = false }) {
     const entry = {
       id: "N" + Date.now().toString(36) + (this.notifications.length + 1),
       kind,
@@ -151,21 +171,23 @@ export class ConsoleEvents {
       level,
       link,
       ref,
-      at: this.clock().toISOString()
+      at: this.clock().toISOString(),
+      // A conversation's tool request: hidden where conversations are closed.
+      ...(chat ? { chat: true } : {})
     };
     this.notifications = [entry, ...this.notifications].slice(0, NOTIFY_LIMIT);
     this.broadcast("notification", entry);
     return entry;
   }
 
-  recent(limit = 30) {
-    return this.notifications.slice(0, limit);
+  recent(limit = 30, { hideChat = false } = {}) {
+    return (hideChat ? this.notifications.filter((entry) => !entry.chat) : this.notifications).slice(0, limit);
   }
 
-  counts() {
+  counts({ hideChat = false } = {}) {
     const snapshot = this.snapshot ?? this.capture();
     return {
-      approvals: Object.keys(snapshot.approvals).length,
+      approvals: Object.values(snapshot.approvals).filter((record) => !hideChat || record.action !== CHAT_APPROVAL_ACTION).length,
       missionsActive: Object.values(snapshot.missions).filter((mission) => ["running", "waiting-approval", "paused"].includes(mission.state)).length,
       incidents: Object.keys(snapshot.incidents).length,
       runsActive: Object.values(snapshot.runs).filter((run) => ["queued", "running", "awaiting-approval"].includes(run.status)).length
@@ -208,7 +230,7 @@ export class ConsoleEvents {
     for (const [id, record] of Object.entries(after.approvals)) {
       if (!before.approvals[id]) {
         changed = true;
-        this.notify("approval", { title: record.summary || record.action, body: record.action, level: "warning", link: "#/approvals/" + id, ref: id });
+        this.notify("approval", { title: record.summary || record.action, body: record.action, level: "warning", link: "#/approvals/" + id, ref: id, chat: record.action === CHAT_APPROVAL_ACTION });
       }
     }
     for (const id of Object.keys(before.approvals)) {

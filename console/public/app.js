@@ -1007,11 +1007,16 @@
           <label class="field"><span class="field-label">${icon("sparkles")}${t("runs.newRun")}</span>
             <textarea class="input" name="objective" rows="3" maxlength="2000" placeholder="${t("runs.objectivePlaceholder")}" required></textarea></label>
           <p class="muted small">${t("runs.dryRunFirst")}</p>
+          ${state.session.stepUp && !state.session.runner ? html`<p class="warn">${icon("alert")}${t("approvals.remoteRunnerOff")}</p>` : ""}
           <div class="run-preview" data-run-preview hidden></div>
+          ${state.session.stepUp && state.session.runner ? html`<label class="field" data-run-totp hidden>
+            <span class="field-label">${icon("shield")}${t("approvals.stepUpRun")}</span>
+            <input class="input input-lg ltr otp-input" dir="ltr" name="totp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="••••••">
+          </label>` : ""}
           <p class="form-error" data-form-error hidden></p>
           <div class="row-actions">
             <button type="submit" class="btn btn-primary" data-run-preview-btn>${icon("search")}${t("runs.preview")}</button>
-            <button type="button" class="btn btn-approve" data-action="run-real" hidden>${icon("play")}${t("runs.runForReal")}</button>
+            ${state.session.stepUp && !state.session.runner ? "" : html`<button type="button" class="btn btn-approve" data-action="run-real" hidden>${icon("play")}${t("runs.runForReal")}</button>`}
           </div>
         </form>
         ${data.status ? section(t("runs.status"), html`<div class="card pad">${kv(Object.keys(data.status).filter(function (k) { return data.status[k] === null || typeof data.status[k] !== "object"; }).slice(0, 12).map(function (k) { return [ltr(k, "mono"), ltr(String(data.status[k]))]; }))}</div>`) : ""}
@@ -2123,6 +2128,13 @@
     }).catch(function (error) { setSheet(errorCard(error)); });
   }
 
+  /** The text for a refused run or "run now": remote runner off, a wrong step-up code, or the server's message. */
+  function runErrorText(err) {
+    if (err && err.body && err.body.remoteRunner === false) return t("approvals.remoteRunnerOff");
+    if (err && err.status === 422 && err.body && err.body.stepUpRequired) return t("approvals.stepUpFailed");
+    return err && err.message ? err.message : t("common.error");
+  }
+
   function formError(form, message) {
     var el = $("[data-form-error]", form);
     if (el) {
@@ -2191,6 +2203,26 @@
         }).catch(function (error) { toast(t("common.error"), "danger", error.message); });
         break;
       case "job-run":
+        if (state.session.stepUp) {
+          // Over the internet "run now" needs console.remote.runner and a fresh code.
+          if (!state.session.runner) {
+            toast(t("common.error"), "danger", t("approvals.remoteRunnerOff"));
+            break;
+          }
+          openSheet(html`<form class="decision" data-form="job-run" data-id="${id}">
+            <div class="decision-head is-approve"><span class="decision-icon">${icon("play")}</span><div><h3>${t("jobs.runNow")}</h3><p>${ltr(id, "mono")}</p></div></div>
+            <label class="field">
+              <span class="field-label">${icon("shield")}${t("approvals.stepUpRun")}</span>
+              <input class="input input-lg ltr otp-input" dir="ltr" name="totp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="••••••" required autofocus>
+            </label>
+            <p class="form-error" data-form-error hidden></p>
+            <div class="sheet-actions">
+              <button type="button" class="btn btn-ghost btn-lg" data-action="close-sheet">${t("common.cancel")}</button>
+              <button type="submit" class="btn btn-lg btn-approve" data-submit>${icon("play")}${t("jobs.runNow")}</button>
+            </div>
+          </form>`);
+          break;
+        }
         target.disabled = true;
         api("/api/jobs/" + encodeURIComponent(id) + "/run", { method: "POST", body: {} }).then(function (result) {
           toast(t("jobs.ran", { status: stateLabel(result.status) }), result.status === "ok" ? "success" : "danger", result.summary);
@@ -2278,12 +2310,22 @@
       case "run-real": {
         var form = target.closest("form");
         if (!form || !lastPreview) return;
+        var runTotp = $("input[name=totp]", form);
+        if (runTotp && !/^[0-9]{6}$/.test(String(runTotp.value || "").trim())) {
+          runTotp.focus();
+          formError(form, t("approvals.stepUpRun"));
+          return;
+        }
         target.disabled = true;
-        api("/api/runs", { method: "POST", body: { objective: lastPreview.objective, dryRun: false, previewId: lastPreview.previewId } }).then(function (result) {
+        api("/api/runs", { method: "POST", body: { objective: lastPreview.objective, dryRun: false, previewId: lastPreview.previewId, totp: runTotp ? String(runTotp.value).trim() : null } }).then(function (result) {
           lastPreview = null;
           toast(t("runs.started"), "success", stateLabel(result.result && result.result.status));
           navigate(true);
-        }).catch(function (error) { target.disabled = false; formError(form, error.message); });
+        }).catch(function (error) {
+          target.disabled = false;
+          if (runTotp) runTotp.value = "";
+          formError(form, runErrorText(error));
+        });
         break;
       }
       default:
@@ -2371,6 +2413,20 @@
       });
       return;
     }
+    if (kind === "job-run") {
+      var jobButton = $("[data-submit]", form);
+      var jobId = form.getAttribute("data-id");
+      jobButton.disabled = true;
+      api("/api/jobs/" + encodeURIComponent(jobId) + "/run", { method: "POST", body: { totp: String(data.get("totp") || "").trim() } }).then(function (result) {
+        closeSheet();
+        toast(t("jobs.ran", { status: stateLabel(result.status) }), result.status === "ok" ? "success" : "danger", result.summary);
+        navigate(true);
+      }).catch(function (err) {
+        jobButton.disabled = false;
+        formError(form, runErrorText(err));
+      });
+      return;
+    }
     if (kind === "memory-search") {
       go("#/memory?tab=" + (form.getAttribute("data-tab") || "search") + "&q=" + encodeURIComponent(String(data.get("q") || "")));
       return;
@@ -2392,8 +2448,12 @@
         lastPreview = { objective: objective, previewId: result.previewId };
         previewBox.innerHTML = out(html`<p class="values-title">${t("runs.plan")}</p><div class="kv-inline">${badge(result.result.status)}${result.result.summary ? html` <span dir="auto">${result.result.summary}</span>` : ""}${result.result.reason ? html` <span class="danger-text">${t("runs.refusedBecause")}: ${ltr(result.result.reason)}</span>` : ""}</div>${result.plan && result.plan !== "null" ? html`<pre class="code" dir="ltr">${result.plan}</pre>` : ""}`);
         previewBox.hidden = false;
-        realButton.hidden = false;
-        realButton.disabled = false;
+        if (realButton) {
+          realButton.hidden = false;
+          realButton.disabled = false;
+        }
+        var totpField = $("[data-run-totp]", form);
+        if (totpField) totpField.hidden = false;
       }).catch(function (err) { formError(form, err.message); });
     }
   });
@@ -2509,7 +2569,7 @@
       state.authenticated = true;
       state.csrf = session.csrf;
       state.features = session.features || {};
-      state.session = { user: session.user || null, method: session.method || "token", stepUp: Boolean(session.stepUp), remote: Boolean(session.server && session.server.remote) };
+      state.session = { user: session.user || null, method: session.method || "token", stepUp: Boolean(session.stepUp), remote: Boolean(session.server && session.server.remote), runner: !(session.server && session.server.runner === false) };
       renderShell();
       navigate();
       startEvents();

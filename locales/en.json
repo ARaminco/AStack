@@ -617,7 +617,10 @@
       "totpEnabled": "Two-factor sign-in is on for \"{username}\". Add this key to an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password, …):",
       "totpSecret": "Key: {secret}",
       "totpUri": "or give the app this URI:",
-      "totpWarning": "Do not store or send this key anywhere; from now on every sign-in also asks for the app's 6-digit code."
+      "totpWarning": "Do not store or send this key anywhere; from now on every sign-in also asks for the app's 6-digit code.",
+      "totpStored": "The key is kept in: {store} (vault:windows = encrypted with Windows DPAPI for this Windows user; file = .astack/console/users.json).",
+      "userSessionsEnded": "{count} signed-in session(s) of this user ended.",
+      "unattendedRefused": "Refusing to manage console sign-in from an unattended process (ASTACK_UNATTENDED is set): run this yourself in a terminal."
     }
   },
   "delivery": {
@@ -945,7 +948,9 @@
       "open": "Open",
       "expiresIn": "Expires {time}",
       "stepUp": "A fresh authenticator code (approving over the internet)",
-      "stepUpFailed": "The authenticator code is wrong or was already used; enter the next one."
+      "stepUpFailed": "The authenticator code is wrong or was already used; enter the next one.",
+      "remoteRunnerOff": "Runs and \"run now\" do not start over the internet. Turn on console.remote.runner on the computer to allow them.",
+      "stepUpRun": "A fresh authenticator code (running over the internet)"
     },
     "states": {
       "pending": "Pending",

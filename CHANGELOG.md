@@ -3,6 +3,76 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 3.1.1 — Internet exposure hardening
+
+Security review fixes for Aramin before its internet listener goes live
+behind a Cloudflare Tunnel and Access. Nothing changes for a console that
+stays on loopback, except where noted.
+
+### Internet listener (7718)
+
+- Refuses to start without `console.remote.access.team` and `aud` (the
+  reason is in the log and in `astack console status`). New
+  `console.remote.access.emails`: an allowlist checked against the Access
+  JWT's `email` claim, without case; the Access identity is written into
+  login audit records.
+- Real runs (`POST /api/runs` with `dryRun: false`) and `jobs/:id/run` need
+  the new `console.remote.runner: true` (default off: 403) and a fresh TOTP
+  step-up code; dry-run previews still work.
+- With conversations closed there, their `claude.tool` approvals are hidden
+  from the approvals list, detail, counts, home, search, notifications and the
+  SSE stream; approving one is 403, denying one is allowed.
+- Generic error text for every 4xx/5xx (no internal messages); malformed `%`
+  escapes in paths and cookies are a 400 (on both listeners).
+- A successful step-up is audited (`console-step-up`).
+
+### Local listener (7717)
+
+- Refuses any request with `CF-Connecting-IP`, `CF-Ray`,
+  `Cf-Access-Jwt-Assertion`, `Forwarded`, `X-Real-IP` or `X-Forwarded-*`
+  headers (403, generic message), and the public host name even when
+  `console.host` is not loopback.
+
+### Sign-in
+
+- Password sessions carry the user's credential version; `astack console user
+  set|remove|totp` change it and also end that user's sessions, so a stale
+  session is refused. Token sessions are unaffected; `console token --rotate`
+  still ends every session (a running console now notices the change).
+- `astack console token` and `user set|remove|totp` refuse to run when
+  `ASTACK_UNATTENDED` is set.
+- Lockout counters persist in `.astack/console/lockouts.json` (hashed keys,
+  expiry).
+- scrypt N=2^17 for new and changed password hashes; older hashes still verify
+  and are rehashed at the next successful sign-in.
+- TOTP secrets are kept with Windows DPAPI (`vault:windows`) on Windows;
+  existing plaintext secrets move there at the next sign-in or `user totp`.
+  Other platforms keep them in `users.json`. The secret is printed only at
+  enrolment.
+
+### Conversations
+
+- The Claude Code child now runs with `ASTACK_UNATTENDED=1`; the console server
+  still decides every permission request.
+- Every turn denies `Read`/`Edit` on `**/.astack/console/**`,
+  `**/.astack/vault/**` and `**/.astack/gateway/**` (anchored at the
+  filesystem root and relative to the project), `Edit(//**/.astack/**)`, and
+  `Bash`/`PowerShell` commands touching those folders or running
+  `astack console`. Rule syntax checked against Claude Code 2.1.x (only
+  `Read(path)`/`Edit(path)` rules are consulted for files).
+
+### Redaction
+
+- `redactSecretsStrict` also masks bare base32 secrets (16+ characters of
+  A-Z2-7, in one run or groups of four) when a label such as secret, totp,
+  otp, 2fa, mfa, authenticator, seed or key comes just before them.
+
+### Docs
+
+- The cloudflared snippet now uses `originRequest.access` (`required`,
+  `teamName`, `audTag`), no `httpHostHeader`, ingress to
+  `http://127.0.0.1:7718` and a 404 catch-all; an exposure checklist was added.
+
 ## 3.1.0 — Conversations and password login
 
 Aramin gains a first tab for Claude Code sessions and a sign-in that can face
