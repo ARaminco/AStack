@@ -6,10 +6,11 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { Readable } from "node:stream";
 import { createRuntime } from "../runtime/astack-runtime.mjs";
-import { ConsoleServer, HEARTBEAT_MS, resolveConsoleSettings, resolveRemoteSettings } from "../console/server.mjs";
-import { ConsoleUsers, LoginGuard, base32Decode, base32Encode, hashPassword, hotp, totp, verifyPassword, verifyTotp } from "../console/users.mjs";
+import { ConsoleServer, HEARTBEAT_MS, hasProxyHeaders, resolveConsoleSettings, resolveRemoteSettings } from "../console/server.mjs";
+import { ConsoleUsers, LoginGuard, SCRYPT_PARAMS, base32Decode, base32Encode, hashPassword, hotp, needsRehash, totp, verifyPassword, verifyTotp } from "../console/users.mjs";
 import { AccessVerifier } from "../console/access.mjs";
-import { ChatManager, PERMISSION_TOOL, parseTranscript, remoteChatDenies, summarizeTranscript, transcriptDirectories, windowItems } from "../console/chats.mjs";
+import { CHAT_STATE_DENIES, ChatManager, PERMISSION_TOOL, parseTranscript, remoteChatDenies, summarizeTranscript, transcriptDirectories, windowItems } from "../console/chats.mjs";
+import { redactSecretsStrict } from "../lib/text.mjs";
 import { createMcpHandler, mcpTools, requestToolPermission } from "../interop-engine/mcp-server.mjs";
 import { ApprovalEngine } from "../trust-engine/approvals.mjs";
 import { MANDATORY_CLAUDE_DENIED } from "../runner-engine/engines.mjs";
@@ -73,11 +74,11 @@ function call(base, path, { method = "GET", body, cookie, csrf, origin, host, he
   });
 }
 
-function openStream(base, cookie, { host } = {}) {
+function openStream(base, cookie, { host, headers = {} } = {}) {
   const events = [];
   return new Promise((resolvePromise, reject) => {
     const url = new URL("/api/events", base);
-    const req = httpRequest({ hostname: url.hostname, port: url.port, path: url.pathname, headers: { cookie, accept: "text/event-stream", ...(host ? { host } : {}) } }, (res) => {
+    const req = httpRequest({ hostname: url.hostname, port: url.port, path: url.pathname, headers: { cookie, accept: "text/event-stream", ...(host ? { host } : {}), ...headers } }, (res) => {
       res.setEncoding("utf8");
       let buffer = "";
       res.on("data", (chunk) => {
@@ -119,13 +120,38 @@ try {
   const stored = await hashPassword("correct horse battery");
   const [scheme, N, r, p] = stored.split("$");
   assert.equal(scheme, "scrypt");
-  assert.ok(Number(N) >= 2 ** 15, "scrypt cost N >= 2^15");
+  assert.ok(Number(N) >= 2 ** 17, "3.1.1: scrypt cost N >= 2^17 for new hashes");
+  assert.equal(SCRYPT_PARAMS.N, 2 ** 17);
   assert.equal(Number(r), 8);
   assert.equal(Number(p), 1);
   assert.notEqual(stored, await hashPassword("correct horse battery"), "every hash has its own salt");
   assert.equal(await verifyPassword("correct horse battery", stored), true);
   assert.equal(await verifyPassword("correct horse batterY", stored), false);
   assert.equal(await verifyPassword("x", "garbage"), false);
+  // An older 2^15 hash still verifies and is rehashed on the next successful sign-in.
+  const oldHash = await hashPassword("correct horse battery", { N: 2 ** 15 });
+  assert.equal(needsRehash(oldHash), true);
+  assert.equal(needsRehash(stored), false);
+  assert.equal(await verifyPassword("correct horse battery", oldHash), true, "old hashes still verify");
+  const rehashDir = join(sandbox("astack-rehash-"), ".astack", "console");
+  mkdirSync(rehashDir, { recursive: true });
+  writeFileSync(join(rehashDir, "users.json"), JSON.stringify({ version: 1, users: { old: { hash: oldHash, createdAt: "2026-01-01T00:00:00.000Z" } } }));
+  const rehashUsers = new ConsoleUsers(rehashDir, { vault: null });
+  assert.equal(await rehashUsers.checkPassword("old", "wrong password!"), null);
+  assert.equal(rehashUsers.get("old").hash, oldHash, "a failed sign-in never rewrites the hash");
+  assert.equal(await rehashUsers.checkPassword("old", "correct horse battery"), "old");
+  assert.equal(rehashUsers.get("old").hash.split("$")[1], String(2 ** 17), "rehashed to N=2^17 after a good sign-in");
+  assert.equal(await rehashUsers.checkPassword("old", "correct horse battery"), "old", "the new hash verifies");
+
+  // ===================================== labelled base32 (TOTP) redaction
+  assert.equal(redactSecretsStrict("TOTP secret: JBSW Y3DP EHPK 3PXP ABCD").includes("Y3DP"), false, "a grouped secret after a label is redacted");
+  assert.match(redactSecretsStrict("2fa seed JBSWY3DPEHPK3PXP"), /\[redacted/);
+  assert.match(redactSecretsStrict("Key: GEZD GNBV GY3T QOJQ GEZD GNBV GY3T QOJQ"), /\[redacted/, "the CLI's enrolment line is redacted");
+  assert.ok(!redactSecretsStrict("otpauth://totp/Aramin:a?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=Aramin").includes("GEZDGNBV"));
+  assert.equal(redactSecretsStrict("JBSWY3DPEHPK3PXP alone"), "JBSWY3DPEHPK3PXP alone", "an unlabelled base32 run is left alone");
+  assert.equal(redactSecretsStrict("the AUTHENTICATIONSERVICE is up"), "the AUTHENTICATIONSERVICE is up", "upper-case words are not secrets");
+  assert.equal(redactSecretsStrict("SELECT ABCDEFGHIJKLMNOPQRSTUV2 FROM t"), "SELECT ABCDEFGHIJKLMNOPQRSTUV2 FROM t");
+  assert.equal(redactSecretsStrict("the totp step is 30 seconds"), "the totp step is 30 seconds");
 
   // RFC 6238 appendix B (SHA-1, 8 digits) — the last 6 digits are the 6-digit code.
   const rfcSecret = Buffer.from("12345678901234567890");
@@ -153,6 +179,57 @@ try {
   guardNow += 15 * 60000 + 1;
   assert.equal(guard.check(["ip:a", "user:x"]).allowed, true, "the lock ends after 15 minutes");
 
+  // 3.1.1: lockouts survive a restart; keys are stored hashed with an expiry.
+  const lockPath = join(sandbox("astack-lockouts-"), "lockouts.json");
+  const persisted = new LoginGuard({ attempts: 5, windowMs: 15 * 60000, lockMs: 15 * 60000, clock: () => new Date(guardNow), path: lockPath });
+  for (let i = 0; i < 5; i += 1) persisted.fail(["ip:203.0.113.1", "user:victim"]);
+  persisted.fail(["ip:198.51.100.2"]);
+  const lockFile = readFileSync(lockPath, "utf8");
+  assert.ok(!lockFile.includes("203.0.113.1") && !lockFile.includes("victim"), "only hashed keys reach the disk");
+  assert.ok(Object.values(JSON.parse(lockFile).entries).every((entry) => entry.expiresAt > guardNow), "every entry carries an expiry");
+  const restarted = new LoginGuard({ attempts: 5, windowMs: 15 * 60000, lockMs: 15 * 60000, clock: () => new Date(guardNow), path: lockPath });
+  assert.equal(restarted.check(["ip:203.0.113.1"]).allowed, false, "a restart does not reset a lock");
+  assert.equal(restarted.check(["user:victim"]).allowed, false);
+  for (let i = 0; i < 4; i += 1) restarted.fail(["ip:198.51.100.2"]);
+  assert.equal(restarted.check(["ip:198.51.100.2"]).allowed, false, "failure counts survive too (1 before + 4 after)");
+  restarted.succeed(["ip:198.51.100.2"]);
+  const expired = new LoginGuard({ attempts: 5, windowMs: 15 * 60000, lockMs: 15 * 60000, clock: () => new Date(guardNow + 16 * 60000), path: lockPath });
+  assert.equal(expired.check(["ip:203.0.113.1"]).allowed, true, "expired entries are dropped on load");
+  writeFileSync(lockPath, "{not json");
+  assert.equal(new LoginGuard({ path: lockPath }).check(["ip:x"]).allowed, true, "a damaged file starts empty");
+
+  // ====================================== TOTP secret storage (vault)
+  const memory = new Map();
+  const memVault = { source: "vault:windows", write: (name, value) => memory.set(name, value), read: (name) => memory.get(name) ?? null, remove: (name) => memory.delete(name) };
+  const vaultDir = join(sandbox("astack-totp-vault-"), ".astack", "console");
+  let vaultNow = Date.parse("2026-10-14T10:00:00Z");
+  const vaultClock = () => new Date(vaultNow);
+  const fileUsers = new ConsoleUsers(vaultDir, { clock: vaultClock, vault: null });
+  await fileUsers.set("vic", "a-long-enough-password");
+  const plainEnrol = fileUsers.enableTotp("vic");
+  assert.equal(plainEnrol.store, "file", "without a vault the secret stays in users.json (non-Windows)");
+  assert.ok(readFileSync(join(vaultDir, "users.json"), "utf8").includes(plainEnrol.secret));
+  const vaultUsers = new ConsoleUsers(vaultDir, { clock: vaultClock, vault: memVault });
+  vaultNow += 30000;
+  assert.equal(vaultUsers.useTotp("vic", totp(plainEnrol.secret, { time: vaultNow })), true);
+  assert.ok(!readFileSync(join(vaultDir, "users.json"), "utf8").includes(plainEnrol.secret), "a plaintext secret moves into the vault at the next sign-in");
+  assert.equal(vaultUsers.get("vic").totp.store, "vault:windows");
+  assert.equal(memory.get("vic"), plainEnrol.secret);
+  vaultNow += 30000;
+  assert.equal(new ConsoleUsers(vaultDir, { clock: vaultClock, vault: memVault }).useTotp("vic", totp(plainEnrol.secret, { time: vaultNow })), true, "codes verify from the vault");
+  assert.equal(new ConsoleUsers(vaultDir, { clock: vaultClock, vault: null }).useTotp("vic", totp(plainEnrol.secret, { time: vaultNow + 30000 })), false, "without the vault a vault-held secret cannot be read");
+  const versionBefore = vaultUsers.credentialVersion("vic");
+  const reset = vaultUsers.enableTotp("vic");
+  assert.equal(reset.store, "vault:windows");
+  assert.equal(memory.get("vic"), reset.secret);
+  assert.ok(!readFileSync(join(vaultDir, "users.json"), "utf8").includes(reset.secret), "a new secret goes straight into the vault");
+  assert.notEqual(vaultUsers.credentialVersion("vic"), versionBefore, "a TOTP reset bumps the credential version");
+  vaultUsers.disableTotp("vic");
+  assert.equal(memory.has("vic"), false, "disabling TOTP removes the vault entry");
+  vaultUsers.enableTotp("vic");
+  vaultUsers.remove("vic");
+  assert.equal(memory.has("vic"), false, "removing the user removes the vault entry");
+
   // `astack console user set` reads the password from stdin (BOM-safe) and keeps only the hash.
   const cliWorkspace = workspace();
   const cliRuntime = createRuntime({ workspaceRoot: cliWorkspace });
@@ -176,6 +253,62 @@ try {
   assert.ok(cliRuntime.audit.list({ action: "console-user-set" }).length === 1);
   await assert.rejects(() => cliUsers.set("bob", "short"), /at least 10/);
   await assert.rejects(() => cliUsers.set("../evil", "long-enough-password"), /username/i);
+  // The secret is printed at enrolment only, and on Windows it is kept with DPAPI.
+  const cliSecret = /secret=([A-Z2-7]+)/.exec(printed.find((line) => line.startsWith("otpauth://")))[1];
+  if (process.platform === "win32") {
+    assert.ok(!usersFile.includes(cliSecret), "Windows: the TOTP secret never reaches users.json");
+    assert.equal(JSON.parse(usersFile).users.alice.totp.store, "vault:windows");
+    const dpapiFile = join(cliWorkspace, ".astack", "vault", "console-totp.alice.dpapi");
+    assert.ok(existsSync(dpapiFile), "Windows: the secret is DPAPI-encrypted under .astack/vault");
+    assert.ok(!readFileSync(dpapiFile, "utf8").includes(cliSecret));
+    assert.ok(printed.some((line) => line.includes("vault:windows")));
+  } else {
+    assert.ok(usersFile.includes(cliSecret), "other platforms: the secret stays in users.json");
+  }
+  assert.equal(cliUsers.useTotp("alice", totp(cliSecret, { time: Date.now() })), true, "the stored secret verifies codes");
+  // Unattended processes (runner children, conversations) never manage sign-in.
+  const unattendedBefore = process.env.ASTACK_UNATTENDED;
+  process.env.ASTACK_UNATTENDED = "1";
+  try {
+    for (const tokens of [["token"], ["token", "--rotate"], ["user", "set", "mallory"], ["user", "remove", "alice"], ["user", "totp", "alice"], ["user", "totp", "alice", "--disable"]]) {
+      await assert.rejects(() => runConsoleCommand({ runtime: cliRuntime, i18n, tokens, stdin: Readable.from([Buffer.from("another-long-password\n")]) }), /unattended/i, "refused when unattended: " + tokens.join(" "));
+    }
+    console.log = () => {};
+    await runConsoleCommand({ runtime: cliRuntime, i18n, tokens: ["user", "list"] });
+  } finally {
+    console.log = originalLog;
+    if (unattendedBefore === undefined) delete process.env.ASTACK_UNATTENDED;
+    else process.env.ASTACK_UNATTENDED = unattendedBefore;
+  }
+  assert.equal(new ConsoleUsers(join(cliWorkspace, ".astack", "console")).hasTotp("alice"), true, "nothing changed while unattended");
+  // `console status` names the reason the internet listener would not start.
+  const statusLines = [];
+  console.log = (line) => statusLines.push(String(line));
+  try {
+    await runConsoleCommand({ runtime: { ...cliRuntime, configuration: { section: () => ({ remote: { enabled: true, hostname: "console.example.test" } }), get: () => null } }, i18n, tokens: ["status"] });
+  } finally {
+    console.log = originalLog;
+  }
+  assert.ok(statusLines.some((line) => /access\.team/.test(line)), "console status explains the missing Cloudflare Access settings");
+
+  // ================================================ Cloudflare Access (JWT)
+  const { publicKey, privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const other = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const jwk = { ...publicKey.export({ format: "jwk" }), kid: "k1", alg: "RS256", use: "sig" };
+  let certFetches = 0;
+  const certs = createServer((req, res) => {
+    certFetches += 1;
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ keys: [jwk] }));
+  });
+  await new Promise((done) => certs.listen(0, "127.0.0.1", done));
+  closers.push(() => new Promise((done) => certs.close(done)));
+  const certsUrl = "http://127.0.0.1:" + certs.address().port + "/cdn-cgi/access/certs";
+  const b64 = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  const jwt = (claims, { key = privateKey, kid = "k1", alg = "RS256" } = {}) => {
+    const head = b64({ alg, kid, typ: "JWT" }) + "." + b64(claims);
+    return head + "." + signData("RSA-SHA256", Buffer.from(head), key).toString("base64url");
+  };
 
   // ========================================================= local listener
   let now = Date.parse("2026-10-14T10:00:00Z");
@@ -190,8 +323,13 @@ try {
   const settings = resolveConsoleSettings({
     allowed_hosts: ["aramin.lan", "console.example.test"],
     session_idle: "2h",
-    remote: { enabled: true, hostname: "Console.Example.Test", port: 0 }
+    remote: { enabled: true, hostname: "Console.Example.Test", port: 0, access: { team: "testteam", aud: "AUD123", emails: ["Owner@Example.com"] } }
   });
+  assert.deepEqual(settings.remote.access.emails, ["owner@example.com"], "the Access allowlist is compared without case");
+  assert.equal(settings.remote.runner, false, "console.remote.runner defaults to off");
+  assert.match(resolveRemoteSettings({ enabled: true, hostname: "console.example.test" }).error, /access\.team and console\.remote\.access\.aud are required/, "3.1.1: no internet listener without Cloudflare Access");
+  assert.match(resolveRemoteSettings({ enabled: true, hostname: "console.example.test", access: { team: "testteam" } }).error, /aud/);
+  assert.match(resolveRemoteSettings({ enabled: true, hostname: "console.example.test", access: { team: "bad/team", aud: "x" } }).error, /team/);
   assert.deepEqual(settings.allowedHosts, ["aramin.lan"], "the public host name is never a local allowed host");
   assert.ok(settings.warnings.some((line) => /console\.example\.test/.test(line)));
   assert.equal(settings.sessionIdleMs, 2 * 3600 * 1000);
@@ -199,20 +337,45 @@ try {
   assert.equal(resolveRemoteSettings({ enabled: true, hostname: "console.example.test", host: "0.0.0.0" }).error ? true : false, true, "the remote listener binds loopback only");
   assert.ok(resolveRemoteSettings({ enabled: true, hostname: "not a host" }).error);
   assert.equal(resolveRemoteSettings({ enabled: false, hostname: "x.example" }), null);
-  assert.ok(resolveRemoteSettings({ enabled: true, hostname: "x.example", session_hours: 48 }).sessionMs <= 12 * 3600 * 1000, "remote sessions last 12 hours at most");
+  assert.ok(resolveRemoteSettings({ enabled: true, hostname: "x.example", session_hours: 48, access: { team: "t", aud: "a" } }).sessionMs <= 12 * 3600 * 1000, "remote sessions last 12 hours at most");
   assert.ok(HEARTBEAT_MS <= 30000, "SSE keep-alives at least every 30 seconds");
 
   // No TOTP user yet: the remote listener refuses to start; the local one runs.
-  const local = await start({ runtime: localRuntime, clock, ...settings, port: 0 });
+  const local = await start({ runtime: localRuntime, clock, ...settings, port: 0, accessCertsUrl: certsUrl });
   const base = local.origin;
   assert.equal(local.describe().remote.running, false, "no remote listener without a TOTP user");
   assert.match(local.describe().remote.error, /two-factor/);
   const serverRecord = JSON.parse(readFileSync(join(localWorkspace, ".astack", "console", "server.json"), "utf8"));
   assert.equal(serverRecord.remote.running, false, "console status sees the remote listener state");
+  // Without Access settings the internet listener refuses to start, and says why.
+  const accessLog = [];
+  const noAccess = await start({ runtime: localRuntime, clock, remote: resolveRemoteSettings({ enabled: true, hostname: "console.example.test", port: 0 }), log: (line) => accessLog.push(line) });
+  assert.equal(noAccess.describe().remote.running, false);
+  assert.match(noAccess.describe().remote.error, /access\.team/);
+  assert.ok(accessLog.some((line) => /remote listener not started: .*access\.team/.test(line)), "the log names the missing Access settings");
+  await noAccess.stop();
 
-  // The local listener never answers the public host name.
+  // The local listener never answers the public host name — also when bound beyond loopback.
   assert.equal((await call(base, "/api/health", { host: "console.example.test" })).status, 421);
+  assert.equal((await call(base, "/api/health", { host: "Console.Example.Test:443" })).status, 421);
   assert.equal((await call(base, "/api/health", { host: "aramin.lan:" + local.port })).status, 200, "a LAN name in allowed_hosts still works");
+  const boundHost = local.host;
+  local.host = "0.0.0.0";
+  assert.equal(local.hostAllowed("console.example.test"), false, "non-loopback bind: the public host name is still refused");
+  assert.equal(local.hostAllowed("console.example.test:7717"), false);
+  assert.equal(local.hostAllowed("192.168.1.10:7717"), true, "other names are the owner's chosen exposure");
+  local.host = boundHost;
+  // Port 7717 refuses anything a proxy or Cloudflare would add.
+  for (const header of ["cf-connecting-ip", "cf-ray", "cf-access-jwt-assertion", "x-forwarded-for", "x-forwarded-proto", "x-forwarded-host", "x-forwarded-port", "forwarded"]) {
+    const refused = await call(base, "/api/health", { headers: { [header]: header === "forwarded" ? "for=203.0.113.1" : "203.0.113.1" } });
+    assert.equal(refused.status, 403, "local listener refuses " + header);
+    assert.equal(refused.json.error, "request refused", "with a generic message");
+  }
+  assert.equal(hasProxyHeaders({ "X-Forwarded-Server": "x" }), true, "any x-forwarded-* header counts");
+  assert.equal(hasProxyHeaders({ host: "127.0.0.1", cookie: "a=b" }), false);
+  // A malformed %-escape is a 400, not a 500.
+  assert.equal((await call(base, "/api/approvals/%E0%A4%A")).status, 401, "unauthenticated first");
+  assert.equal((await call(base, "/api/session", { headers: { cookie: "aramin_sid=%E0%A4%A" } })).status, 400, "a malformed cookie is a 400");
 
   const session0 = (await call(base, "/api/session")).json;
   assert.deepEqual(session0.login.methods, ["password", "token"], "auth defaults to both once a user exists");
@@ -235,12 +398,14 @@ try {
   const failures = localRuntime.audit.list({ action: "console-login-failed" });
   assert.ok(failures.length >= 2 && failures.every((entry) => !JSON.stringify(entry).includes("nope-nope-nope")), "failures are audited without the password");
   assert.ok(localRuntime.audit.list({ action: "console-login" }).some((entry) => /owner/.test(entry.result)));
-  // Proxy headers are ignored on the local listener: a forged CF-Connecting-IP cannot dodge the lock.
+  // Proxy headers are refused on the local listener, so a forged CF-Connecting-IP cannot even reach the lock.
+  assert.equal((await login({ username: "ghost", password: "wrong-password-x" }, { headers: { "cf-connecting-ip": "203.0.113.10" } })).status, 403);
   for (let i = 0; i < 5; i += 1) {
-    await login({ username: "ghost" + i, password: "wrong-password-x" }, { headers: { "cf-connecting-ip": "203.0.113." + (i + 10) } });
+    await login({ username: "ghost" + i, password: "wrong-password-x" });
   }
-  const locked = await login({ username: "owner", password: "a-long-owner-password" }, { headers: { "cf-connecting-ip": "198.51.100.7" } });
+  const locked = await login({ username: "owner", password: "a-long-owner-password" });
   assert.equal(locked.status, 429, "5 failures lock the (socket) address for 15 minutes");
+  assert.ok(existsSync(join(localWorkspace, ".astack", "console", "lockouts.json")), "the lock is persisted");
   tick(15 * 60000 + 1000);
   assert.equal((await login({ username: "owner", password: "a-long-owner-password" })).status, 200, "the lock ends");
 
@@ -254,8 +419,8 @@ try {
   assert.equal((await login({ username: "owner", password: "a-long-owner-password", code: code1 })).status, 401, "a TOTP code works once");
 
   // Token login and tickets keep working on the local listener.
-  const token = readFileSync(join(localWorkspace, ".astack", "console", "token"), "utf8").trim();
-  const tokenLogin = await login({ token });
+  let token = readFileSync(join(localWorkspace, ".astack", "console", "token"), "utf8").trim();
+  let tokenLogin = await login({ token });
   assert.equal(tokenLogin.status, 200);
   const ticket = local.auth.issueTicket();
   assert.equal((await login({ ticket }, { headers: { "x-forwarded-for": "203.0.113.5" } })).status, 403, "a ticket through a proxy is refused");
@@ -265,12 +430,54 @@ try {
   assert.equal((await login({ token })).status, 403);
   local.authModeSetting = null;
 
+  // 3.1.1: a password session is bound to the user's credential version.
+  tick();
+  const pwLogin = await login({ username: "owner", password: "a-long-owner-password", code: totp(enabled.secret, { time: now }) });
+  assert.equal(pwLogin.status, 200, pwLogin.text);
+  const pwCookie = cookieOf(pwLogin);
+  const tokenSide = cookieOf(await login({ token }));
+  assert.equal((await call(base, "/api/home", { cookie: pwCookie })).status, 200);
+  const sessionsFile = () => JSON.parse(readFileSync(join(localWorkspace, ".astack", "console", "sessions.json"), "utf8"));
+  assert.ok(Object.values(sessionsFile()).some((entry) => entry.user === "owner" && entry.credentialVersion), "the session records the credential version");
+  // `astack console user set` (another process in real life) changes the password and ends that user's sessions.
+  console.log = () => {};
+  try {
+    await runConsoleCommand({ runtime: localRuntime, i18n, tokens: ["user", "set", "owner"], stdin: Readable.from([Buffer.from("a-long-owner-password\n")]) });
+  } finally {
+    console.log = originalLog;
+  }
+  assert.ok(!Object.values(sessionsFile()).some((entry) => entry.user === "owner"), "the CLI revokes the user's sessions");
+  assert.equal((await call(base, "/api/home", { cookie: pwCookie })).status, 401, "a session from before the password change is refused");
+  assert.equal((await call(base, "/api/home", { cookie: tokenSide })).status, 200, "token sessions are not tied to a user");
+  // A stale version alone is enough, even when the server still holds the session.
+  tick();
+  const pw2 = await login({ username: "owner", password: "a-long-owner-password", code: totp(enabled.secret, { time: now }) });
+  const pw2Cookie = cookieOf(pw2);
+  const data = JSON.parse(readFileSync(join(localWorkspace, ".astack", "console", "users.json"), "utf8"));
+  data.users.owner.credentialVersion = "changed-elsewhere";
+  writeFileSync(join(localWorkspace, ".astack", "console", "users.json"), JSON.stringify(data));
+  assert.equal((await call(base, "/api/home", { cookie: pw2Cookie })).status, 401, "a stale credential version is refused");
+  // `console token --rotate` still signs every device out.
+  console.log = () => {};
+  try {
+    await runConsoleCommand({ runtime: localRuntime, i18n, tokens: ["token", "--rotate"] });
+  } finally {
+    console.log = originalLog;
+  }
+  assert.equal((await call(base, "/api/home", { cookie: tokenSide })).status, 401, "token rotation ends every session, even in a running server");
+  const rotated = readFileSync(join(localWorkspace, ".astack", "console", "token"), "utf8").trim();
+  assert.notEqual(rotated, token);
+  token = rotated;
+
   // Idle timeout (console.session_idle: 2h) and sign out everywhere.
   const tokenCookie = cookieOf(tokenLogin);
+  assert.equal((await call(base, "/api/home", { cookie: tokenCookie })).status, 401, "the earlier token session ended with the rotation");
+  tokenLogin = await login({ token });
+  const idleCookie = cookieOf(tokenLogin);
   tick(60 * 60000);
-  assert.equal((await call(base, "/api/home", { cookie: tokenCookie })).status, 200);
+  assert.equal((await call(base, "/api/home", { cookie: idleCookie })).status, 200);
   tick(2 * 60 * 60000 + 1000);
-  assert.equal((await call(base, "/api/home", { cookie: tokenCookie })).status, 401, "an idle session ends");
+  assert.equal((await call(base, "/api/home", { cookie: idleCookie })).status, 401, "an idle session ends");
   const fresh = await login({ token });
   const freshCookie = cookieOf(fresh);
   const second = cookieOf(await login({ token }));
@@ -283,19 +490,39 @@ try {
 
   // ======================================================== remote listener
   // Now a user has TOTP: the remote listener starts.
-  const remoteServer = await start({ runtime: localRuntime, clock, ...settings, port: 0 });
+  const nowSeconds = () => Math.floor(now / 1000);
+  const claims = (extra = {}) => ({ aud: ["AUD123"], iss: "https://testteam.cloudflareaccess.com", exp: nowSeconds() + 600, iat: nowSeconds(), email: "owner@example.com", ...extra });
+  const fakeRuns = [];
+  localRuntime.runner = {
+    async execute({ objective, dryRun }) {
+      const run = { id: "R-" + (fakeRuns.length + 1), objective, source: "console", status: dryRun ? "dry-run" : "completed", summary: dryRun ? "plan" : "done", output: "ok", approvals: [] };
+      if (!dryRun) fakeRuns.push(run);
+      return run;
+    },
+    list: () => fakeRuns,
+    get: (id) => fakeRuns.find((run) => run.id === id) ?? null
+  };
+  const remoteServer = await start({ runtime: localRuntime, clock, ...settings, port: 0, accessCertsUrl: certsUrl });
   const remote = remoteServer.describe().remote;
   assert.equal(remote.running, true, remote.error ?? "remote listener running");
+  assert.equal(remote.accessEmails, 1);
   const rbase = remote.url;
   const HOST = "console.example.test";
   const ORIGIN = "https://" + HOST;
-  const rcall = (path, options = {}) => call(rbase, path, { host: HOST, ...options });
+  // Every internet request carries Cloudflare Access's assertion (a fresh one per call).
+  const rcall = (path, options = {}) => call(rbase, path, { host: HOST, ...options, headers: { "cf-access-jwt-assertion": jwt(claims()), ...(options.headers ?? {}) } });
+  // console.remote.access.emails: only the listed Access identity gets through.
+  assert.equal((await rcall("/api/health", { headers: { "cf-access-jwt-assertion": jwt(claims({ email: "intruder@example.com" })) } })).status, 403, "an Access identity outside the allowlist is refused");
+  assert.equal((await rcall("/api/health", { headers: { "cf-access-jwt-assertion": jwt(claims({ email: undefined })) } })).status, 403, "an assertion without an e-mail is refused when the allowlist is set");
+  assert.equal((await rcall("/api/health", { headers: { "cf-access-jwt-assertion": jwt(claims({ email: "OWNER@example.com" })) } })).status, 200, "the e-mail is compared without case");
+  assert.equal((await rcall("/api/health", { headers: { "cf-access-jwt-assertion": "" } })).status, 403, "no assertion, no answer");
   assert.equal((await call(rbase, "/api/health", { host: "127.0.0.1:" + remote.port })).status, 421, "the remote listener answers its public name only");
   assert.equal((await call(rbase, "/api/health", { host: "evil.example" })).status, 421);
   assert.equal((await rcall("/api/health")).status, 200);
   const rsession = (await rcall("/api/session")).json;
   assert.deepEqual(rsession.login, { methods: ["password"], totp: "required", remote: true });
   const rlogin = (body, headers = {}) => rcall("/api/login", { method: "POST", body, origin: ORIGIN, headers });
+  assert.equal((await rcall("/api/session", { headers: { cookie: "__Host-aramin_sid=%ZZ" } })).status, 400, "remote: a malformed cookie is a 400");
   assert.equal((await rlogin({ token })).status, 403, "no token sign-in over the internet");
   assert.equal((await rlogin({ ticket: remoteServer.auth.issueTicket() })).status, 403, "no ticket sign-in over the internet");
   assert.equal((await rcall("/api/login", { method: "POST", body: { username: "owner", password: "a-long-owner-password", code: "000000" }, origin: rbase })).status, 403, "Origin must be https://<hostname>");
@@ -309,6 +536,8 @@ try {
   assert.equal((await rlogin({ username: "owner", password: "a-long-owner-password", code: totp(enabled.secret, { time: now }) }, { "cf-connecting-ip": "203.0.113.9" })).status, 429, "CF-Connecting-IP is the client address on the remote listener");
   const remoteLogin = await rlogin({ username: "owner", password: "a-long-owner-password", code: totp(enabled.secret, { time: now }) }, { "cf-connecting-ip": "198.51.100.20" });
   assert.equal(remoteLogin.status, 200, remoteLogin.text);
+  assert.ok(localRuntime.audit.list({ action: "console-login" }).some((entry) => /remote, access owner@example\.com/.test(entry.result)), "the login audit names the Access identity");
+  assert.ok(localRuntime.audit.list({ action: "console-login-failed" }).some((entry) => /access owner@example\.com/.test(entry.result)), "failed remote logins too");
   const rcookieHeader = String(remoteLogin.headers["set-cookie"]);
   assert.match(rcookieHeader, /^__Host-aramin_sid=/);
   assert.match(rcookieHeader, /; HttpOnly/);
@@ -346,34 +575,89 @@ try {
   const stepped = await rdecide({ decision: "approve", confirm: l4code, totp: totp(enabled.secret, { time: now }) });
   assert.equal(stepped.status, 200, stepped.text);
   assert.equal(localRuntime.approvals.get(l4.id).state, "approved");
+  const stepAudit = localRuntime.audit.list({ action: "console-step-up" });
+  assert.equal(stepAudit.length, 1, "a successful step-up is audited");
+  assert.match(stepAudit[0].result, /owner \(approval /);
+  assert.ok(!JSON.stringify(stepAudit).includes(totp(enabled.secret, { time: now })), "never the code");
   const plain = localRuntime.approvals.request({ action: "report.draft", summary: "Draft", level: "L2", requestedBy: "test" });
   assert.equal((await rcall("/api/approvals/" + plain.id + "/decide", { method: "POST", body: { decision: "approve" }, cookie: rcookie, csrf: rcsrf, origin: ORIGIN })).status, 200, "a reversible approval needs no step-up");
-  // SSE works through the remote listener.
-  const rstream = await openStream(rbase, rcookie, { host: HOST });
+  // Generic error text on the internet listener; the local one keeps its detail.
+  const missing = await rcall("/api/approvals/AP-doesnotexist", { cookie: rcookie });
+  assert.equal(missing.status, 404);
+  assert.equal(missing.json.error, "not found", "no internal message over the internet");
+  assert.equal((await rcall("/api/approvals/%E0%A4%A", { cookie: rcookie })).status, 400, "a malformed path escape is a 400");
+
+  // ------------------------------------------ S2.1 runs and jobs over the internet
+  const rpost = (path, body) => rcall(path, { method: "POST", body, cookie: rcookie, csrf: rcsrf, origin: ORIGIN });
+  const preview = await rpost("/api/runs", { objective: "Draft the weekly report", dryRun: true });
+  assert.equal(preview.status, 200, "a dry-run preview is allowed remotely");
+  const realOff = await rpost("/api/runs", { objective: "Draft the weekly report", dryRun: false, previewId: preview.json.data.previewId });
+  assert.equal(realOff.status, 403, "console.remote.runner off: no real run over the internet");
+  assert.equal(realOff.json.remoteRunner, false);
+  assert.equal(realOff.json.error, "forbidden");
+  assert.equal((await rpost("/api/jobs/any-job/run", {})).status, 403, "and no run-now");
+  assert.equal(fakeRuns.length, 0);
+  assert.equal((await rcall("/api/session", { cookie: rcookie })).json.server.runner, false, "the app knows runs are off");
+  remoteServer.remote.runner = true;
+  const noCode = await rpost("/api/runs", { objective: "Draft the weekly report", dryRun: false, previewId: preview.json.data.previewId });
+  assert.equal(noCode.status, 422, "a real remote run needs a step-up code");
+  assert.equal(noCode.json.stepUpRequired, true);
+  tick();
+  const realOn = await rpost("/api/runs", { objective: "Draft the weekly report", dryRun: false, previewId: preview.json.data.previewId, totp: totp(enabled.secret, { time: now }) });
+  assert.equal(realOn.status, 200, realOn.text);
+  assert.equal(fakeRuns.length, 1);
+  const jobNoCode = await rpost("/api/jobs/any-job/run", {});
+  assert.equal(jobNoCode.status, 422, "run-now needs a step-up code too");
+  tick();
+  assert.equal((await rpost("/api/jobs/any-job/run", { totp: totp(enabled.secret, { time: now }) })).status, 404, "after the code, the job itself is looked up");
+  remoteServer.remote.runner = false;
+
+  // ------------------------- S2.2 conversation approvals stay out of the internet listener
+  const rstream = await openStream(rbase, rcookie, { host: HOST, headers: { "cf-access-jwt-assertion": jwt(claims()) } });
   assert.equal(rstream.status, 200);
+  const lcookie = cookieOf(await call(remoteServer.origin, "/api/login", { method: "POST", body: { token }, origin: remoteServer.origin }));
+  const lstream = await openStream(remoteServer.origin, lcookie);
+  await waitFor(() => rstream.events.some((event) => event.type === "hello") && lstream.events.some((event) => event.type === "hello"), { what: "both streams" });
+  const chatApproval = localRuntime.approvals.request({ action: "claude.tool", summary: "Bash: git push", tool: "Bash", target: "git push", level: "L3", requestedBy: "console-chat:S-test" });
+  await waitFor(() => lstream.events.some((event) => event.type === "notification" && event.data.ref === chatApproval.id), { what: "local notification" });
+  assert.ok(lstream.events.some((event) => event.type === "activity" && event.data.payload?.id === chatApproval.id), "the local stream sees the request");
+  await sleep(400);
+  assert.ok(!JSON.stringify(rstream.events).includes(chatApproval.id), "the remote stream never sees a conversation's request (activity or notification)");
+  const lastRemoteCounts = rstream.events.filter((event) => event.type === "counts").at(-1);
+  const lastLocalCounts = lstream.events.filter((event) => event.type === "counts").at(-1);
+  assert.ok(lastLocalCounts && lastLocalCounts.data.approvals === (lastRemoteCounts?.data.approvals ?? rstream.events.find((event) => event.type === "hello").data.counts.approvals) + 1, "remote badge counts leave it out");
+  const rlist = (await rcall("/api/approvals?state=all", { cookie: rcookie })).json.data;
+  assert.ok(!rlist.items.some((item) => item.id === chatApproval.id), "not in the remote list");
+  const llist = (await call(remoteServer.origin, "/api/approvals?state=all", { cookie: lcookie })).json.data;
+  assert.ok(llist.items.some((item) => item.id === chatApproval.id), "but in the local list");
+  assert.equal(rlist.pending + 1, llist.pending, "pending count without it");
+  assert.equal((await rcall("/api/approvals/" + chatApproval.id, { cookie: rcookie })).status, 404, "no remote detail");
+  assert.equal((await rcall("/api/counts", { cookie: rcookie })).json.data.approvals + 1, (await call(remoteServer.origin, "/api/counts", { cookie: lcookie })).json.data.approvals);
+  assert.ok(!(await rcall("/api/home", { cookie: rcookie })).json.data.approvals.some((item) => item.id === chatApproval.id), "not on the remote home screen");
+  assert.ok(!(await rcall("/api/notifications", { cookie: rcookie })).json.data.items.some((item) => item.ref === chatApproval.id), "not in remote notifications");
+  assert.ok(!JSON.stringify((await rcall("/api/search?q=git%20push", { cookie: rcookie })).json.data.approvals).includes(chatApproval.id), "not in remote search");
+  tick();
+  const remoteAllow = await rpost("/api/approvals/" + chatApproval.id + "/decide", { decision: "approve", totp: totp(enabled.secret, { time: now }) });
+  assert.equal(remoteAllow.status, 403, "a conversation's tool use is never approved remotely while conversations are closed there");
+  assert.equal(localRuntime.approvals.get(chatApproval.id).state, "pending");
+  assert.equal((await rpost("/api/approvals/" + chatApproval.id + "/decide", { decision: "deny", note: "not from the phone" })).status, 200, "deny is allowed remotely");
+  assert.equal(localRuntime.approvals.get(chatApproval.id).state, "rejected");
+  await sleep(400);
+  assert.ok(!JSON.stringify(rstream.events).includes(chatApproval.id), "nor its decision");
   rstream.req.destroy();
+  lstream.req.destroy();
+
+  // ------------------------------------- S2.5 remote sessions follow the credential version
+  console.log = () => {};
+  try {
+    await runConsoleCommand({ runtime: localRuntime, i18n, tokens: ["user", "totp", "owner"] });
+  } finally {
+    console.log = originalLog;
+  }
+  assert.equal((await rcall("/api/home", { cookie: rcookie })).status, 401, "a TOTP reset ends the remote session");
   await remoteServer.stop();
 
   // ================================================ Cloudflare Access (JWT)
-  const { publicKey, privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
-  const other = generateKeyPairSync("rsa", { modulusLength: 2048 });
-  const jwk = { ...publicKey.export({ format: "jwk" }), kid: "k1", alg: "RS256", use: "sig" };
-  let certFetches = 0;
-  const certs = createServer((req, res) => {
-    certFetches += 1;
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ keys: [jwk] }));
-  });
-  await new Promise((done) => certs.listen(0, "127.0.0.1", done));
-  closers.push(() => new Promise((done) => certs.close(done)));
-  const certsUrl = "http://127.0.0.1:" + certs.address().port + "/cdn-cgi/access/certs";
-  const b64 = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
-  const jwt = (claims, { key = privateKey, kid = "k1", alg = "RS256" } = {}) => {
-    const head = b64({ alg, kid, typ: "JWT" }) + "." + b64(claims);
-    return head + "." + signData("RSA-SHA256", Buffer.from(head), key).toString("base64url");
-  };
-  const nowSeconds = () => Math.floor(now / 1000);
-  const claims = (extra = {}) => ({ aud: ["AUD123"], iss: "https://testteam.cloudflareaccess.com", exp: nowSeconds() + 600, iat: nowSeconds(), email: "owner@example.com", ...extra });
   const verifier = new AccessVerifier({ team: "testteam", aud: "AUD123", certsUrl, clock });
   assert.equal((await verifier.verify(jwt(claims()))).ok, true);
   assert.equal((await verifier.verify(jwt(claims({ aud: ["OTHER"] })))).reason, "wrong audience");
@@ -382,7 +666,7 @@ try {
   assert.equal((await verifier.verify(jwt(claims(), { key: other.privateKey }))).reason, "bad signature");
   assert.match((await verifier.verify(jwt(claims(), { alg: "HS256" }))).reason, /algorithm/);
   assert.equal((await verifier.verify("")).ok, false);
-  assert.ok(certFetches <= 2, "keys are cached");
+  assert.ok(certFetches <= 4, "keys are cached");
   assert.throws(() => new AccessVerifier({ team: "bad/team", aud: "x" }), /team/);
 
   const accessSettings = resolveConsoleSettings({ remote: { enabled: true, hostname: HOST, port: 0, access: { team: "testteam", aud: "AUD123" } } });
@@ -584,7 +868,7 @@ try {
   assert.equal(resumeCall.argv[resumeCall.argv.indexOf("--resume") + 1], S1, "--resume <session>");
   assert.ok(!resumeCall.argv.includes("Run the tests please"), "the prompt never reaches argv");
   assert.equal(resumeCall.prompt, "Run the tests please", "the prompt arrives on stdin");
-  assert.equal(resumeCall.unattended, null, "console chats are owner-driven: no ASTACK_UNATTENDED");
+  assert.equal(resumeCall.unattended, "1", "3.1.1: the Claude child runs unattended; the console server decides");
   assert.equal(resolve(resumeCall.cwd).toLowerCase(), resolve(project).toLowerCase(), "it runs in the session's project");
   for (const flag of ["-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--strict-mcp-config", "--mcp-config", "--permission-prompt-tool", PERMISSION_TOOL]) {
     assert.ok(resumeCall.argv.includes(flag), "argv has " + flag);
@@ -593,6 +877,14 @@ try {
   for (const deny of MANDATORY_CLAUDE_DENIED) {
     assert.ok(resumeCall.argv.includes(deny), "mandatory deny " + deny);
   }
+  for (const deny of CHAT_STATE_DENIES) {
+    assert.ok(resumeCall.argv.includes(deny), "every turn denies " + deny);
+  }
+  for (const deny of ["Read(//**/.astack/console/**)", "Edit(//**/.astack/console/**)", "Read(//**/.astack/vault/**)", "Read(//**/.astack/gateway/**)", "Edit(//**/.astack/**)", "Bash(*astack* console*)", "Bash(*astack.mjs* console*)"]) {
+    assert.ok(CHAT_STATE_DENIES.includes(deny), "state deny " + deny);
+  }
+  // Claude Code 2.1.x consults only Read(path)/Edit(path) for files: no ignored Write/Grep/Glob path rules here.
+  assert.ok(!CHAT_STATE_DENIES.some((rule) => /^(Write|Grep|Glob|MultiEdit|NotebookEdit)\(/.test(rule)));
   assert.ok(!resumeCall.argv.some((argument) => /bypassPermissions|dangerously/.test(argument)));
   const allowedAt = resumeCall.argv.indexOf("--allowedTools");
   assert.deepEqual(resumeCall.argv.slice(allowedAt + 1, allowedAt + 4), ["Read", "Grep", "Glob"], "read-only tools are pre-allowed by default");

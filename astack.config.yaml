@@ -1,7 +1,7 @@
 project:
   name: AStack Enterprise
   product: AI Operating System for Any Practice
-  version: 3.1.0
+  version: 3.1.1
   philosophy: enterprise_modular_platform
   primary_runtime: claude-code
   compatibility:
@@ -637,9 +637,11 @@ secrets:
 #     session_hours: 12      # 12 at most
 #     idle_minutes: 60
 #     chat: false            # conversations stay closed over the internet
-#     access:                # optional Cloudflare Access check (defence in depth)
+#     runner: false          # 3.1.1: real runs and "run now" over the internet (then with a fresh TOTP code)
+#     access:                # 3.1.1: required — the listener refuses to start without team and aud
 #       team: null           # <team> of <team>.cloudflareaccess.com
 #       aud: null            # the application's AUD tag
+#       emails: []           # 3.1.1: optional allowlist of Access identities (JWT email claim, any case)
 #   # 3.1: conversations with Claude Code (the first tab).
 #   chats:
 #     enabled: true

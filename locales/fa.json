@@ -617,7 +617,10 @@
       "totpEnabled": "ورود دومرحله‌ای برای «{username}» روشن شد. این کلید را در برنامه‌ی Authenticator (Google Authenticator، Microsoft Authenticator، 1Password و…) وارد کنید:",
       "totpSecret": "کلید: {secret}",
       "totpUri": "یا این نشانی را به برنامه بدهید:",
-      "totpWarning": "این کلید را جایی ذخیره نکنید و برای کسی نفرستید؛ از این به بعد هر ورود کد ۶ رقمی برنامه را هم می‌خواهد."
+      "totpWarning": "این کلید را جایی ذخیره نکنید و برای کسی نفرستید؛ از این به بعد هر ورود کد ۶ رقمی برنامه را هم می‌خواهد.",
+      "totpStored": "کلید در اینجا نگه داشته می‌شود: {store} (vault:windows یعنی رمزشده با DPAPI ویندوز برای همین کاربر ویندوز؛ file یعنی ‎.astack/console/users.json).",
+      "userSessionsEnded": "{count} نشست واردشده‌ی این کاربر بسته شد.",
+      "unattendedRefused": "مدیریت ورود کنسول از یک فرایند خودکار (ASTACK_UNATTENDED) پذیرفته نمی‌شود: این فرمان را خودتان در ترمینال اجرا کنید."
     }
   },
   "delivery": {
@@ -945,7 +948,9 @@
       "open": "باز کردن",
       "expiresIn": "انقضا {time}",
       "stepUp": "کد تازه‌ی برنامه‌ی Authenticator (برای تأیید از راه اینترنت)",
-      "stepUpFailed": "کد Authenticator درست نیست یا قبلاً به کار رفته است؛ کد بعدی را بزنید."
+      "stepUpFailed": "کد Authenticator درست نیست یا قبلاً به کار رفته است؛ کد بعدی را بزنید.",
+      "remoteRunnerOff": "اجراها و «اجرای فوری» از راه اینترنت شروع نمی‌شوند. برای اجازه، console.remote.runner را روی خود کامپیوتر روشن کنید.",
+      "stepUpRun": "کد تازه‌ی برنامه‌ی Authenticator (برای اجرا از راه اینترنت)"
     },
     "states": {
       "pending": "در انتظار",

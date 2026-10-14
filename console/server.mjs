@@ -5,10 +5,10 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, wri
 import { dirname, extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ConsoleAuth } from "./auth.mjs";
-import { ConsoleApi, HttpError, isIrreversible } from "./api.mjs";
+import { ConsoleApi, HttpError, isChatApproval, isIrreversible } from "./api.mjs";
 import { ConsoleEvents } from "./events.mjs";
 import { ConsoleUsers, LoginGuard, normalizeUsername } from "./users.mjs";
-import { AccessVerifier } from "./access.mjs";
+import { AccessVerifier, accessTeamOrigin } from "./access.mjs";
 import { ChatError, ChatManager } from "./chats.mjs";
 import { parseInterval } from "../scheduler-engine/cron.mjs";
 
@@ -25,9 +25,58 @@ export const DEFAULT_REMOTE_PORT = 7718;
 // SSE keep-alive comments: Cloudflare drops a connection idle for about 100s.
 export const HEARTBEAT_MS = 20000;
 const REMOTE_MAX_HOURS = 12;
-const FORWARDING_HEADERS = ["cf-connecting-ip", "x-forwarded-for", "x-forwarded-proto", "x-forwarded-host", "forwarded", "x-real-ip", "cf-access-jwt-assertion"];
+const FORWARDING_HEADERS = ["cf-connecting-ip", "cf-ray", "x-forwarded-for", "x-forwarded-proto", "x-forwarded-host", "forwarded", "x-real-ip", "cf-access-jwt-assertion"];
 const LOCAL = { kind: "local", cookie: COOKIE };
 const REMOTE = { kind: "remote", cookie: REMOTE_COOKIE };
+
+/**
+ * True when a request carries any header a proxy or Cloudflare adds. The
+ * local listener is reached directly or not at all, so such a request was
+ * forwarded to it by mistake (a tunnel pointed at the wrong port) or forged.
+ */
+export function hasProxyHeaders(headers = {}) {
+  return Object.keys(headers).some((name) => {
+    const key = name.toLowerCase();
+    return FORWARDING_HEADERS.includes(key) || key.startsWith("x-forwarded-");
+  });
+}
+
+// Remote listener: the status code says what happened; the text never
+// carries an internal message.
+const GENERIC_ERRORS = {
+  400: "bad request",
+  401: "login required",
+  402: "budget spent",
+  403: "forbidden",
+  404: "not found",
+  405: "method not allowed",
+  409: "conflict",
+  413: "payload too large",
+  421: "unexpected host header",
+  422: "unprocessable request",
+  428: "precondition required",
+  429: "too many requests",
+  500: "internal error",
+  503: "service unavailable"
+};
+
+function hostName(header) {
+  const value = String(header ?? "").trim().toLowerCase();
+  if (value.startsWith("[")) {
+    return value.slice(0, value.indexOf("]") + 1);
+  }
+  return value.replace(/:\d*$/, "").replace(/\.$/, "");
+}
+
+function toList(value) {
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry).trim()).filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return value.split(",").map((entry) => entry.trim()).filter(Boolean);
+  }
+  return [];
+}
 
 const CONTENT_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -136,7 +185,10 @@ export function resolveConsoleSettings(config = {}, overrides = {}) {
 
 /**
  * `console.remote`: the optional second listener a tunnel points at. Null
- * when absent or disabled; `{ error }` when enabled but unusable.
+ * when absent or disabled; `{ error }` when enabled but unusable. 3.1.1:
+ * Cloudflare Access (`access.team` and `access.aud`) is required,
+ * `access.emails` optionally limits which Access identities get through, and
+ * `runner: true` is needed before real runs start from the internet.
  */
 export function resolveRemoteSettings(section) {
   if (!section || typeof section !== "object" || section.enabled !== true) {
@@ -145,7 +197,7 @@ export function resolveRemoteSettings(section) {
   const hostname = String(section.hostname ?? "").trim().toLowerCase().replace(/\.$/, "");
   const host = String(section.host ?? DEFAULT_HOST);
   const port = Number(section.port ?? DEFAULT_REMOTE_PORT);
-  const base = { enabled: true, hostname, host, port, chat: section.chat === true };
+  const base = { enabled: true, hostname, host, port, chat: section.chat === true, runner: section.runner === true };
   if (!/^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/.test(hostname)) {
     return { ...base, error: "console.remote.hostname must be the public host name the tunnel serves (for example console.example.com)" };
   }
@@ -157,9 +209,19 @@ export function resolveRemoteSettings(section) {
   }
   const hours = Number(section.session_hours ?? REMOTE_MAX_HOURS);
   const idleMinutes = Number(section.idle_minutes ?? 60);
-  const access = section.access && typeof section.access === "object" && (section.access.team || section.access.aud)
-    ? { team: String(section.access.team ?? ""), aud: String(section.access.aud ?? "") }
-    : null;
+  const accessSection = section.access && typeof section.access === "object" ? section.access : {};
+  const team = String(accessSection.team ?? "").trim();
+  const aud = String(accessSection.aud ?? "").trim();
+  if (!team || !aud || team === "null" || aud === "null") {
+    return { ...base, error: "console.remote.access.team and console.remote.access.aud are required: put a Cloudflare Access application in front of " + (hostname || "the host name") + " and copy its team name and AUD tag" };
+  }
+  try {
+    accessTeamOrigin(team);
+  } catch (error) {
+    return { ...base, error: error.message };
+  }
+  const emails = toList(accessSection.emails).map((entry) => entry.toLowerCase());
+  const access = { team, aud, emails };
   return {
     ...base,
     sessionMs: Math.min(REMOTE_MAX_HOURS, hours > 0 ? hours : REMOTE_MAX_HOURS) * 60 * 60 * 1000,
@@ -239,7 +301,7 @@ function parseCookies(header) {
  * stream for live badges and notifications. Bound to loopback by default.
  */
 export class ConsoleServer {
-  constructor({ runtime, host = DEFAULT_HOST, port = DEFAULT_PORT, pollMs = 3000, sessionDays = 30, locale = null, allowedHosts = [], log = console.log, clock = null, authMode = null, sessionIdleMs = null, lockout = {}, chats = {}, remote = null, accessFetch = null, accessCertsUrl = null, claudeHome = null } = {}) {
+  constructor({ runtime, host = DEFAULT_HOST, port = DEFAULT_PORT, pollMs = 3000, sessionDays = 30, locale = null, allowedHosts = [], log = console.log, clock = null, authMode = null, sessionIdleMs = null, lockout = {}, chats = {}, remote = null, accessFetch = null, accessCertsUrl = null, claudeHome = null, totpVault = undefined } = {}) {
     if (!runtime) {
       throw new Error("ConsoleServer needs a runtime");
     }
@@ -254,9 +316,10 @@ export class ConsoleServer {
     this.directory = consoleStateDirectory(runtime.workspaceRoot);
     this.clock = clock ?? (() => new Date());
     this.auth = new ConsoleAuth(this.directory, { clock, sessionDays, idleMs: sessionIdleMs });
-    this.users = new ConsoleUsers(this.directory, { clock });
+    this.users = new ConsoleUsers(this.directory, { clock, workspaceRoot: runtime.workspaceRoot, ...(totpVault !== undefined ? { vault: totpVault } : {}) });
     const minutes = Number(lockout.minutes ?? 15) > 0 ? Number(lockout.minutes ?? 15) : 15;
-    this.guard = new LoginGuard({ attempts: Number(lockout.attempts ?? 5) || 5, windowMs: minutes * 60 * 1000, lockMs: minutes * 60 * 1000, clock });
+    // Persisted (hashed keys, expiry), so a restart does not reset a lock.
+    this.guard = new LoginGuard({ attempts: Number(lockout.attempts ?? 5) || 5, windowMs: minutes * 60 * 1000, lockMs: minutes * 60 * 1000, clock, path: join(this.directory, "lockouts.json") });
     this.authModeSetting = authMode;
     this.events = new ConsoleEvents(runtime, { pollMs, clock });
     this.api = new ConsoleApi(runtime, { events: this.events, server: this, clock });
@@ -307,7 +370,9 @@ export class ConsoleServer {
       hostname: this.remote.hostname,
       publicUrl: this.remote.hostname ? "https://" + this.remote.hostname : null,
       chat: this.remote.chat,
+      runner: this.remote.runner,
       access: Boolean(this.remote.access),
+      accessEmails: this.remote.access?.emails?.length ?? 0,
       error: this.remoteError ?? this.remote.error ?? null
     };
   }
@@ -348,6 +413,24 @@ export class ConsoleServer {
     return { enabled: true, reason: null, remote: listener.kind === "remote" };
   }
 
+  /** Conversations closed on this listener: their tool approvals are not shown or approved there. */
+  hidesChatApprovals(listener = LOCAL) {
+    return listener.kind === "remote" && !this.chatAccess(listener).enabled;
+  }
+
+  /**
+   * A password session is valid only while the user's credential version is
+   * the one it signed in with: a changed password, a TOTP change or a removed
+   * user ends it. Token and ticket sessions carry no user.
+   */
+  sessionCurrent(session) {
+    if (!session?.user) {
+      return true;
+    }
+    const user = this.users.get(session.user);
+    return Boolean(user) && (user.credentialVersion ?? null) === (session.credentialVersion ?? null);
+  }
+
   /** The remote listener answers its public host name and nothing else. */
   remoteHostAllowed(header) {
     return Boolean(this.remote?.hostname) && String(header ?? "").toLowerCase() === this.remote.hostname;
@@ -368,10 +451,14 @@ export class ConsoleServer {
   /** A one-time ticket comes from this machine: a loopback peer and no proxy in between. */
   directLocalRequest(request) {
     const peer = String(request.socket.remoteAddress ?? "").replace(/^::ffff:/, "");
-    return isLoopback(peer) && !FORWARDING_HEADERS.some((name) => request.headers[name] !== undefined);
+    return isLoopback(peer) && !hasProxyHeaders(request.headers);
   }
 
   hostAllowed(header) {
+    // The public host name belongs to the remote listener, whatever this one is bound to.
+    if (this.remote?.hostname && hostName(header) === this.remote.hostname) {
+      return false;
+    }
     if (!isLoopback(this.host)) {
       // Bound beyond loopback on purpose; the owner chose the exposure.
       return true;
@@ -496,17 +583,35 @@ export class ConsoleServer {
         this.send(response, 421, { ok: false, error: "unexpected host header" });
         return;
       }
-      if (this.access) {
-        const verdict = await this.access.verify(request.headers["cf-access-jwt-assertion"]);
-        if (!verdict.ok) {
-          this.log("[console] remote request refused by Cloudflare Access check: " + verdict.reason);
-          this.send(response, 403, { ok: false, error: "Cloudflare Access assertion missing or invalid" });
-          return;
-        }
+      if (!this.access) {
+        this.send(response, 503, { ok: false, error: GENERIC_ERRORS[503] });
+        return;
       }
-    } else if (!this.hostAllowed(request.headers.host)) {
-      this.send(response, 421, { ok: false, error: "unexpected host header" });
-      return;
+      const verdict = await this.access.verify(request.headers["cf-access-jwt-assertion"]);
+      if (!verdict.ok) {
+        this.log("[console] remote request refused by Cloudflare Access check: " + verdict.reason);
+        this.send(response, 403, { ok: false, error: "Cloudflare Access assertion missing or invalid" });
+        return;
+      }
+      const emails = this.remote.access?.emails ?? [];
+      const identity = verdict.email ? String(verdict.email).trim().toLowerCase() : null;
+      if (emails.length && (!identity || !emails.includes(identity))) {
+        this.log("[console] remote request refused: the Cloudflare Access identity is not in console.remote.access.emails");
+        this.send(response, 403, { ok: false, error: GENERIC_ERRORS[403] });
+        return;
+      }
+      request.accessEmail = identity;
+    } else {
+      if (hasProxyHeaders(request.headers)) {
+        // Port 7717 is never behind a proxy or a tunnel.
+        this.log("[console] local request refused: it carries proxy headers");
+        this.send(response, 403, { ok: false, error: "request refused" });
+        return;
+      }
+      if (!this.hostAllowed(request.headers.host)) {
+        this.send(response, 421, { ok: false, error: "unexpected host header" });
+        return;
+      }
     }
     const url = new URL(request.url, "http://localhost");
     const pathname = url.pathname;
@@ -522,7 +627,12 @@ export class ConsoleServer {
 
     const address = this.clientAddress(request, listener);
     const cookies = parseCookies(request.headers.cookie);
-    const session = this.auth.session(cookies[listener.cookie], { channel: listener.kind });
+    let session = this.auth.session(cookies[listener.cookie], { channel: listener.kind });
+    if (session && !this.sessionCurrent(session)) {
+      // Signed in with credentials that have changed since.
+      this.auth.destroySession(cookies[listener.cookie]);
+      session = null;
+    }
     const query = Object.fromEntries(url.searchParams.entries());
 
     // ------------------------------------------------------ public endpoints
@@ -545,7 +655,7 @@ export class ConsoleServer {
             locale: this.locale,
             build: this.build,
             features: { ...this.api.features(), chats: this.chatAccess(listener) },
-            server: { loopback: isLoopback(this.host), remote: listener.kind === "remote" },
+            server: { loopback: isLoopback(this.host), remote: listener.kind === "remote", runner: listener.kind !== "remote" || Boolean(this.remote?.runner) },
             user: session.user ?? null,
             method: session.method ?? "token",
             stepUp: listener.kind === "remote",
@@ -585,7 +695,7 @@ export class ConsoleServer {
         "x-accel-buffering": "no"
       });
       response.write("retry: 4000\n\n");
-      this.events.addClient(response, { chat: this.chatAccess(listener).enabled });
+      this.events.addClient(response, { chat: this.chatAccess(listener).enabled, hideChatApprovals: this.hidesChatApprovals(listener) });
       return;
     }
     if (pathname === "/api/logout" && method === "POST") {
@@ -609,13 +719,13 @@ export class ConsoleServer {
     this.send(response, 200, { ok: true, data: result });
   }
 
-  loginFailure(response, { address, method, username = null, keys, reason, listener }) {
+  loginFailure(response, { address, method, username = null, keys, reason, listener, accessEmail = null }) {
     // "user", not "password": audit text is redacted after credential words.
     const label = method === "password" ? "user" : method;
     this.guard.fail(keys);
     this.auth.recordFailure(address);
     this.log("[console] failed login from " + address);
-    this.runtime.audit?.record({ actor: "console", action: "console-login-failed", target: address, riskLevel: "L1", result: label + (username ? " " + username : "") + " (" + reason + ", " + listener.kind + ")" });
+    this.runtime.audit?.record({ actor: "console", action: "console-login-failed", target: address, riskLevel: "L1", result: label + (username ? " " + username : "") + " (" + reason + ", " + listener.kind + (accessEmail ? ", access " + accessEmail : "") + ")" });
     this.send(response, 401, { ok: false, error: "invalid credentials" });
   }
 
@@ -672,18 +782,18 @@ export class ConsoleServer {
       }
     } else if (method === "token") {
       if (!this.auth.checkToken(body.token)) {
-        this.loginFailure(response, { address, method, keys, reason: "wrong token", listener });
+        this.loginFailure(response, { address, method, keys, reason: "wrong token", listener, accessEmail: request.accessEmail ?? null });
         return;
       }
     } else {
       const name = await this.users.checkPassword(body.username, String(body.password ?? ""));
       if (!name) {
-        this.loginFailure(response, { address, method, username, keys, reason: "wrong username or secret", listener });
+        this.loginFailure(response, { address, method, username, keys, reason: "wrong username or secret", listener, accessEmail: request.accessEmail ?? null });
         return;
       }
       const needsCode = listener.kind === "remote" || this.users.hasTotp(name);
       if (needsCode && (!this.users.hasTotp(name) || !this.users.useTotp(name, body.code))) {
-        this.loginFailure(response, { address, method, username: name, keys, reason: this.users.hasTotp(name) ? "wrong code" : "no TOTP for remote sign-in", listener });
+        this.loginFailure(response, { address, method, username: name, keys, reason: this.users.hasTotp(name) ? "wrong code" : "no TOTP for remote sign-in", listener, accessEmail: request.accessEmail ?? null });
         return;
       }
       user = name;
@@ -696,18 +806,20 @@ export class ConsoleServer {
       channel: listener.kind,
       method,
       maxAgeMs: remote ? this.remote.sessionMs : null,
-      idleMs: remote ? this.remote.idleMs : null
+      idleMs: remote ? this.remote.idleMs : null,
+      credentialVersion: user ? this.users.credentialVersion(user) : null
     });
-    this.runtime.audit?.record({ actor: "owner@console", action: "console-login", target: address, riskLevel: "L1", result: "session (" + (method === "password" ? "user" : method) + (user ? " " + user : "") + ", " + listener.kind + ")" });
+    this.runtime.audit?.record({ actor: "owner@console", action: "console-login", target: address, riskLevel: "L1", result: "session (" + (method === "password" ? "user" : method) + (user ? " " + user : "") + ", " + listener.kind + (request.accessEmail ? ", access " + request.accessEmail : "") + ")" });
     this.send(response, 200, { ok: true, authenticated: true, csrf: created.csrf }, { "set-cookie": this.sessionCookie(created.id, created.maxAgeSeconds, listener) });
   }
 
   /**
    * Step-up on the remote listener: approving something irreversible (or a
-   * conversation's tool use) needs a fresh authenticator code as well as the
-   * typed confirmation.
+   * conversation's tool use), a real runner job and "run now" need a fresh
+   * authenticator code as well as their usual confirmation. A success is
+   * audited (never the code).
    */
-  stepUp(session, body, address) {
+  stepUp(session, body, address, purpose = "approval") {
     const keys = ["ip:" + address, "user:" + (session.user ?? "?")];
     const gate = this.guard.check(keys);
     if (!gate.allowed) {
@@ -718,6 +830,16 @@ export class ConsoleServer {
       this.runtime.audit?.record({ actor: "owner@console", action: "console-step-up-failed", target: address, riskLevel: "L1", result: session.user ?? "no user" });
       throw new HttpError(422, "a fresh authenticator code is required", { stepUpRequired: true });
     }
+    this.guard.succeed(["user:" + session.user]);
+    this.runtime.audit?.record({ actor: "owner@console", action: "console-step-up", target: address, riskLevel: "L1", result: session.user + " (" + purpose + ")" });
+  }
+
+  /** Remote listener: real runs and "run now" need console.remote.runner and a step-up code. */
+  remoteRunGate(session, body, address, purpose) {
+    if (!this.remote?.runner) {
+      throw new HttpError(403, "runs do not start over the internet (console.remote.runner is off)", { remoteRunner: false });
+    }
+    this.stepUp(session, body, address, purpose);
   }
 
   async chatCall(fn) {
@@ -735,6 +857,7 @@ export class ConsoleServer {
     const api = this.api;
     const segments = pathname.split("/").filter(Boolean).slice(1).map((segment) => decodeURIComponent(segment));
     const [resource, id, action] = segments;
+    const hideChat = this.hidesChatApprovals(listener);
     if (resource === "chats") {
       const access = this.chatAccess(listener);
       if (!access.enabled) {
@@ -766,13 +889,13 @@ export class ConsoleServer {
     if (method === "GET") {
       switch (resource) {
         case "home":
-          return api.home();
+          return api.home({ hideChat });
         case "counts":
-          return this.events.counts();
+          return this.events.counts({ hideChat });
         case "notifications":
-          return { items: this.events.recent(Number(query.limit) || 30) };
+          return { items: this.events.recent(Number(query.limit) || 30, { hideChat }) };
         case "approvals":
-          return id ? api.approval(id) : api.approvals(query);
+          return id ? api.approval(id, { hideChat }) : api.approvals(query, { hideChat });
         case "missions":
           return id ? api.mission(id) : api.missions(query);
         case "runs":
@@ -800,7 +923,7 @@ export class ConsoleServer {
         case "system":
           return api.system();
         case "search":
-          return api.search(query);
+          return api.search(query, { hideChat });
         default:
           return undefined;
       }
@@ -814,8 +937,12 @@ export class ConsoleServer {
           } catch {
             record = null;
           }
-          if (record && record.state === "pending" && (isIrreversible(record) || record.action === "claude.tool")) {
-            this.stepUp(session, body, address);
+          if (record && hideChat && isChatApproval(record)) {
+            // Conversations are closed here: their tool use can be denied, never allowed.
+            throw new HttpError(403, "a conversation's tool request is not approved over the internet listener");
+          }
+          if (record && record.state === "pending" && (isIrreversible(record) || isChatApproval(record))) {
+            this.stepUp(session, body, address, "approval " + id);
           }
         }
         return api.decide(id, body);
@@ -824,9 +951,16 @@ export class ConsoleServer {
         return api.missionAction(id, action, body);
       }
       if (resource === "runs" && !id) {
+        const real = body.dryRun !== undefined && !body.dryRun;
+        if (real && listener.kind === "remote") {
+          this.remoteRunGate(session, body, address, "run");
+        }
         return api.startRun(session.key, body);
       }
       if (resource === "jobs" && id && action === "run") {
+        if (listener.kind === "remote") {
+          this.remoteRunGate(session, body, address, "job " + id);
+        }
         return api.runJob(id);
       }
     }
@@ -843,7 +977,7 @@ export class ConsoleServer {
       url: this.origin,
       startedAt: this.startedAt,
       build: this.build,
-      ...(remote ? { remote: { running: remote.running, url: remote.url, hostname: remote.hostname, publicUrl: remote.publicUrl, chat: remote.chat, access: remote.access, error: remote.error } } : {})
+      ...(remote ? { remote: { running: remote.running, url: remote.url, hostname: remote.hostname, publicUrl: remote.publicUrl, chat: remote.chat, runner: remote.runner, access: remote.access, accessEmails: remote.accessEmails, error: remote.error } } : {})
     }, null, 2) + "\n", "utf8");
   }
 
@@ -857,11 +991,13 @@ export class ConsoleServer {
   listenerHandler(listener) {
     return (request, response) => {
       this.handle(request, response, listener).catch((error) => {
-        const status = error instanceof HttpError ? error.status : /^Unknown /.test(error.message) ? 404 : 500;
+        // A malformed %-escape in a path or cookie is the client's mistake.
+        const status = error instanceof HttpError ? error.status : error instanceof URIError ? 400 : /^Unknown /.test(error.message) ? 404 : 500;
         if (status === 500) {
           this.log("[console] error: " + error.message);
         }
-        this.send(response, status, { ok: false, error: error.message, ...(error.details ?? {}) });
+        const message = listener.kind === "remote" ? GENERIC_ERRORS[status] ?? (status >= 500 ? GENERIC_ERRORS[500] : GENERIC_ERRORS[400]) : error.message;
+        this.send(response, status, { ok: false, error: message, ...(error.details ?? {}) });
       });
     };
   }
@@ -894,8 +1030,8 @@ export class ConsoleServer {
 
   /**
    * The internet-facing listener a tunnel points at. It refuses to start
-   * unless the configuration is complete and at least one console user has
-   * two-factor sign-in.
+   * unless the configuration is complete (Cloudflare Access team and AUD
+   * included) and at least one console user has two-factor sign-in.
    */
   startRemote() {
     const remote = this.remote;
@@ -908,12 +1044,13 @@ export class ConsoleServer {
     if (!this.users.anyWithTotp()) {
       return Promise.reject(new Error("console.remote needs a console user with two-factor sign-in. Run `astack console user set <name>` and `astack console user totp <name>`, then restart the console."));
     }
-    if (remote.access) {
-      try {
-        this.access = new AccessVerifier({ ...remote.access, fetch: this.accessFetch ?? globalThis.fetch, certsUrl: this.accessCertsUrl, clock: this.clock });
-      } catch (error) {
-        return Promise.reject(error);
-      }
+    if (!remote.access?.team || !remote.access?.aud) {
+      return Promise.reject(new Error("console.remote.access.team and console.remote.access.aud are required"));
+    }
+    try {
+      this.access = new AccessVerifier({ team: remote.access.team, aud: remote.access.aud, fetch: this.accessFetch ?? globalThis.fetch, certsUrl: this.accessCertsUrl, clock: this.clock });
+    } catch (error) {
+      return Promise.reject(error);
     }
     return new Promise((resolvePromise, reject) => {
       const server = createServer(this.listenerHandler(REMOTE));
