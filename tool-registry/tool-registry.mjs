@@ -437,7 +437,13 @@ const SENSITIVE = [
   ".astack/browser/sessions",
   ".astack/browser/profiles",
   ".env",
-  ".astack/vault"
+  ".astack/vault",
+  // AStack 3.0 state: gateway sessions and owner ids, the search index (past
+  // sessions), A2A tasks, the console's own state.
+  ".astack/gateway",
+  ".astack/search",
+  ".astack/a2a",
+  ".astack/console"
 ];
 
 /**

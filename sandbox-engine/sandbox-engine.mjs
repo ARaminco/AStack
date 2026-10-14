@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { randomBytes } from "node:crypto";
 import { redactSecrets } from "../lib/text.mjs";
@@ -11,9 +11,11 @@ import { redactResolvedSecrets } from "../trust-engine/redaction.mjs";
  * Every run is a fresh, throwaway container: no network unless asked for, a
  * read-only root filesystem, every Linux capability dropped, no privilege
  * escalation, a process limit, memory and CPU caps, and mounts that are
- * read-only by default. Places that hold secrets inside a mounted workspace
- * (.astack/security, .astack/vault, browser sessions and profiles, .env files)
- * are hidden behind empty overlays.
+ * read-only by default. Places that hold secrets inside a mounted folder are
+ * hidden behind empty overlays at any depth: every `.astack/` folder, every
+ * `.env*` file, `.git/config`, `.ssh/` and `.claude/` (see SENSITIVE_* below).
+ * Environment values reach the container through a temporary env file, never
+ * the command line, and the image and user come only from configuration.
  *
  * The automation policy stays the gate: a command it denies is denied here
  * too. The sandbox only relaxes one thing, and only when the run is fully
@@ -38,8 +40,62 @@ export const SANDBOX_DEFAULTS = {
 
 const NETWORKS = ["none", "bridge"];
 
-const SENSITIVE_DIRECTORIES = [".astack/security", ".astack/vault", ".astack/browser/sessions", ".astack/browser/profiles"];
-const SENSITIVE_FILES = [".env", ".env.local", ".env.production", ".env.development"];
+// Folder names hidden wherever they appear inside a mount (tmpfs overlay):
+// AStack state (approvals, audit, vault, gateway, search, sessions), SSH and
+// cloud keys, Claude Code's settings and transcripts.
+const SENSITIVE_DIRECTORY_NAMES = new Set([".astack", ".ssh", ".claude", ".gnupg", ".aws"]);
+// Files hidden wherever they appear (bound to an empty file): .env* and the
+// git remote configuration, which can carry credentials in URLs.
+function sensitiveFile(name, parentName) {
+  return name.toLowerCase().startsWith(".env") || (parentName === ".git" && name === "config");
+}
+// Never descended into while scanning (dependency trees); their own .env
+// files are not masked, which documentation/Board.md states.
+const SCAN_SKIP = new Set(["node_modules"]);
+const SCAN_LIMIT = 50000;
+const SCAN_DEPTH = 16;
+
+/**
+ * Every sensitive path inside a folder about to be mounted, relative to it,
+ * with "/" separators. Symlinks are not followed. A folder too large to scan
+ * fails closed: mount a narrower folder instead.
+ */
+export function sensitivePaths(root) {
+  const found = [];
+  let seen = 0;
+  const walk = (directory, relative, depth, parentName) => {
+    let entries = [];
+    try {
+      entries = readdirSync(directory, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      seen += 1;
+      if (seen > SCAN_LIMIT) {
+        throw new Error("Mount source has more than " + SCAN_LIMIT + " entries to check for secrets; mount a narrower folder: " + root);
+      }
+      const rel = relative ? relative + "/" + entry.name : entry.name;
+      if (entry.isSymbolicLink()) {
+        continue;
+      }
+      if (entry.isDirectory()) {
+        if (SENSITIVE_DIRECTORY_NAMES.has(entry.name) || entry.name.toLowerCase().startsWith(".env")) {
+          found.push({ path: rel, kind: "directory" });
+          continue;
+        }
+        if (SCAN_SKIP.has(entry.name) || depth >= SCAN_DEPTH) {
+          continue;
+        }
+        walk(join(directory, entry.name), rel, depth + 1, entry.name);
+      } else if (entry.isFile() && sensitiveFile(entry.name, parentName)) {
+        found.push({ path: rel, kind: "file" });
+      }
+    }
+  };
+  walk(root, "", 0, null);
+  return found;
+}
 
 function inside(parent, child) {
   const path = relative(resolve(parent), resolve(child));
@@ -184,7 +240,8 @@ export class SandboxEngine {
       if (!existsSync(source)) {
         throw new Error("Mount source does not exist: " + source);
       }
-      if (!entry.allowOutside && !this.config.allow_mounts_outside_workspace && !inside(this.root, source)) {
+      // Only the owner's sandbox.allow_mounts_outside_workspace widens this, never a caller.
+      if (!this.config.allow_mounts_outside_workspace && !inside(this.root, source)) {
         throw new Error("Mount source is outside the workspace: " + source + " (set sandbox.allow_mounts_outside_workspace to allow)");
       }
       return { source, target, readOnly: entry.readOnly !== false };
@@ -206,6 +263,14 @@ export class SandboxEngine {
    */
   plan({ command, args = [], image = null, workdir = null, mounts = [], network = null, timeoutMs = null, memory = null, cpus = null, env = {}, user = null } = {}) {
     const argv = toArgv(command, args);
+    // The image and the user are owner configuration (sandbox.image,
+    // sandbox.user), never a per-call choice.
+    if (image !== null && image !== undefined && String(image) !== String(this.config.image)) {
+      throw new Error("The sandbox image comes only from sandbox.image in astack.config.yaml (configured: " + this.config.image + ")");
+    }
+    if (user !== null && user !== undefined && String(user) !== String(this.config.user)) {
+      throw new Error("The sandbox user comes only from sandbox.user in astack.config.yaml");
+    }
     const resolvedNetwork = String(network ?? this.config.network);
     if (!NETWORKS.includes(resolvedNetwork)) {
       throw new Error("Sandbox network must be one of: " + NETWORKS.join(", "));
@@ -213,6 +278,17 @@ export class SandboxEngine {
     const resolvedMounts = this.normalizeMounts(mounts);
     const isolated = resolvedNetwork === "none" && resolvedMounts.every((mount) => mount.readOnly);
     const name = "astack-sbx-" + randomBytes(5).toString("hex");
+    const envEntries = [];
+    for (const [key, value] of Object.entries(env ?? {})) {
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+        throw new Error("Invalid environment variable name: " + key);
+      }
+      if (/[\r\n\0]/.test(String(value))) {
+        throw new Error("Environment value for " + key + " cannot contain a line break");
+      }
+      envEntries.push(key + "=" + String(value));
+    }
+    const envFile = envEntries.length ? join(this.directory, "env", name + ".env") : null;
     const docker = [
       "run", "--rm", "--name", name,
       "--label", "astack.sandbox=1",
@@ -227,22 +303,22 @@ export class SandboxEngine {
       "--tmpfs", "/tmp:rw,noexec,nosuid,size=" + this.config.tmpfs_size,
       "--env", "HOME=/tmp"
     ];
-    for (const [key, value] of Object.entries(env ?? {})) {
-      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
-        throw new Error("Invalid environment variable name: " + key);
-      }
-      docker.push("--env", key + "=" + String(value));
+    if (envFile) {
+      // Values travel in a file only the owner can read, never in argv where
+      // any local process listing would show them.
+      docker.push("--env-file", envFile);
     }
     for (const mount of resolvedMounts) {
       docker.push("--mount", "type=bind,source=" + mount.source + ",target=" + mount.target + (mount.readOnly ? ",readonly" : ""));
-      for (const directory of SENSITIVE_DIRECTORIES) {
-        if (existsSync(join(mount.source, directory))) {
-          docker.push("--mount", "type=tmpfs,target=" + mount.target.replace(/\/$/, "") + "/" + directory + ",tmpfs-size=4096");
+      for (const hidden of sensitivePaths(mount.source)) {
+        if (/[,\n]/.test(hidden.path)) {
+          throw new Error("A sensitive path inside the mount has a comma in its name and cannot be hidden: " + hidden.path);
         }
-      }
-      for (const file of SENSITIVE_FILES) {
-        if (existsSync(join(mount.source, file))) {
-          docker.push("--mount", "type=bind,source=" + this.emptyFile() + ",target=" + mount.target.replace(/\/$/, "") + "/" + file + ",readonly");
+        const target = mount.target.replace(/\/$/, "") + "/" + hidden.path;
+        if (hidden.kind === "directory") {
+          docker.push("--mount", "type=tmpfs,target=" + target + ",tmpfs-size=4096");
+        } else {
+          docker.push("--mount", "type=bind,source=" + this.emptyFile() + ",target=" + target + ",readonly");
         }
       }
     }
@@ -258,8 +334,18 @@ export class SandboxEngine {
       network: resolvedNetwork,
       isolated,
       mounts: resolvedMounts,
+      envFile,
+      envEntries,
       timeoutMs: Number(timeoutMs ?? this.config.timeout_ms)
     };
+  }
+
+  writeEnvFile(plan) {
+    if (!plan.envFile) {
+      return;
+    }
+    mkdirSync(join(this.directory, "env"), { recursive: true });
+    writeFileSync(plan.envFile, plan.envEntries.join("\n") + "\n", { encoding: "utf8", mode: 0o600 });
   }
 
   record(plan, outcome, { source, verdict }) {
@@ -299,6 +385,12 @@ export class SandboxEngine {
     this.eventBus?.emit("sandbox.started", { name: plan.name, image: plan.image, network: plan.network });
     const started = Date.now();
     const [command, ...prefix] = this.docker;
+    try {
+      this.writeEnvFile(plan);
+    } catch (error) {
+      this.record(plan, "invalid: could not write the env file: " + error.message, { source, verdict });
+      return { ok: false, denied: true, reason: "could not write the sandbox env file", exitCode: null, stdout: "", stderr: "", durationMs: 0, timedOut: false };
+    }
     const outcome = await new Promise((resolveOutcome) => {
       let stdout = "";
       let stderr = "";
@@ -343,6 +435,9 @@ export class SandboxEngine {
         finish({ exitCode: code, stdout, stderr, timedOut });
       });
     });
+    if (plan.envFile) {
+      rmSync(plan.envFile, { force: true });
+    }
     const durationMs = Date.now() - started;
     const scrub = (text) => redactResolvedSecrets(redactSecrets(String(text ?? "")));
     const result = {
@@ -389,6 +484,10 @@ export async function runRequiredSandbox(policy, { command, args = [], cwd = nul
   if (!sandbox || typeof sandbox.exec !== "function") {
     return { ok: false, denied: true, exitCode: null, stdout: "", stderr: "", reason: "sandbox required by policy but the sandbox engine is not available" };
   }
-  const mounts = cwd ? [{ source: cwd, target: "/work", readOnly: true, allowOutside: true }] : [];
+  // Only folders inside the workspace are ever mounted (fail closed).
+  if (cwd && sandbox.root && !inside(sandbox.root, cwd)) {
+    return { ok: false, denied: true, exitCode: null, stdout: "", stderr: "", reason: "sandbox only mounts folders inside the workspace: " + cwd };
+  }
+  const mounts = cwd ? [{ source: cwd, target: "/work", readOnly: true }] : [];
   return sandbox.exec({ command, args, mounts, workdir: cwd ? "/work" : null, timeoutMs, source });
 }
