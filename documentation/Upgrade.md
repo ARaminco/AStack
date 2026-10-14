@@ -29,12 +29,47 @@ node bin/astack.mjs update rollback   # restore the last backup (data migrations
 
 # scripts that refresh the canonical core first
 sh installer/update.sh /path/to/project
-powershell -File installer/update.ps1 C:path	oproject
+powershell -File installer/update.ps1 C:\path\to\project
 ```
 
 Asking either runtime to "update AStack" — or «آپدیت کن» — runs this pipeline: the shared contract and the global `astack-setup` skill both map the request to it. The channel can be pinned per project with `upgrade.channel` in `astack.config.yaml`; `--from <path>` uses a local checkout instead of git, and `--keep a,b` protects extra paths for one run.
 
 The AStack source repository itself is never updated by the pipeline (it would overwrite work in progress with a release); it updates with `git pull`.
+
+## Upgrading to 3.0
+
+3.0 is purely additive. Every 2.5.1 command, file format and test keeps working
+unchanged, and every new engine is off or read-only until configured. The
+normal pipeline does the whole job:
+
+```bash
+node bin/astack.mjs update --check    # plan: version 3.0.0, the new engine folders, CHANGELOG titles
+node bin/astack.mjs update            # or tell Claude Code / Codex «آپدیت کن»
+```
+
+What the update changes:
+
+- **New managed folders** arrive: `runner-engine/`, `daemon-engine/`,
+  `gateway-engine/`, `search-engine/`, `skill-hub/`, `skill-packs/` (the Hermes
+  pack), `console/`, `board-engine/`, `sandbox-engine/`, plus new files in
+  `interop-engine/`, `trust-engine/`, `cli/`, `locales/` and `tests/`.
+- **`astack.config.yaml` is not touched.** The 3.0 sections ship as commented
+  blocks in the core's own file, so nothing is appended to yours; absent
+  sections run on their defaults. Copy a block from the
+  [Configuration](Configuration.md#astack-30-sections-all-optional) page when
+  you want to change one.
+- **Migration `2026.8-ignore-v3-state`** adds `.astack/gateway/`,
+  `.astack/runner/`, `.astack/daemon/`, `.astack/search/`, `.astack/board/`,
+  `.astack/sandbox/`, `.astack/vault/`, `.astack/a2a/`, `.astack/skill-hub/`
+  and `.astack/console/` to an existing `.gitignore` (skipped when `.astack/` is
+  already ignored as a whole). The search index holds past conversations and
+  the gateway holds a WhatsApp session; neither may reach a commit.
+- **`update --test`** runs the twelve suites, including the 3.0 ones. The
+  gateway suite reads the documented `gateway:` block only in the core
+  repository, so an installed project with its own configuration passes.
+
+After the update, turn on what you need:
+[Turning on the always-on assistant](Installation.md#turning-on-the-always-on-assistant-30).
 
 ## What is touched and what is not
 The manifest `upgrade-engine/manifest.json` (always taken from the new version) defines three sets:

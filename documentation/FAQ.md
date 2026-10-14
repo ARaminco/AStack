@@ -22,7 +22,7 @@ Managed engine files are replaced (with a full backup under `.astack/backups/`).
 Owner-facing output: Persian by default, with English, Arabic, and Turkish locales (`ASTACK_LOCALE` or `cli.default_locale`). Missing keys fall back to English. Domain and workflow detection understands Persian and English request text. Code and stored data are always English.
 
 ## Where is my data?
-Everything is local: project, team, and agent state under `.astack/`, durable memory under `memory/`. Telemetry is disabled by default and there is no network API.
+Everything is local: project, team, and agent state under `.astack/`, durable memory under `memory/`. Telemetry is disabled by default. The listeners added in 3.0 — the Aramin console, the gateway's webhook listener and the A2A endpoint — run only when you start them and bind `127.0.0.1` unless you set `allow_remote` deliberately.
 
 # Does AStack remember me between conversations?
 
@@ -58,8 +58,66 @@ register in any tool. Incoming messages are verified, classified by domain and
 matched against your rules, which can open a mission, assign an agent, run a job
 or write to memory.
 
+Since 3.0 you can also talk to AStack directly: the [gateway](Gateway.md) turns
+your Telegram or WhatsApp messages into runner requests, sends you reports, and
+asks you to approve irreversible steps by message.
+
 # How much context does a request cost?
 
 The budgets are configurable and enforced: about 800 tokens for the owner
 capsule, 2000 for the workspace map, 2500 for memory, 500 for the tool catalog.
 `astack context stats` reports the tokens rendered and avoided from real usage.
+
+## Does AStack work when no Claude Code or Codex session is open? (3.0)
+
+Yes, once you turn it on. `astack run` executes an objective through Claude
+Code headless, `codex exec` or a local Ollama model, and `astack daemon start`
+keeps the runner queue, scheduled jobs, hooks, the gateway and the console
+running in one background process. `astack daemon install-service` starts it at
+logon. Runs keep to a daily and a per-run budget, and anything irreversible
+still stops for your approval. See [Runner and Daemon](Runner-and-Daemon.md).
+
+## How do I approve something from my phone?
+
+Turn on the [gateway](Gateway.md) for Telegram or WhatsApp and add your
+accounts as owners. Each approval request arrives with the exact action, the
+values and a four-character code; reply «بفرست», «تایید» or "approve" to that
+message (or «نه», «رد», "deny"). In a group, quote the request or include the
+code. The decision produces the same receipt as `astack approval approve`.
+
+## How do I open the Aramin console?
+
+With the daemon running, `astack console open` opens the browser already
+signed in. Without the daemon, `astack console start --open`. By hand: open
+`http://127.0.0.1:7717` and paste the token from `astack console token`. Your
+browser can install it as an app. See [Aramin Console](Aramin-Console.md).
+
+## Can the console or the gateway be reached from the internet?
+
+Not by default. The console, the gateway's webhook listener and the A2A
+endpoint bind `127.0.0.1`. Reaching them from elsewhere is a deliberate choice:
+an HTTPS tunnel or reverse proxy you control, plus `allow_remote` (or
+`console.allowed_hosts` for a tunnel to loopback).
+
+## Where should I keep tokens such as the Telegram bot token?
+
+In the OS vault: `astack secret vault set credential://telegram/bot` asks for
+the value at a hidden prompt and stores it with Windows DPAPI (adapters exist
+for the macOS Keychain, Linux Secret Service, Bitwarden and 1Password). The
+configuration only ever holds the `credential://` reference.
+
+## What about the Hermes skills? Are they safe?
+
+They ship as an auxiliary pack under `skill-packs/hermes/` (211 skills, MIT
+licence). Every skill was scanned statically; nothing in a pack is executed by
+the import. Pack skills rank below AStack's own skills, high-risk ones are
+never selected automatically, and two (`godmode`, `obliteratus`) are blocked
+outright. `astack skill pack list` shows the risk counts, and
+`skills.packs.enabled: false` hides every pack.
+
+## Which local tools does 3.0 use?
+
+All optional: Ollama for free local runs and semantic search (`bge-m3`),
+Python with faster-whisper for Persian voice notes, Docker for the sandbox, and
+Node.js 22.5+ for the SQLite search index. Each engine says clearly when its
+piece is missing; see [Installation](Installation.md).

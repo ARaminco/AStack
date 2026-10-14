@@ -1,27 +1,40 @@
 # AStack Documentation
 
-AStack is a personal AI operating system for any practice — software, legal, finance, tax, accounting, marketing, operations, HR, research, and business. It classifies every engagement into a domain, forms a team of agents under a leadership layer, and delivers the work as a stage-gated project — all operable by Claude Code and compatible agent runtimes.
+AStack is a personal AI operating system for any practice — software, legal, finance, tax, accounting, marketing, operations, HR, research, and business. It classifies every engagement into a domain, forms a team of agents under a leadership layer, and delivers the work as a stage-gated project — all operable by Claude Code, Codex and compatible agent runtimes. Since 3.0 it also runs unattended in the background, answers on Telegram and WhatsApp, and has its own console, Aramin.
 
 **Readme languages:** [English](../README.md) · [فارسی](../README.fa.md) · [العربية](../README.ar.md) · [Türkçe](../README.tr.md) · Persian owner guide: [fa-guide.html](fa-guide.html)
 
 ## Getting Started
-- [Installation](Installation.md) — fresh install, embedding, agent use
+- [Installation](Installation.md) — fresh install, embedding, agent use, turning on the daemon, console and gateway
 - [Installer](Installer.md) — platform install scripts and `astack doctor`
 - [FAQ](FAQ.md) — the questions everyone asks first
 - [Troubleshooting](Troubleshooting.md) — diagnostics and common errors
 
+## New in 3.0 — always on, in your pocket
+- [Runner and Daemon](Runner-and-Daemon.md) — unattended runs (Claude Code, Codex, Ollama), budgets, one background process, OS service install
+- [Gateway](Gateway.md) — command and approve from Telegram and WhatsApp, owner allowlists, local Persian voice
+- [Aramin Console](Aramin-Console.md) — the local installable console: sign in, screens, trust model, API
+- [Search](Search.md) — Persian-aware recall over memory, past sessions, reports, skills and missions
+- [Skill Hub](Skill-Hub.md) — third-party skill packs, the security scanner, the curator and the Hermes pack
+- [Board, Sandbox, Vault and A2A](Board-Sandbox-Vault.md) — multi-agent board, Docker sandbox, OS vault backends, Agent-to-Agent endpoint
+- [3.0 Build Contract](V3-Plan.md) — the rules and shared interfaces the 3.0 packages were built against (historical)
+- [Changelog](../CHANGELOG.md) — highlights and the detailed notes of every release
+
 ## The Autonomous Organization
 - [Autonomous Organization](Autonomous-Organization.md) — the full lifecycle, architecture and feature status
 - [Memory OS](Memory-OS.md) — twelve temporal memory facets, recall and consolidation
+- [Search](Search.md) — one index over memory, past sessions and reports (3.0)
 - [Context Engine](Context-Engine.md) — repo map, symbol index, budgeted retrieval
 - [Knowledge Graph](Knowledge-Graph.md) — temporal entities and relationships
 - [Learning Engine](Learning-Engine.md) — experience to skills, with reinforcement
 - [Skill System](Skill-System.md) — built in and learned skills, progressive disclosure
+- [Skill Hub](Skill-Hub.md) — auxiliary skill packs below the built-in skills (3.0)
 - [Agent Runtimes](Agent-Runtimes.md) — the runtime abstraction and model router
 - [Tool System](Tool-System.md) — the tool registry and gated invocation
 - [Browser Operator](Browser-Operator.md) — the internal browser, sessions and evidence
 - [Scheduler and Signals](Scheduler-and-Signals.md) — background jobs and inbound hooks
-- [Security and Authority](Security-and-Authority.md) — authority levels, policy, secrets
+- [Runner and Daemon](Runner-and-Daemon.md) — unattended execution and the background process (3.0)
+- [Security and Authority](Security-and-Authority.md) — authority levels, policy, secrets, 3.0 hardening
 - [Audit and Approvals](Audit-and-Approvals.md) — human in the loop and the audit trail
 - [Token Optimization](Token-Optimization.md) — budgets, progressive disclosure, measurement
 - [Graphify](Graphify.md) — code knowledge graph for both runtimes, capped and metered

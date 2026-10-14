@@ -10,9 +10,53 @@ It is plain Node.js and vanilla JavaScript: no npm dependency, no build step, no
 CDN. The only bundled third-party asset is the Vazirmatn variable font, shipped
 unmodified with its SIL Open Font License (`console/public/fonts/OFL.txt`).
 
+## How to sign in
+
+Pick the first line that fits:
+
+1. **The daemon is running** (`astack daemon start`; the console starts with it
+   by default):
+
+   ```bash
+   astack console open
+   ```
+
+   The browser opens on the console already signed in.
+2. **No daemon** — run the console in a terminal and let it open the browser:
+
+   ```bash
+   astack console start --open
+   ```
+
+3. **By hand** — open `http://127.0.0.1:7717`, run `astack console token` in a
+   terminal, and paste the token on the sign-in screen.
+
+A signed-in browser stays signed in for `console.session_days` (30 days).
+`astack console token --rotate` signs every device out.
+
+**Install it as an app (PWA).** In Chrome or Edge, use the install icon in the
+address bar (or the menu's "Install Aramin"); on a phone, "Add to Home screen".
+The installed app opens in its own window with the same session. Settings →
+install shows the same option inside Aramin.
+
+**Phone or another computer.** The console listens on `127.0.0.1` only. Reach it
+from elsewhere only through a tunnel or reverse proxy that you control and that
+serves HTTPS (installing as an app on a phone needs HTTPS too):
+
+- keep the console on loopback, point the tunnel at `127.0.0.1:7717`, and add
+  the tunnel's host name to `console.allowed_hosts` so the Host-header check
+  accepts it; or
+- bind another address deliberately: `console.allow_remote: true` with
+  `console.host` for the daemon, or `astack console start --host <addr>` by hand
+  (a warning is printed).
+
+Then sign in on the phone with the token (option 3). Never expose the console
+on a public address without HTTPS in front of it.
+
 ## Start it
 
 ```bash
+astack console open             # a console is already running: open the browser signed in
 astack console start            # http://127.0.0.1:7717
 astack console start --open     # also opens the browser and signs in once
 astack console token            # print the owner token (created on first use)
@@ -22,7 +66,16 @@ astack console status           # running?, address, token and session count
 
 Under the AStack daemon the console is the `console` service
 (`console/service.mjs`, daemon service contract) and starts with the other
-services when `daemon.services` includes it.
+services: by default the daemon loads every installed service, and
+`console.enabled: false` keeps it from starting the console. When
+`daemon.services` is set, the console starts only if the list includes
+`console`.
+
+`astack console open` works across processes: it writes a one-time ticket
+(only its SHA-256 hash and expiry) to `.astack/console/tickets.json`, opens
+`<console url>/#ticket=<ticket>`, and the running console redeems it once
+within a minute. When no console is running it says so and exits with an
+error.
 
 ## Screens
 
@@ -91,8 +144,10 @@ rendered escaped and is never interpreted.
   request.
 - Strict CSP (`default-src 'self'`, no inline script or style, `frame-ancestors 'none'`),
   `nosniff`, `no-referrer`, `X-Frame-Options: DENY`.
-- `--open` uses a one-time ticket in the URL fragment (never sent in a request
-  line), valid for one sign-in within a minute.
+- `--open` and `astack console open` use a one-time ticket in the URL fragment
+  (never sent in a request line), valid for one sign-in within a minute.
+  `console open` shares it with the running console through
+  `.astack/console/tickets.json`, which holds only the ticket's hash and expiry.
 
 ## Live updates and notifications
 

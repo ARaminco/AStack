@@ -1,5 +1,7 @@
 # AStack 3.0 — Build Contract
 
+> **Historical:** this was the build contract the 3.0 packages were developed against; 3.0.0 is released. For how the features work today read [Runner and Daemon](Runner-and-Daemon.md), [Gateway](Gateway.md), [Search](Search.md), [Skill Hub](Skill-Hub.md), [Aramin Console](Aramin-Console.md) and [Board, Sandbox, Vault and A2A](Board-Sandbox-Vault.md).
+
 AStack 3.0 adds an always-on runner, a two-way owner gateway, smarter memory and
 skills, and the **Aramin** console. It is strictly **additive**: every 2.5.1
 command, file format, test and behaviour keeps working unchanged.
