@@ -3,6 +3,61 @@ import { join } from "node:path";
 import { AgentRuntime } from "../agent-runtime.mjs";
 
 /**
+ * The compact work order a runtime executes: objective, retrieved context,
+ * memory, selected skills, tool catalog and authority ceiling.
+ *
+ * Hosted runtimes write it to disk for the session at the keyboard; the
+ * unattended runner (runner-engine) sends the same text to a model. One
+ * builder keeps both paths identical.
+ */
+export function buildWorkOrder({ id, runtime, role, mission = null, issuedAt, objective, brief = {} }) {
+  const lines = [
+    "# Work Order " + id,
+    "",
+    "- Runtime: " + runtime,
+    "- Role: " + role,
+    "- Mission: " + (mission ?? "-"),
+    "- Issued: " + issuedAt,
+    "",
+    "## Objective",
+    objective,
+    ""
+  ];
+  if (brief.contextLines?.length) {
+    lines.push("## Retrieved context (index only, expand before relying on it)");
+    lines.push(...brief.contextLines);
+    lines.push("");
+  }
+  if (brief.memoryLines?.length) {
+    lines.push("## Memory");
+    lines.push(...brief.memoryLines);
+    lines.push("");
+  }
+  if (brief.skills?.length) {
+    lines.push("## Skills to load");
+    for (const skill of brief.skills) {
+      lines.push("- " + skill.id + " (" + skill.status + ", conf " + skill.confidence + "): " + skill.path);
+    }
+    lines.push("");
+  }
+  if (brief.toolCatalog?.length) {
+    lines.push("## Tool catalog (load full schema only for what you use)");
+    lines.push(...brief.toolCatalog);
+    lines.push("");
+  }
+  if (brief.authority) {
+    lines.push("## Authority");
+    lines.push("- ceiling: " + brief.authority.ceiling + " — " + brief.authority.meaning);
+    lines.push("- approval required for: " + (brief.authority.requiresApproval ? "yes" : "no"));
+    lines.push("");
+  }
+  lines.push("## Reporting");
+  lines.push("Report with: astack mission report " + (mission ?? "<mission>") + " --summary \"...\"");
+  lines.push("");
+  return lines.join("\n");
+}
+
+/**
  * A runtime that executes inside an interactive agent session rather than a
  * spawned process: Claude Code or Codex hosting AStack.
  *
@@ -24,53 +79,18 @@ export class HostedAgentRuntime extends AgentRuntime {
 
   async run(sessionId) {
     const session = this.readSession(sessionId);
-    const lines = [
-      "# Work Order " + session.id,
-      "",
-      "- Runtime: " + this.id,
-      "- Role: " + session.role,
-      "- Mission: " + (session.mission ?? "-"),
-      "- Issued: " + this.now(),
-      "",
-      "## Objective",
-      session.objective,
-      ""
-    ];
-    const brief = session.brief ?? {};
-    if (brief.contextLines?.length) {
-      lines.push("## Retrieved context (index only, expand before relying on it)");
-      lines.push(...brief.contextLines);
-      lines.push("");
-    }
-    if (brief.memoryLines?.length) {
-      lines.push("## Memory");
-      lines.push(...brief.memoryLines);
-      lines.push("");
-    }
-    if (brief.skills?.length) {
-      lines.push("## Skills to load");
-      for (const skill of brief.skills) {
-        lines.push("- " + skill.id + " (" + skill.status + ", conf " + skill.confidence + "): " + skill.path);
-      }
-      lines.push("");
-    }
-    if (brief.toolCatalog?.length) {
-      lines.push("## Tool catalog (load full schema only for what you use)");
-      lines.push(...brief.toolCatalog);
-      lines.push("");
-    }
-    if (brief.authority) {
-      lines.push("## Authority");
-      lines.push("- ceiling: " + brief.authority.ceiling + " — " + brief.authority.meaning);
-      lines.push("- approval required for: " + (brief.authority.requiresApproval ? "yes" : "no"));
-      lines.push("");
-    }
-    lines.push("## Reporting");
-    lines.push("Report with: astack mission report " + (session.mission ?? "<mission>") + " --summary \"...\"");
-    lines.push("");
+    const text = buildWorkOrder({
+      id: session.id,
+      runtime: this.id,
+      role: session.role,
+      mission: session.mission,
+      issuedAt: this.now(),
+      objective: session.objective,
+      brief: session.brief ?? {}
+    });
     const path = this.workOrderPath(session);
     mkdirSync(join(this.directory, "work-orders"), { recursive: true });
-    writeFileSync(path, lines.join("\n"), "utf8");
+    writeFileSync(path, text, "utf8");
     const updated = this.saveSession({
       ...session,
       state: "running",
