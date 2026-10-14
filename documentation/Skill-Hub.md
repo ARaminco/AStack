@@ -137,9 +137,15 @@ skills:
     weight: 0.6
     runtime_penalty: 0.5
     review_penalty: 0.8
+    auto_select_review: false   # high-risk (status review) pack skills are never picked automatically
     update_check: false
     update_check_hours: 24
 ```
+
+High-risk pack skills (scan risk `high`, status `review`) stay listed and are
+found by an explicit `astack skill pack search --raw` or `show`, but weighted
+search, `select()` and therefore `astack ask` and work orders never pick them
+unless `auto_select_review: true`.
 
 ## Daemon service
 

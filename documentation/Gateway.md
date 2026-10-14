@@ -36,8 +36,10 @@ Endpoints used (all with `Authorization: Bearer <channel token>`):
 `GET /media/{message id}` for voice notes, `GET /health`. The cursor is the
 newest timestamp seen; `time_from` is inclusive and the boundary message is
 dropped by the gateway's dedup. A private address (`127.0.0.1`, LAN) is refused
-by the automation policy until the owner runs
-`astack schedule policy allow-private`.
+by the automation policy until the owner allows private targets deliberately:
+set `"allowPrivateNetworks": true` under `network` in
+`.astack/security/automation.json` (the policy's error text names an
+`astack schedule policy allow-private` command that 3.0.0 does not have yet).
 
 ### whatsapp-bridge (linked device)
 ```bash
@@ -96,8 +98,11 @@ reverse proxy. Webhook URL: `https://<your host>/gateway/whatsapp-cloud/webhook`
 
 ### telegram
 Create a bot with @BotFather, store its token as `credential://telegram/bot`
-(`astack secret register credential://telegram/bot` then set
+(`astack secret vault set credential://telegram/bot` and paste it at the hidden
+prompt, or `astack secret register credential://telegram/bot` then set
 `ASTACK_CRED_TELEGRAM_BOT`), and list your numeric Telegram user id(s) as owners.
+`astack gateway test telegram` calls `getMe`; a `404` there means the token is
+wrong (see [Troubleshooting](Troubleshooting.md#gateway)).
 
 ## Owners and groups
 ```yaml
