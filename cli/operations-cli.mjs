@@ -3,6 +3,7 @@ import { SchedulerDaemon } from "../scheduler-engine/daemon.mjs";
 import { SignalServer } from "../signal-engine/http-server.mjs";
 import { describeKind } from "../scheduler-engine/monitors.mjs";
 import { describeSchedule } from "../scheduler-engine/cron.mjs";
+import { assertAttended } from "../trust-engine/approvals.mjs";
 
 const out = (line) => console.log(line);
 
@@ -361,6 +362,10 @@ export async function runBrowserCommand({ runtime, i18n, tokens }) {
     return;
   }
   if (action === "resume") {
+    // Resuming a browser flow past its commit step is an approval.
+    if (!flags.reject) {
+      assertAttended("resume browser flow " + (positionals[0] ?? "") + " past its approval checkpoint");
+    }
     const result = await browser.resume(positionals[0], { approve: !flags.reject });
     out(result.summary);
     return;
