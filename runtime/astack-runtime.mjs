@@ -37,6 +37,7 @@ import { MissionEngine } from "../mission-engine/mission-engine.mjs";
 import { SchedulerEngine } from "../scheduler-engine/scheduler-engine.mjs";
 import { SignalEngine } from "../signal-engine/signal-engine.mjs";
 import { ChiefOfStaff } from "../chief-of-staff/chief-of-staff.mjs";
+import { GatewayEngine } from "../gateway-engine/gateway-engine.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -232,6 +233,8 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
     chief,
     departments,
     providers,
-    orchestrator
+    orchestrator,
+    // Owner messaging gateway (v3 P2). Call gateway.bind(runtime) to reach runtime.runner.
+    gateway: new GatewayEngine(workspaceRoot, { clock, eventBus, configuration, approvals, audit, authority, automationPolicy, secrets, chief, missions })
   };
 }

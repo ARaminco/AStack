@@ -60,7 +60,8 @@
       "interop": "Claude Code و Codex را روی یک قرارداد، یک حافظه و یک دفترچه رویداد نگه می‌دارد: status، sync، handoff، journal، hook.",
       "mcp": "سرور MCP مشترک astack را برای Claude Code و Codex اجرا می‌کند.",
       "graphify": "گراف دانش کد با Graphify و بودجه توکن: status، setup، upgrade، build، query، explain، path، affected، benchmark.",
-      "setup": "نصب یا به‌روزرسانی AStack و راه‌اندازی کامل برای Claude Code و Codex: هسته، مهاجرت‌ها، سیم‌کشی، Graphify، ایندکس و مهارت سراسری."
+      "setup": "نصب یا به‌روزرسانی AStack و راه‌اندازی کامل برای Claude Code و Codex: هسته، مهاجرت‌ها، سیم‌کشی، Graphify، ایندکس و مهارت سراسری.",
+      "gateway": "پیام‌رسان مالک: فرمان از واتس‌اپ و تلگرام، گزارش و تأیید از گوشی، پیام صوتی فارسی محلی."
     },
     "project": {
       "usage": "فرمان‌های پروژه: init، demo، list، status، board، backlog، add، move، start، done، block، unblock، charter، milestone، sprint، risk، gate، advance، baseline، critical-path، forecast، next، digest، decision، scaffold، raci، report، templates",
@@ -422,6 +423,42 @@
       "historyTitle": "تاریخچه آپدیت ({count}، جدیدترین اول):",
       "noBackup": "پشتیبانی برای بازگردانی نیست؛ --backup <dir> بدهید.",
       "unknownAction": "عملیات update ناشناخته: {action} (run | history | rollback)"
+    },
+    "gateway": {
+      "statusTitle": "درگاه پیام‌رسان مالک (gateway): {state}",
+      "enabled": "فعال",
+      "disabled": "غیرفعال (gateway.enabled)",
+      "runner": "اجراکننده خودکار: {state}",
+      "channelLine": "{id}: {enabled} | پیکربندی: {configured} | مالک: {owners} | گروه: {groups} | نادیده‌گرفته: {ignored}",
+      "missing": "  کم است: {item}",
+      "voiceLine": "صدا: مدل {model} | زبان {language} | دستگاه {device}",
+      "testOk": "{channel}: سالم ({detail})",
+      "testFailed": "{channel}: خطا — {error}",
+      "sendDryRun": "پیش‌نمایش (چیزی فرستاده نشد؛ برای ارسال واقعی --yes):",
+      "sendTarget": "- {channel} → {target}",
+      "sendText": "متن:",
+      "sendDone": "ارسال شد: {sent} حساب",
+      "sendFailed": "ارسال نشد: {channel} → {target}: {error}",
+      "pollDone": "یک دور دریافت: {channel} | دریافت: {received} | نتیجه: {outcomes}",
+      "pollError": "{channel}: {error}",
+      "pollSummary": "تأییدهای اعلام‌شده: {announced} | صف خروجی ارسال‌شده: {flushed}",
+      "ownersTitle": "حساب‌های مالک (نمایش ناقص):",
+      "ownerLine": "- {channel}: {entries}",
+      "ownerSaved": "ذخیره شد در .astack/gateway/owners.json: {channel} = {count} مورد",
+      "voiceCheck": "faster-whisper: {state}",
+      "voiceSetupHint": "نصب: {command}",
+      "voicePolicyHint": "اجرای python در سیاست خودکار مجاز نیست. یک بار اجرا کنید: astack schedule policy allow-command {python}",
+      "voiceResult": "متن: {text}",
+      "voiceMeta": "مدت: {duration} ثانیه | دستگاه: {device} | زمان پردازش: {seconds} ثانیه",
+      "bridgeStatus": "پل واتس‌اپ: نصب {installed} | جفت‌شده {paired} | مالکیت {ownership} | وضعیت {state} | پورت {port}",
+      "bridgeSetup": "نصب پل واتس‌اپ در {path}",
+      "bridgeSetupDone": "پل نصب شد. مرحله بعد: astack gateway whatsapp pair (با گوشی شماره ربات، نه حساب شخصی)",
+      "bridgeSetupFailed": "نصب پل ناموفق بود: {reason}",
+      "bridgeWarning": "هشدار: برای پل یک شماره جدا (ربات) جفت کنید، نه واتس‌اپ شخصی خودتان.",
+      "bridgeStarted": "پل اجرا شد (pid {pid})",
+      "bridgeStopped": "پل متوقف شد",
+      "bridgeFailed": "پل: {reason}",
+      "unknownAction": "عمل ناشناخته gateway: {action}"
     }
   },
   "delivery": {
@@ -504,6 +541,80 @@
       "title": "خلاصه رویدادهای پروژه از {since}:",
       "quiet": "در این بازه رویدادی ثبت نشده است.",
       "blockedLine": "مسدود: {id} ({title}) — {reason}"
+    }
+  },
+  "gateway": {
+    "partLabel": "بخش {index} از {total}",
+    "reply": {
+      "ack": "دریافت شد؛ در حال انجام.",
+      "completed": "انجام شد.",
+      "failed": "انجام نشد: {reason}",
+      "queued": "در صف اجرا گذاشته شد. شناسه: {id}",
+      "waiting": "این کار برای ادامه به تأیید شما نیاز دارد. پیام تأیید جداگانه فرستاده شد.",
+      "planOnly": "اجراکننده خودکار روی این سیستم نصب نیست؛ فقط برنامه کار را می‌فرستم و چیزی اجرا نمی‌شود.",
+      "planSteps": "مراحل پیشنهادی:",
+      "noRunner": "نه اجراکننده خودکار نصب است و نه برنامه‌ریز؛ کاری از اینجا انجام نمی‌شود.",
+      "quarantined": "این پیام شبیه دستوری برای دور زدن قوانین بود و اجرا نشد.",
+      "unsupported": "فعلاً فقط متن و پیام صوتی را می‌فهمم.",
+      "voiceHeard": "پیام صوتی شما:\n{text}",
+      "voiceUnavailable": "پیام صوتی به متن تبدیل نشد: {reason}",
+      "voiceDisabled": "تبدیل پیام صوتی خاموش است.",
+      "error": "خطا: {reason}",
+      "refused": "اجرا نشد و کاری انجام نشد: {reason}",
+      "refusedReasons": {
+        "daily-budget": "سقف هزینه روزانه پر شده است",
+        "max-concurrent": "تعداد کارهای هم‌زمان به سقف رسیده است؛ کمی بعد دوباره بفرستید",
+        "engine-unavailable": "موتور اجرا در دسترس نیست"
+      },
+      "dryRun": "فقط پیش‌نمایش بود؛ چیزی اجرا نشد."
+    },
+    "approval": {
+      "title": "نیاز به تأیید شما",
+      "code": "کد: {code}",
+      "action": "کار: {action}",
+      "summary": "شرح: {summary}",
+      "target": "مقصد: {target}",
+      "values": "مقادیر:",
+      "level": "سطح اختیار: {level}",
+      "mission": "مأموریت: {mission}",
+      "howTo": "برای تأیید روی همین پیام «بفرست» یا «تایید» بنویسید، یا «بفرست {code}».\nبرای رد «نه» یا «رد».",
+      "approved": "تأیید شد. رسید: {receipt}",
+      "denied": "رد شد. کاری انجام نمی‌شود.",
+      "alreadyDecided": "قبلاً تصمیم گرفته شد: {state}\nتوسط: {by}\nزمان: {at}\nکار دیگری انجام نشد.",
+      "unknownCode": "کد {code} پیدا نشد. برای دیدن موارد منتظر /pending را بفرستید.",
+      "none": "موردی منتظر تأیید نیست.",
+      "ambiguous": "چند مورد منتظر تأیید است و معلوم نیست منظورتان کدام است. روی پیام همان مورد پاسخ دهید یا کد را هم بنویسید:",
+      "ambiguousItem": "- کد {code}: {action}",
+      "resumed": "ادامه کار: {summary}",
+      "notResumable": "تصمیم ثبت شد. این مورد به مأموریتی وصل نیست که خودکار ادامه پیدا کند.",
+      "voiceNotAccepted": "تأیید یا رد با پیام صوتی پذیرفته نمی‌شود؛ لطفاً «بفرست» یا «نه» را بنویسید.",
+      "states": {
+        "approved": "تأیید شده",
+        "rejected": "رد شده",
+        "consumed": "انجام و مصرف شده",
+        "expired": "منقضی شده",
+        "pending": "منتظر",
+        "unknown": "نامشخص"
+      }
+    },
+    "command": {
+      "help": "دستورها:\n/status وضعیت کلی\n/pending موارد منتظر تأیید\n/runs آخرین اجراها\n/stop شناسه — توقف یک اجرا یا مأموریت\n/help همین راهنما\nهر پیام دیگر یک درخواست کار است.\nتأیید: «بفرست» یا «تایید» — رد: «نه» یا «رد»",
+      "statusTitle": "وضعیت کلی",
+      "statusMissions": "مأموریت‌ها: {missions} | فعال: {active} | منتظر تأیید: {waiting}",
+      "statusPending": "تأییدهای منتظر: {count}",
+      "statusRunner": "اجراکننده خودکار: {state}",
+      "runnerOn": "فعال",
+      "runnerOff": "نصب نیست (فقط برنامه)",
+      "pendingTitle": "موارد منتظر تأیید: {count}",
+      "pendingItem": "- کد {code} | {action} | {summary}",
+      "pendingHint": "برای تأیید «بفرست» و کد را بنویسید، مثلاً «بفرست ABCD».",
+      "runsTitle": "آخرین اجراها:",
+      "runsEmpty": "اجرایی ثبت نشده است.",
+      "stopUsage": "شناسه را هم بنویسید: /stop شناسه",
+      "stopped": "متوقف شد: {id}",
+      "stopFailed": "متوقف نشد: {reason}",
+      "stopUnknown": "اجرا یا مأموریتی با این شناسه پیدا نشد",
+      "unknown": "این دستور را نمی‌شناسم. /help را بفرستید."
     }
   }
 }

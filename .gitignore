@@ -25,4 +25,5 @@ dist/
 .astack/runtimes/
 .astack/tools/
 .astack/interop/
+.astack/gateway/
 graphify-out/
