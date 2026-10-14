@@ -22,8 +22,11 @@ const DOMAIN_HINTS = {
  * large skill library from eating the context window.
  */
 export class SkillCatalog {
-  constructor(root, { learning = null, workspaceRoot = null } = {}) {
+  constructor(root, { learning = null, workspaceRoot = null, hub = null } = {}) {
     this.root = root;
+    // Optional skill hub (skill-hub/): auxiliary third-party packs, ranked
+    // below built-in and learned skills. Absent or disabled, nothing changes.
+    this.hub = hub;
     this.workspaceRoot = workspaceRoot ?? root;
     this.learning = learning;
     this.builtinDirectory = join(root, "skills");
@@ -77,16 +80,26 @@ export class SkillCatalog {
     return skills.map((skill) => ({ ...skill, path: "skills/learned/" + skill.id + "/SKILL.md" }));
   }
 
-  list({ status = null, domain = null, source = null } = {}) {
-    return [...this.builtin(), ...this.learned()]
+  list({ status = null, domain = null, source = null, includePacks = false } = {}) {
+    const listed = [...this.builtin(), ...this.learned()]
       .filter((skill) => !status || skill.status === status)
       .filter((skill) => !domain || (skill.domains ?? []).includes(domain))
       .filter((skill) => !source || skill.source === source)
       .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0) || a.id.localeCompare(b.id));
+    if (!includePacks || !this.packsActive()) {
+      return listed;
+    }
+    // Pack skills always come after built-in and learned skills.
+    const packs = this.packEntries()
+      .filter((skill) => !status || skill.status === status)
+      .filter((skill) => !domain || (skill.domains ?? []).includes(domain))
+      .filter((skill) => !source || skill.source === source || (source === "pack" && skill.source.startsWith("pack:")))
+      .sort((a, b) => a.id.localeCompare(b.id));
+    return [...listed, ...packs];
   }
 
   get(id) {
-    const skill = this.list().find((entry) => entry.id === id);
+    const skill = this.list().find((entry) => entry.id === id) ?? (this.hub && String(id).includes("/") ? this.packSkill(id) : null);
     if (!skill) {
       throw new Error("Unknown skill: " + id);
     }
@@ -96,11 +109,13 @@ export class SkillCatalog {
   /**
    * The lightweight catalog handed to an agent at startup.
    */
-  catalog({ budget = 600, domain = null } = {}) {
+  catalog({ budget = 600, domain = null, includePacks = false } = {}) {
     const lines = [];
     let used = 0;
-    for (const skill of this.list({ domain })) {
-      const line = "- " + skill.id + " [" + (skill.status ?? "trusted") + " " + (skill.confidence ?? 0.8) + "] " + (skill.domains ?? []).join("/") + ": " + (skill.description ?? skill.name ?? "").slice(0, 80);
+    for (const skill of this.list({ domain, includePacks })) {
+      const line = skill.auxiliary
+        ? "- " + skill.id + " [" + skill.source + " " + skill.status + " risk:" + skill.risk + (skill.compat === "hermes-runtime" ? " compat:hermes-runtime" : "") + "] " + (skill.domains ?? []).join("/") + ": " + (skill.description ?? skill.name ?? "").slice(0, 80)
+        : "- " + skill.id + " [" + (skill.status ?? "trusted") + " " + (skill.confidence ?? 0.8) + "] " + (skill.domains ?? []).join("/") + ": " + (skill.description ?? skill.name ?? "").slice(0, 80);
       const cost = estimateTokens(line);
       if (used + cost > budget) {
         break;
@@ -108,10 +123,20 @@ export class SkillCatalog {
       used += cost;
       lines.push(line);
     }
-    return { lines, tokens: used, listed: lines.length, total: this.list().length };
+    return { lines, tokens: used, listed: lines.length, total: this.list({ includePacks }).length };
   }
 
-  search(query, { limit = 5, domain = null } = {}) {
+  search(query, { limit = 5, domain = null, includePacks = null } = {}) {
+    const primary = this.searchBase(query, { limit, domain });
+    if (!(includePacks ?? true) || !this.packsActive() || primary.length >= limit) {
+      return primary;
+    }
+    // Auxiliary pack skills fill the remaining slots, always below the
+    // built-in and learned hits.
+    return [...primary, ...this.hub.search(query, { limit: limit - primary.length })];
+  }
+
+  searchBase(query, { limit = 5, domain = null } = {}) {
     const tokens = uniqueTokens(query);
     if (!tokens.length) {
       return [];
@@ -145,7 +170,7 @@ export class SkillCatalog {
    */
   show(id) {
     const skill = this.get(id);
-    const absolute = join(skill.source === "learned" ? this.workspaceRoot : this.root, skill.path);
+    const absolute = skill.absolutePath ?? join(skill.source === "learned" ? this.workspaceRoot : this.root, skill.path);
     const content = existsSync(absolute) ? readFileSync(absolute, "utf8") : "";
     return { ...skill, content, tokens: estimateTokens(content) };
   }
@@ -237,6 +262,33 @@ export class SkillCatalog {
       problems,
       tokens: skill.tokens
     };
+  }
+
+  // ------------------------------------------------------- auxiliary packs
+  packsActive() {
+    return Boolean(this.hub && this.hub.enabled);
+  }
+
+  packEntries() {
+    return this.packsActive() ? this.hub.entries() : [];
+  }
+
+  packSkill(id) {
+    try {
+      return this.hub.get(id);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Skill selection for a request: built-in and learned skills first, then
+   * auxiliary pack skills (weighted, never blocked or retired) below them.
+   */
+  select(request, { domain = null, limit = 3, auxiliaryLimit = 2 } = {}) {
+    const primary = this.searchBase(request, { limit, domain }).map((hit) => ({ ...hit, auxiliary: false }));
+    const auxiliary = this.packsActive() && auxiliaryLimit > 0 ? this.hub.search(request, { limit: auxiliaryLimit }) : [];
+    return { primary, auxiliary, all: [...primary, ...auxiliary] };
   }
 
   stats() {

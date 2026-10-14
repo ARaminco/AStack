@@ -1,5 +1,6 @@
 import { parseArgs } from "../delivery-engine/cli.mjs";
 import { appendSessionMatches } from "../search-engine/hooks.mjs";
+import { runSkillCurateCommand, runSkillPackCommand } from "./skill-hub-cli.mjs";
 
 const out = (line) => console.log(line);
 
@@ -373,7 +374,7 @@ export function runSkillCommand({ runtime, i18n, tokens }) {
     return;
   }
   if (action === "catalog") {
-    const result = catalog.catalog({ budget: Number(flags.budget ?? 600) });
+    const result = catalog.catalog({ budget: Number(flags.budget ?? 600), includePacks: Boolean(flags.packs) });
     table(result.lines);
     out(t("cli.skill.catalogSummary", { listed: result.listed, total: result.total, tokens: result.tokens }));
     return;
@@ -416,6 +417,14 @@ export function runSkillCommand({ runtime, i18n, tokens }) {
     out(t("cli.skill.statsTitle", { skills: stats.skills, tokens: stats.catalogTokens }));
     table(Object.entries(stats.byStatus).map(([status, count]) => status + ": " + count));
     table(Object.entries(stats.bySource).map(([source, count]) => source + ": " + count));
+    return;
+  }
+  if (action === "pack" || action === "packs") {
+    runSkillPackCommand({ runtime, i18n, tokens: rest });
+    return;
+  }
+  if (action === "curate") {
+    runSkillCurateCommand({ runtime, i18n, tokens: rest });
     return;
   }
   throw new Error(t("cli.skill.unknownAction", { action }));
