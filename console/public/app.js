@@ -64,7 +64,12 @@
     renderId: 0,
     source: null,
     installPrompt: null,
-    cache: {}
+    cache: {},
+    login: { methods: ["token"], totp: "off", remote: false },
+    session: {},
+    chat: null,
+    chatBacklog: [],
+    chatProjects: null
   };
 
   function t(key, vars) {
@@ -218,6 +223,7 @@
 
   var NAV = [
     { group: "groupMain", items: [
+      { id: "chats", icon: "chat", feature: "chats" },
       { id: "home", icon: "home" },
       { id: "approvals", icon: "shield", count: "approvals" },
       { id: "missions", icon: "flag", count: "missionsActive" },
@@ -238,15 +244,27 @@
       { id: "settings", icon: "settings" }
     ] }
   ];
-  var TABS = [
+  var BASE_TABS = [
     { id: "home", icon: "home" },
     { id: "approvals", icon: "shield", count: "approvals" },
     { id: "missions", icon: "flag", count: "missionsActive" },
     { id: "memory", icon: "brain" },
     { id: "more", icon: "grid", count: "incidents" }
   ];
-  var MORE_PAGES = ["runs", "jobs", "audit", "skills", "board", "gateway", "system", "settings"];
-  var ICONS = { home: "home", approvals: "shield", missions: "flag", memory: "brain", more: "grid", runs: "zap", jobs: "calendar", audit: "activity", skills: "book", board: "columns", gateway: "send", system: "cpu", settings: "settings" };
+  var BASE_MORE = ["runs", "jobs", "audit", "skills", "board", "gateway", "system", "settings"];
+  var TABS = BASE_TABS;
+  var MORE_PAGES = BASE_MORE;
+  /** With conversations on, they take the first tab and memory moves under "more". */
+  function layoutTabs() {
+    if (chatsOn()) {
+      TABS = [{ id: "chats", icon: "chat" }].concat(BASE_TABS.filter(function (tab) { return tab.id !== "memory"; }));
+      MORE_PAGES = ["memory"].concat(BASE_MORE);
+    } else {
+      TABS = BASE_TABS;
+      MORE_PAGES = BASE_MORE;
+    }
+  }
+  var ICONS = { chats: "chat", home: "home", approvals: "shield", missions: "flag", memory: "brain", more: "grid", runs: "zap", jobs: "calendar", audit: "activity", skills: "book", board: "columns", gateway: "send", system: "cpu", settings: "settings" };
 
   function parseRoute() {
     var hash = location.hash.replace(/^#\/?/, "");
@@ -275,6 +293,7 @@
   }
 
   function renderShell() {
+    layoutTabs();
     var root = document.getElementById("ar-root");
     root.innerHTML = out(html`
       <aside class="rail" aria-label="${t("brand")}">
@@ -288,7 +307,7 @@
         <nav class="rail-nav">
           ${NAV.map(function (group) {
             return html`<p class="rail-group">${t("nav." + group.group)}</p>
-              ${group.items.map(function (item) {
+              ${group.items.filter(function (item) { return !item.feature || chatsOn(); }).map(function (item) {
                 return html`<a class="rail-link" href="#/${item.id}" data-nav="${item.id}">
                   ${icon(item.icon)}<span class="rail-label">${t("nav." + item.id)}</span>${item.count ? countBadge(item.count, "rail-count") : ""}
                 </a>`;
@@ -351,6 +370,7 @@
       unread.textContent = state.unread > 9 ? "9+" : String(state.unread);
       unread.hidden = !state.unread;
     }
+    document.body.classList.toggle("chat-mode", route.name === "chats" && Boolean(route.id));
     var back = $("[data-back]");
     var brand = $("[data-brand]");
     if (back && brand) {
@@ -493,31 +513,52 @@
   function renderLogin(message) {
     stopEvents();
     closeSheet();
+    state.chat = null;
+    document.body.classList.remove("chat-mode");
+    var options = state.login || { methods: ["token"], totp: "off" };
+    var methods = options.methods || ["token"];
+    var mode = state.loginMode && methods.indexOf(state.loginMode) !== -1 ? state.loginMode : methods[0];
+    state.loginMode = mode;
+    var withCode = mode === "password" && options.totp !== "off";
     var root = document.getElementById("ar-root");
     root.innerHTML = out(html`<div class="login">
       <div class="login-glow"></div>
-      <form class="login-card" data-form="login" autocomplete="off">
+      <form class="login-card" data-form="login" data-mode="${mode}" autocomplete="on">
         <svg class="login-mark"><use href="#i-mark"/></svg>
         <h1 class="login-title">${t("login.title")}</h1>
-        <p class="login-sub">${t("login.subtitle")}</p>
-        <label class="field">
-          <span class="field-label">${icon("key")}${t("login.tokenLabel")}</span>
-          <input class="input input-lg ltr" dir="ltr" type="password" name="token" placeholder="${t("login.tokenPlaceholder")}" autocomplete="current-password" spellcheck="false" autofocus required>
-        </label>
+        <p class="login-sub">${options.remote ? t("login.subtitleRemote") : t("login.subtitle")}</p>
+        ${methods.length > 1 ? html`<div class="login-tabs">${segmented("login-mode", [["password", html`${icon("user")}${t("login.withPassword")}`], ["token", html`${icon("key")}${t("login.withToken")}`]], mode)}</div>` : ""}
+        ${mode === "password" ? html`
+          <label class="field">
+            <span class="field-label">${icon("user")}${t("login.usernameLabel")}</span>
+            <input class="input input-lg ltr" dir="ltr" type="text" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="32" required autofocus>
+          </label>
+          <label class="field">
+            <span class="field-label">${icon("lock")}${t("login.passwordLabel")}</span>
+            <input class="input input-lg ltr" dir="ltr" type="password" name="password" autocomplete="current-password" maxlength="256" required>
+          </label>
+          ${withCode ? html`<label class="field">
+            <span class="field-label">${icon("shield")}${t("login.codeLabel")}${options.totp === "optional" ? html` <span class="field-note">${t("login.codeOptional")}</span>` : ""}</span>
+            <input class="input input-lg ltr otp-input" dir="ltr" type="text" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="••••••" ${options.totp === "required" ? raw("required") : ""}>
+          </label>` : ""}` : html`
+          <label class="field">
+            <span class="field-label">${icon("key")}${t("login.tokenLabel")}</span>
+            <input class="input input-lg ltr" dir="ltr" type="password" name="token" placeholder="${t("login.tokenPlaceholder")}" autocomplete="current-password" spellcheck="false" autofocus required>
+          </label>`}
         <p class="login-error" data-login-error ${message ? "" : raw("hidden")}>${message || ""}</p>
         <button class="btn btn-primary btn-lg btn-block" type="submit">${icon("lock")}${t("login.submit")}</button>
-        <div class="login-hint">
+        ${mode === "token" ? html`<div class="login-hint">
           <span>${t("login.hint")}</span>
           <code dir="ltr">astack console token</code>
-        </div>
-        <p class="login-secure">${icon("shield")}${t("login.secure")}</p>
+        </div>` : ""}
+        <p class="login-secure">${icon("shield")}${options.remote ? t("login.secureRemote") : t("login.secure")}</p>
         <div class="login-switch">
           <button type="button" class="link" data-action="lang" data-value="${state.locale === "fa" ? "en" : "fa"}">${icon("globe")}${state.locale === "fa" ? "English" : "فارسی"}</button>
           <button type="button" class="link" data-action="theme">${icon("moon", "theme-dark-icon")}${icon("sun", "theme-light-icon")}${t("settings.theme")}</button>
         </div>
       </form>
     </div>`);
-    var input = $("input[name=token]", root);
+    var input = $("input[autofocus]", root);
     if (input) input.focus();
   }
 
@@ -714,6 +755,7 @@
     }
     var approve = decision === "approve";
     var needsCode = approve && item.irreversible;
+    var needsTotp = approve && Boolean(state.session.stepUp) && (item.irreversible || item.action === "claude.tool");
     openSheet(html`<form class="decision" data-form="decide" data-id="${id}" data-decision="${decision}">
       <div class="decision-head ${approve ? "is-approve" : "is-deny"}">
         <span class="decision-icon">${icon(approve ? "shield" : "x-circle")}</span>
@@ -730,6 +772,10 @@
         <span class="field-label">${t("approvals.typeCode")}: <b class="code-chip" dir="ltr">${item.confirmCode}</b></span>
         <input class="input input-lg ltr code-input" dir="ltr" name="confirm" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="${item.confirmCode}" autofocus>
       </label>` : ""}
+      ${needsTotp ? html`<label class="field">
+        <span class="field-label">${icon("shield")}${t("approvals.stepUp")}</span>
+        <input class="input input-lg ltr otp-input" dir="ltr" name="totp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="••••••" required ${needsCode ? "" : raw("autofocus")}>
+      </label>` : ""}
       <label class="field">
         <span class="field-label">${approve ? t("approvals.note") : t("approvals.denyReason")}</span>
         <textarea class="input" name="note" rows="2" maxlength="500" placeholder="${t("approvals.notePlaceholder")}"></textarea>
@@ -739,7 +785,7 @@
         <button type="button" class="btn btn-ghost btn-lg" data-action="close-sheet">${t("common.cancel")}</button>
         <button type="submit" class="btn btn-lg ${approve ? "btn-approve" : "btn-deny-solid"}" data-submit ${needsCode ? raw("disabled") : ""}>${icon(approve ? "check" : "x")}${approve ? t("approvals.confirmApprove") : t("approvals.confirmDeny")}</button>
       </div>
-    </form>`, { noFocus: !needsCode });
+    </form>`, { noFocus: !needsCode && !needsTotp });
   }
 
   function receiptSheet(item) {
@@ -911,7 +957,9 @@
     subtitle: function () { return t("more.subtitle"); },
     load: function () { return Promise.resolve({}); },
     render: function () {
-      return html`<div class="tiles">${MORE_PAGES.map(function (page) {
+      var chatsNote = state.features.chats && !state.features.chats.enabled && state.features.chats.reason === "remote"
+        ? html`<p class="hint-line chats-note">${icon("lock")}${t("chats.unavailableRemote")}</p>` : "";
+      return html`${chatsNote}<div class="tiles">${MORE_PAGES.map(function (page) {
         var count = page === "jobs" ? state.counts.incidents : page === "runs" ? state.counts.runsActive : 0;
         var available = page === "runs" ? state.features.runner : page === "board" ? state.features.board : page === "gateway" ? state.features.gateway : true;
         return html`<a class="tile" href="#/${page}">
@@ -1186,11 +1234,631 @@
             : state.installPrompt ? html`<button type="button" class="btn btn-primary" data-action="install">${icon("download")}${t("settings.installButton")}</button>`
             : html`<p class="muted small">${t("settings.installManual")}</p>`}
         </div>`)}
+        ${section(t("settings.account"), html`<div class="card pad setting">
+          <p class="account-line">${icon(state.session.user ? "user" : "key")}<span>${state.session.user ? t("settings.signedInAs", { user: state.session.user }) : t("settings.signedInToken")}</span>${state.session.remote ? html`<span class="badge tone-info">${t("settings.viaInternet")}</span>` : ""}</p>
+          <p class="muted small">${t("settings.logoutAllHint")}</p>
+          <button type="button" class="btn btn-ghost danger-text" data-action="logout-all">${icon("logout")}${t("settings.logoutAll")}</button>
+        </div>`)}
         <button type="button" class="btn btn-ghost btn-block danger-text logout" data-action="logout">${icon("logout")}${t("settings.logout")}</button>
         <p class="muted small center about">${t("settings.about")}</p>
       </div>`;
     }
   };
+
+  // ----------------------------------------------------------- conversations
+
+  function chatsOn() {
+    return Boolean(state.features.chats && state.features.chats.enabled);
+  }
+
+  /** Right-to-left when the first strong letter is Persian/Arabic/Hebrew. */
+  var RTL_CHAR = /[֐-ࣿיִ-﷽ﹰ-ﻼ]/;
+  var LTR_CHAR = /[A-Za-zÀ-ɏͰ-ϿЀ-ӿ]/;
+  function textDir(text) {
+    var value = String(text || "").replace(/```[\s\S]*?```/g, " ").replace(/`[^`]*`/g, " ").replace(/https?:\/\/\S+/g, " ");
+    for (var i = 0; i < value.length; i += 1) {
+      var c = value.charAt(i);
+      if (RTL_CHAR.test(c)) return "rtl";
+      if (LTR_CHAR.test(c)) return "ltr";
+    }
+    return state.locale === "fa" ? "rtl" : "ltr";
+  }
+
+  // ---- safe markdown: everything is escaped first, then a small set of
+  // block and inline forms is recognised. No raw HTML ever survives.
+
+  function mdInline(text) {
+    var parts = String(text).split(/(`[^`\n]+`)/g);
+    return parts.map(function (part) {
+      if (/^`[^`\n]+`$/.test(part)) return '<code class="md-ic" dir="ltr">' + esc(part.slice(1, -1)) + "</code>";
+      var value = esc(part);
+      value = value.replace(/\[([^\]\n]{1,300})\]\((https?:\/\/[^\s)]{1,2000})\)/g, function (_, label, href) {
+        return '<a class="md-link" href="' + href + '" target="_blank" rel="noopener noreferrer nofollow">' + label + "</a>";
+      });
+      value = value.replace(/\*\*([^*\n]+?)\*\*/g, "<strong>$1</strong>");
+      value = value.replace(/(^|[\s(])\*([^*\s][^*\n]*?)\*(?=[\s).,;:!?،؛]|$)/g, "$1<em>$2</em>");
+      value = value.replace(/~~([^~\n]+?)~~/g, "<del>$1</del>");
+      return value;
+    }).join("");
+  }
+
+  function mdTableRow(line) {
+    var cells = line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|");
+    return cells.map(function (cell) { return cell.trim(); });
+  }
+
+  function markdown(source) {
+    var lines = String(source || "").replace(/\r\n/g, "\n").split("\n");
+    var htmlOut = [];
+    var i = 0;
+    var paragraph = [];
+    function flush() {
+      if (paragraph.length) {
+        var text = paragraph.join("\n");
+        htmlOut.push('<p dir="' + textDir(text) + '">' + mdInline(text).replace(/\n/g, "<br>") + "</p>");
+        paragraph = [];
+      }
+    }
+    while (i < lines.length) {
+      var line = lines[i];
+      var fence = /^\s*(```+|~~~+)\s*([\w+#.-]*)\s*$/.exec(line);
+      if (fence) {
+        flush();
+        var code = [];
+        i += 1;
+        while (i < lines.length && lines[i].trim().indexOf(fence[1]) !== 0) {
+          code.push(lines[i]);
+          i += 1;
+        }
+        i += 1;
+        htmlOut.push('<div class="md-code"><div class="md-code-head"><span>' + esc(fence[2] || "code") + '</span><button type="button" class="md-copy" data-action="copy-code">' + out(icon("copy")) + "<span>" + esc(t("chats.copy")) + '</span></button></div><pre dir="ltr"><code>' + esc(code.join("\n")) + "</code></pre></div>");
+        continue;
+      }
+      if (/^\s*$/.test(line)) {
+        flush();
+        i += 1;
+        continue;
+      }
+      var heading = /^(#{1,6})\s+(.*)$/.exec(line);
+      if (heading) {
+        flush();
+        var level = Math.min(6, heading[1].length + 2);
+        htmlOut.push("<h" + level + ' class="md-h" dir="' + textDir(heading[2]) + '">' + mdInline(heading[2]) + "</h" + level + ">");
+        i += 1;
+        continue;
+      }
+      if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(line)) {
+        flush();
+        htmlOut.push('<hr class="md-hr">');
+        i += 1;
+        continue;
+      }
+      if (/^\s*\|.*\|\s*$/.test(line) && i + 1 < lines.length && /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(lines[i + 1])) {
+        flush();
+        var head = mdTableRow(line);
+        i += 2;
+        var rows = [];
+        while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) {
+          rows.push(mdTableRow(lines[i]));
+          i += 1;
+        }
+        var tableDir = textDir(head.join(" ") + " " + (rows[0] || []).join(" "));
+        htmlOut.push('<div class="md-table-wrap"><table class="md-table" dir="' + tableDir + '"><thead><tr>' + head.map(function (cell) { return "<th>" + mdInline(cell) + "</th>"; }).join("") + "</tr></thead><tbody>" +
+          rows.map(function (row) { return "<tr>" + row.map(function (cell) { return '<td dir="' + textDir(cell) + '">' + mdInline(cell) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div>");
+        continue;
+      }
+      if (/^\s*>\s?/.test(line)) {
+        flush();
+        var quote = [];
+        while (i < lines.length && /^\s*>\s?/.test(lines[i])) {
+          quote.push(lines[i].replace(/^\s*>\s?/, ""));
+          i += 1;
+        }
+        var quoteText = quote.join("\n");
+        htmlOut.push('<blockquote class="md-quote" dir="' + textDir(quoteText) + '">' + mdInline(quoteText).replace(/\n/g, "<br>") + "</blockquote>");
+        continue;
+      }
+      var listMatch = /^(\s*)([-*+]|\d{1,3}[.)])\s+(.*)$/.exec(line);
+      if (listMatch) {
+        flush();
+        var ordered = /\d/.test(listMatch[2]);
+        var itemsHtml = [];
+        var listText = [];
+        while (i < lines.length) {
+          var m = /^(\s*)([-*+]|\d{1,3}[.)])\s+(.*)$/.exec(lines[i]);
+          if (m && /\d/.test(m[2]) === ordered) {
+            var task = /^\[( |x|X)\]\s+(.*)$/.exec(m[3]);
+            var body = task ? task[2] : m[3];
+            listText.push(body);
+            itemsHtml.push('<li dir="' + textDir(body) + '"' + (m[1].length >= 2 ? ' class="md-sub"' : "") + ">" + (task ? '<span class="md-task' + (task[1] !== " " ? " done" : "") + '"></span>' : "") + mdInline(body) + "</li>");
+            i += 1;
+          } else if (lines[i] && /^\s{2,}\S/.test(lines[i]) && itemsHtml.length) {
+            itemsHtml[itemsHtml.length - 1] = itemsHtml[itemsHtml.length - 1].replace(/<\/li>$/, "<br>" + mdInline(lines[i].trim()) + "</li>");
+            i += 1;
+          } else {
+            break;
+          }
+        }
+        var tag = ordered ? "ol" : "ul";
+        htmlOut.push("<" + tag + ' class="md-list" dir="' + textDir(listText.join(" ")) + '">' + itemsHtml.join("") + "</" + tag + ">");
+        continue;
+      }
+      paragraph.push(line);
+      i += 1;
+    }
+    flush();
+    return raw(htmlOut.join(""));
+  }
+
+  // ---- list
+
+  function chatRow(item) {
+    return html`<a class="chat-row" href="#/chats/${item.id}">
+      <span class="chat-avatar ${item.active ? "is-live" : ""}">${icon(item.active ? "sparkles" : "chat")}</span>
+      <span class="chat-row-main">
+        <span class="chat-row-top">
+          <span class="chat-row-title" dir="${textDir(item.title)}">${item.title || t("chats.untitled")}</span>
+          <span class="chat-row-time">${ltr(fmtDate(item.lastAt))}</span>
+        </span>
+        <span class="chat-row-meta">
+          <span>${t("chats.messages", { count: item.messages })}</span>
+          ${item.branch ? html`<span class="chat-branch">${icon("branch")}${ltr(item.branch, "mono")}</span>` : ""}
+          ${item.subagents ? html`<span class="chat-sub">${icon("grid")}${t("chats.subagents", { count: item.subagents })}</span>` : ""}
+          ${item.active ? html`<span class="chat-live">${t("chats.answering")}</span>` : ""}
+        </span>
+      </span>
+    </a>`;
+  }
+
+  function spendLine(today, budget) {
+    if (!today) return "";
+    return html`<p class="chat-spend">${icon("activity")}<span>${t("chats.today")}</span>${ltr("$" + Number(today.usd || 0).toFixed(2), "strong")}<span class="muted">· ${t("chats.turns", { count: today.turns || 0 })}</span>${budget ? html`<span class="muted">· ${t("chats.budget")}</span>${ltr("$" + Number(budget).toFixed(2))}` : ""}</p>`;
+  }
+
+  function chatsUnavailable() {
+    var reason = state.features.chats && state.features.chats.reason;
+    return html`<div class="narrow"><div class="card">${empty("lock", t("chats.unavailableTitle"), reason === "remote" ? t("chats.unavailableRemote") : t("chats.unavailableOff"))}</div></div>`;
+  }
+
+  VIEWS.chats = {
+    title: function (route) {
+      if (route.id === "new") return t("chats.newTitle");
+      if (route.id && state.chat && state.chat.id === route.id) return state.chat.title || t("chats.title");
+      return t("chats.title");
+    },
+    subtitle: function (route) {
+      if (route.id && state.chat && state.chat.id === route.id && state.chat.project) return state.chat.project.name + (state.chat.branch ? " · " + state.chat.branch : "");
+      return route.id ? "" : t("chats.subtitle");
+    },
+    load: function (route) {
+      if (!chatsOn()) return Promise.resolve({ unavailable: true });
+      if (route.id === "new") {
+        return api("/api/chats?size=5").then(function (list) { return { isNew: true, projects: list.projects, today: list.today, budget: list.budget }; });
+      }
+      if (route.id) return api("/api/chats/" + encodeURIComponent(route.id) + (route.query.agent ? "?agent=" + encodeURIComponent(route.query.agent) : ""));
+      var params = ["page=" + encodeURIComponent(route.query.page || 1)];
+      if (route.query.q) params.push("q=" + encodeURIComponent(route.query.q));
+      if (route.query.project) params.push("project=" + encodeURIComponent(route.query.project));
+      return api("/api/chats?" + params.join("&"));
+    },
+    render: function (data, route) {
+      if (data.unavailable) return chatsUnavailable();
+      if (route.id) return chatView(data, route);
+      state.chatProjects = data.projects;
+      var groups = [];
+      var byProject = {};
+      data.items.forEach(function (item) {
+        var key = String(item.project.index);
+        if (!byProject[key]) {
+          byProject[key] = { project: item.project, items: [] };
+          groups.push(byProject[key]);
+        }
+        byProject[key].items.push(item);
+      });
+      var current = route.query.project || "";
+      return html`<div class="narrow chats-list">
+        <form class="chat-search" data-form="chat-search" role="search">
+          ${icon("search")}
+          <input class="chat-search-input" type="search" name="q" value="${route.query.q || ""}" placeholder="${t("chats.search")}" autocomplete="off" data-chat-search>
+          <button type="button" class="btn btn-primary chat-new" data-action="chat-new">${icon("plus")}<span>${t("chats.new")}</span></button>
+        </form>
+        ${data.projects.length > 1 ? html`<div class="toolbar scroll-x">${segmented("chat-project", [[""].concat([t("common.all")]).concat([null])].concat(data.projects.map(function (p) { return [String(p.index), p.name, p.sessions]; })), current)}</div>` : ""}
+        ${spendLine(data.today, data.budget)}
+        ${data.items.length ? groups.map(function (group) {
+          return html`<section class="chat-group">
+            ${data.projects.length > 1 ? html`<p class="chat-group-title">${icon("file")}${group.project.name}</p>` : ""}
+            <div class="card list chat-list">${group.items.map(chatRow)}</div>
+          </section>`;
+        }) : html`<div class="card">${empty("chat", route.query.q ? t("common.noResults") : t("chats.emptyTitle"), route.query.q ? "" : t("chats.emptyBody"), html`<button type="button" class="btn btn-primary" data-action="chat-new">${icon("plus")}${t("chats.new")}</button>`)}</div>`}
+        ${data.pages > 1 ? html`<div class="pager">
+          <button type="button" class="btn btn-ghost" data-action="page" data-page="${data.page - 1}" ${data.page <= 1 ? raw("disabled") : ""}>${icon("chevron", "flip-ltr")}${t("common.prev")}</button>
+          <span class="muted small">${ltr(data.page + " / " + data.pages)}</span>
+          <button type="button" class="btn btn-ghost" data-action="page" data-page="${data.page + 1}" ${data.page >= data.pages ? raw("disabled") : ""}>${t("common.next")}${icon("chevron", "flip-rtl")}</button>
+        </div>` : ""}
+      </div>`;
+    },
+    mount: function (container, data, route) {
+      if (route.id && !data.unavailable) mountChat(container);
+    }
+  };
+
+  function newChatSheet() {
+    var projects = state.chatProjects || [];
+    if (projects.length <= 1) {
+      go("#/chats/new?project=" + (projects[0] ? projects[0].index : 0));
+      return;
+    }
+    openSheet(html`<div class="project-pick">
+      <h3 class="sheet-title">${icon("plus")}${t("chats.pickProject")}</h3>
+      <div class="list">${projects.map(function (p) {
+        return html`<a class="row" href="#/chats/new?project=${p.index}" data-action="close-sheet-nav">
+          <span class="row-icon tone-info">${icon("file")}</span>
+          <span class="row-main"><span class="row-title">${p.name}</span><span class="row-sub">${p.exists ? t("chats.sessionsCount", { count: p.sessions || 0 }) : t("chats.projectMissing")}</span></span>
+        </a>`;
+      })}</div>
+      <div class="sheet-actions"><button type="button" class="btn btn-ghost btn-lg" data-action="close-sheet">${t("common.close")}</button></div>
+    </div>`, { noFocus: true });
+  }
+
+  // ---- one conversation
+
+  function toolIcon(name) {
+    if (/^(Read|NotebookRead)$/.test(name)) return "file";
+    if (/^(Grep|Glob|LS|WebSearch)$/.test(name)) return "search";
+    if (/^(Edit|Write|MultiEdit|NotebookEdit)$/.test(name)) return "edit";
+    if (/^(Bash|PowerShell|BashOutput|KillShell)$/.test(name)) return "terminal";
+    if (/^(WebFetch)$/.test(name)) return "globe";
+    if (/^(Task|Agent)$/.test(name)) return "grid";
+    if (/^mcp__/.test(name)) return "link";
+    return "cpu";
+  }
+
+  function toolName(name) {
+    var match = /^mcp__([^_]+(?:_[^_]+)*)__(.+)$/.exec(name || "");
+    return match ? match[1] + " · " + match[2] : name;
+  }
+
+  function toolChip(item) {
+    var status = item.result ? (item.result.error ? "error" : "ok") : item.running ? "running" : "none";
+    return html`<details class="tool-chip status-${status}" data-tool="${item.id || ""}">
+      <summary>
+        <span class="tool-icon">${icon(toolIcon(item.name))}</span>
+        <span class="tool-name">${toolName(item.name)}</span>
+        ${item.target ? html`<bdi class="tool-target" dir="ltr">${item.target}</bdi>` : ""}
+        <span class="tool-state" aria-hidden="true"></span>
+      </summary>
+      <div class="tool-body">
+        ${item.input && Object.keys(item.input).length ? html`<p class="tool-label">${t("chats.toolInput")}</p><pre class="code" dir="ltr">${JSON.stringify(item.input, null, 2)}</pre>` : ""}
+        <div data-tool-result>${toolResult(item.result)}</div>
+      </div>
+    </details>`;
+  }
+
+  function toolResult(result) {
+    if (!result) return "";
+    return html`<p class="tool-label ${result.error ? "danger-text" : ""}">${result.error ? t("chats.toolError") : t("chats.toolResult")}</p>${result.preview ? html`<pre class="code" dir="ltr">${result.preview}</pre>` : html`<p class="muted small">${t("common.none")}</p>`}`;
+  }
+
+  function messageHtml(item) {
+    if (item.kind === "user") {
+      return html`<div class="msg msg-user" data-at="${item.at || ""}"><div class="bubble" dir="${textDir(item.text)}">${item.text ? markdown(item.text) : ""}${item.images ? html`<p class="msg-images">${icon("file")}${t("chats.images", { count: item.images })}</p>` : ""}</div>${item.at ? html`<time class="msg-time">${ltr(fmtDate(item.at))}</time>` : ""}</div>`;
+    }
+    if (item.kind === "assistant") {
+      return html`<div class="msg msg-assistant"><span class="msg-mark">${icon("sparkles")}</span><div class="answer" dir="${textDir(item.text)}">${markdown(item.text)}</div></div>`;
+    }
+    if (item.kind === "tool") {
+      return html`<div class="msg msg-tool">${toolChip(item)}</div>`;
+    }
+    if (item.kind === "divider") {
+      return html`<div class="msg-divider"><span>${t("chats.compacted")}</span></div>`;
+    }
+    return "";
+  }
+
+  function permissionCard(approval) {
+    var pending = approval.state === "pending";
+    var needsCode = approval.irreversible;
+    var needsTotp = Boolean(state.session.stepUp);
+    var input = approval.parameters && approval.parameters.input;
+    return html`<div class="perm-card ${pending ? "is-pending" : "is-" + approval.state}" data-perm="${approval.id}">
+      <div class="perm-head">
+        <span class="perm-icon">${icon(pending ? "shield" : approval.state === "approved" || approval.state === "consumed" ? "check-circle" : "x-circle")}</span>
+        <div class="perm-titles">
+          <p class="perm-title">${t("chats.permTitle", { tool: toolName(approval.tool || "") })}</p>
+          ${approval.target && approval.target !== approval.tool ? html`<bdi class="perm-target" dir="ltr">${approval.target}</bdi>` : ""}
+        </div>
+        ${badge(approval.risk, t("risk." + approval.risk))}
+      </div>
+      ${input && typeof input === "object" && Object.keys(input).length ? html`<details class="perm-more"><summary>${t("chats.permDetails")}</summary><pre class="code" dir="ltr">${JSON.stringify(input, null, 2)}</pre></details>` : ""}
+      ${pending ? html`<form class="perm-form" data-form="perm" data-id="${approval.id}">
+        ${needsCode ? html`<label class="perm-field"><span>${t("approvals.typeCode")}: <b class="code-chip" dir="ltr">${approval.confirmCode}</b></span><input class="input ltr" dir="ltr" name="confirm" autocomplete="off" maxlength="8" required></label>` : ""}
+        ${needsTotp ? html`<label class="perm-field"><span>${t("login.codeLabel")}</span><input class="input ltr otp-input" dir="ltr" name="totp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label>` : ""}
+        <div class="perm-actions">
+          <button type="button" class="btn btn-deny" data-action="perm-deny" data-id="${approval.id}">${icon("x")}${t("approvals.deny")}</button>
+          <button type="submit" class="btn btn-approve">${icon("check")}${t("chats.allow")}</button>
+        </div>
+        <p class="form-error" data-form-error hidden></p>
+      </form>` : html`<p class="perm-state">${badge(approval.state === "consumed" ? "approved" : approval.state)}${approval.decidedBy ? html` <span class="muted small">${ltr(approval.decidedBy)}</span>` : ""}</p>`}
+    </div>`;
+  }
+
+  function composerHtml(chat) {
+    var busy = Boolean(chat.active && chat.active.status === "running") || chat.sending;
+    return html`<form class="composer" data-form="chat-send">
+      ${chat.isNew && chat.projects && chat.projects.length > 1 ? html`<div class="composer-project scroll-x">${segmented("new-chat-project", chat.projects.map(function (p) { return [String(p.index), html`${icon("file")}${p.name}`]; }), String(chat.projectIndex))}</div>` : ""}
+      <div class="composer-box">
+        <textarea class="composer-input" name="prompt" rows="1" dir="auto" placeholder="${chat.isNew ? t("chats.placeholderNew") : t("chats.placeholder")}" data-composer ${busy ? raw("disabled") : ""}></textarea>
+        <button type="button" class="composer-btn composer-stop" data-action="chat-stop" ${busy ? "" : raw("hidden")} aria-label="${t("chats.stop")}">${icon("stop")}</button>
+        <button type="submit" class="composer-btn composer-send" ${busy ? raw("hidden") : ""} aria-label="${t("chats.send")}" data-send disabled>${icon("send", "flip-rtl")}</button>
+      </div>
+      <p class="composer-hint">${t("chats.hint")}</p>
+    </form>`;
+  }
+
+  function chatView(data, route) {
+    if (data.isNew) {
+      var projectIndex = route.query.project || (data.projects[0] ? data.projects[0].index : 0);
+      var project = data.projects.filter(function (p) { return String(p.index) === String(projectIndex); })[0] || data.projects[0];
+      state.chat = { id: "new", isNew: true, items: [], projects: data.projects, projectIndex: projectIndex, project: project, today: data.today, budget: data.budget, approvals: {} };
+      return html`<div class="chat">
+        <div class="chat-stream" data-chat-stream>
+          <div class="chat-hello">
+            <span class="chat-hello-mark">${icon("chat")}</span>
+            <h2>${t("chats.newHello")}</h2>
+            <p class="muted">${t("chats.newBody", { project: project ? project.name : "" })}</p>
+            <p class="chat-hello-safe">${icon("shield")}${t("chats.permNote")}</p>
+          </div>
+        </div>
+        ${composerHtml(state.chat)}
+      </div>`;
+    }
+    state.chat = {
+      id: data.id,
+      title: data.title,
+      project: data.project,
+      branch: data.branch,
+      items: data.items,
+      start: data.start,
+      hasMore: data.hasMore,
+      agent: data.agent,
+      subagents: data.subagents || [],
+      active: data.active,
+      approvals: {},
+      liveText: ""
+    };
+    var agentBar = data.agent ? html`<div class="chat-agentbar">${icon("grid")}<span>${t("chats.viewingAgent")}</span><a class="link" href="#/chats/${data.id}">${t("chats.backToMain")}</a></div>` : "";
+    return html`<div class="chat ${data.agent ? "is-readonly" : ""}">
+      ${agentBar}
+      <div class="chat-stream" data-chat-stream>
+        ${!data.agent && data.subagents && data.subagents.length ? html`<details class="chat-agents"><summary>${icon("grid")}${t("chats.subagents", { count: data.subagents.length })}</summary><div class="list">${data.subagents.map(function (a) {
+          return html`<a class="row" href="#/chats/${data.id}?agent=${encodeURIComponent(a.id)}"><span class="row-icon tone-neutral">${icon("grid")}</span><span class="row-main"><span class="row-title" dir="auto">${a.description || a.id}</span><span class="row-sub">${ltr(a.type || a.id, "mono")}</span></span></a>`;
+        })}</div></details>` : ""}
+        ${data.hasMore ? html`<div class="chat-earlier"><button type="button" class="btn btn-ghost" data-action="chat-earlier">${icon("chevron", "rot-up")}${t("chats.earlier")}</button></div>` : html`<div class="chat-start">${icon("chat")}<span>${t("chats.start")}</span></div>`}
+        <div data-chat-items>${data.items.map(messageHtml)}</div>
+        <div data-chat-live></div>
+        <div class="chat-status" data-chat-status hidden></div>
+      </div>
+      ${data.agent ? "" : composerHtml(state.chat)}
+    </div>`;
+  }
+
+  function chatScroll(force) {
+    var nearBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight - 220;
+    if (force || nearBottom) window.scrollTo(0, document.body.scrollHeight);
+  }
+
+  function mountChat(container) {
+    var chat = state.chat;
+    if (!chat) return;
+    var input = $("[data-composer]", container);
+    if (input && chat.isNew && state.chatDraft) {
+      input.value = state.chatDraft;
+      state.chatDraft = "";
+      var sendButton = $("[data-send]", container);
+      if (sendButton) sendButton.disabled = !input.value.trim();
+    }
+    if (input) autosize(input);
+    if (chat.active && chat.active.events) {
+      chat.active.events.forEach(function (event) { applyChatEvent(event, true); });
+      if (chat.active && chat.active.status === "running") setChatBusy(true);
+    }
+    // Events that arrived while this view was loading.
+    var backlog = (state.chatBacklog || []).filter(function (event) { return event.sessionId === chat.id; });
+    state.chatBacklog = [];
+    backlog.forEach(function (event) { applyChatEvent(event, false); });
+    requestAnimationFrame(function () { chatScroll(true); });
+    if (input && !window.matchMedia("(pointer: coarse)").matches) input.focus();
+  }
+
+  function autosize(input) {
+    input.style.height = "auto";
+    var max = Math.round(window.innerHeight * 0.4);
+    input.style.height = Math.min(max, input.scrollHeight) + "px";
+  }
+
+  var chatTimer = null;
+  function setChatBusy(busy, label) {
+    var form = $("[data-form=chat-send]");
+    var status = $("[data-chat-status]");
+    if (form) {
+      var input = $("[data-composer]", form);
+      $(".composer-send", form).hidden = busy;
+      $(".composer-stop", form).hidden = !busy;
+      if (input) input.disabled = busy;
+    }
+    clearInterval(chatTimer);
+    if (status) {
+      status.hidden = !busy;
+      if (busy) {
+        var started = state.chat && state.chat.active && state.chat.active.startedAt ? new Date(state.chat.active.startedAt).getTime() : Date.now();
+        var paint = function () {
+          var seconds = Math.max(0, Math.round((Date.now() - started) / 1000));
+          status.innerHTML = out(html`<span class="typing"><i></i><i></i><i></i></span><span>${label || t("chats.working")}</span><span class="muted">${ltr(seconds + "s")}</span>`);
+        };
+        paint();
+        chatTimer = setInterval(paint, 1000);
+      }
+    }
+  }
+
+  function appendChatHtml(fragment) {
+    var host = $("[data-chat-items]");
+    if (!host) return;
+    host.insertAdjacentHTML("beforeend", out(fragment));
+  }
+
+  function renderLive(text) {
+    var live = $("[data-chat-live]");
+    if (!live) return;
+    live.innerHTML = text ? out(html`<div class="msg msg-assistant is-live"><span class="msg-mark">${icon("sparkles")}</span><div class="answer" dir="${textDir(text)}">${markdown(text)}<span class="caret"></span></div></div>`) : "";
+  }
+
+  function loadPermission(id) {
+    var chat = state.chat;
+    api("/api/approvals/" + encodeURIComponent(id)).then(function (approval) {
+      state.cache["approval:" + approval.id] = approval;
+      if (!state.chat || state.chat !== chat) return;
+      var existing = $('[data-perm="' + id + '"]');
+      if (existing) {
+        existing.outerHTML = out(permissionCard(approval));
+      } else {
+        appendChatHtml(html`<div class="msg msg-perm">${permissionCard(approval)}</div>`);
+      }
+      chatScroll(approval.state === "pending");
+      if (approval.state === "pending" && navigator.vibrate) navigator.vibrate([20, 40, 20]);
+    }).catch(function () {});
+  }
+
+  /** One streamed event of the running turn, applied to the open conversation. */
+  function applyChatEvent(event, replay) {
+    var chat = state.chat;
+    if (!chat || chat.id !== event.sessionId) return;
+    chat.seq = chat.seq || {};
+    if (event.seq) {
+      if (chat.seq[event.turnId] >= event.seq) return;
+      chat.seq[event.turnId] = event.seq;
+    }
+    switch (event.type) {
+      case "start":
+        chat.active = chat.active || { turnId: event.turnId, startedAt: event.at, status: "running" };
+        if (!replay) chat.active.startedAt = event.at;
+        if (event.prompt && !chat.sentLocally) appendChatHtml(messageHtml({ kind: "user", text: event.prompt, at: event.at }));
+        chat.sentLocally = false;
+        setChatBusy(true);
+        break;
+      case "init":
+        break;
+      case "partial":
+        chat.liveText = event.text;
+        renderLive(event.text);
+        chatScroll();
+        break;
+      case "assistant":
+        chat.liveText = "";
+        renderLive("");
+        appendChatHtml(messageHtml({ kind: "assistant", text: event.text }));
+        chatScroll();
+        break;
+      case "tool":
+        renderLive("");
+        appendChatHtml(messageHtml({ kind: "tool", id: event.id, name: event.name, target: event.target, input: event.input, running: true }));
+        setChatBusy(true, t("chats.usingTool", { tool: toolName(event.name) }));
+        chatScroll();
+        break;
+      case "tool-result": {
+        var chip = $('[data-tool="' + event.id + '"]');
+        if (chip) {
+          chip.classList.remove("status-running", "status-none");
+          chip.classList.add(event.error ? "status-error" : "status-ok");
+          var holder = $("[data-tool-result]", chip);
+          if (holder) holder.innerHTML = out(toolResult({ error: event.error, preview: event.preview }));
+        }
+        setChatBusy(true);
+        break;
+      }
+      case "permission":
+      case "permission-decided":
+        loadPermission(event.approvalId);
+        if (event.type === "permission" && event.state === "pending") setChatBusy(true, t("chats.waitingYou"));
+        break;
+      case "stopping":
+        setChatBusy(true, t("chats.stopping"));
+        break;
+      case "done":
+        renderLive(chat.liveText && event.status !== "completed" ? chat.liveText : "");
+        chat.active = null;
+        setChatBusy(false);
+        appendChatHtml(html`<div class="turn-meta tone-${event.status === "completed" ? "success" : event.status === "stopped" ? "neutral" : "danger"}">
+          ${icon(event.status === "completed" ? "check-circle" : event.status === "stopped" ? "stop" : "alert")}
+          <span>${stateLabel(event.status)}</span>
+          ${event.durationMs ? html`<span>${ltr((event.durationMs / 1000).toFixed(1) + "s")}</span>` : ""}
+          ${ltr("$" + Number(event.costUsd || 0).toFixed(4))}
+          ${event.today ? html`<span class="muted">${t("chats.today")} ${ltr("$" + Number(event.today.usd || 0).toFixed(2))}</span>` : ""}
+          ${event.error ? html`<span class="turn-error" dir="auto">${event.error}</span>` : ""}
+        </div>`);
+        chatScroll();
+        if (!replay && event.status === "failed") toast(t("chats.failed"), "danger", event.error || "");
+        if (!replay) {
+          api("/api/chats/" + encodeURIComponent(chat.id) + "?turns=1").then(function (fresh) {
+            if (state.chat !== chat) return;
+            chat.title = fresh.title;
+            chat.project = fresh.project;
+            chat.branch = fresh.branch;
+            setTitle(VIEWS.chats.title(state.route), VIEWS.chats.subtitle(state.route));
+          }).catch(function () {});
+        }
+        var input = $("[data-composer]");
+        if (input && !replay && !window.matchMedia("(pointer: coarse)").matches) input.focus();
+        break;
+      default:
+        break;
+    }
+  }
+
+  function sendChat(form) {
+    var chat = state.chat;
+    var input = $("[data-composer]", form);
+    var prompt = input ? input.value : "";
+    if (!chat || !prompt.trim() || chat.sending) return;
+    chat.sending = true;
+    var body = { prompt: prompt };
+    var path;
+    if (chat.isNew) {
+      body.project = chat.projectIndex;
+      path = "/api/chats";
+    } else {
+      path = "/api/chats/" + encodeURIComponent(chat.id) + "/messages";
+    }
+    setChatBusy(true, t("chats.starting"));
+    var bubble = null;
+    if (!chat.isNew) {
+      // Shown at once; the turn's "start" event then knows it is already here.
+      chat.sentLocally = true;
+      appendChatHtml(html`<div class="local-send" data-local-send>${messageHtml({ kind: "user", text: prompt, at: new Date().toISOString() })}</div>`);
+      var sent = $all("[data-local-send]");
+      bubble = sent[sent.length - 1] || null;
+      input.value = "";
+      autosize(input);
+      chatScroll(true);
+    }
+    api(path, { method: "POST", body: body }).then(function (result) {
+      chat.sending = false;
+      if (chat.isNew) {
+        history.replaceState(null, "", location.pathname + "#/chats/" + result.sessionId);
+        navigate();
+        return;
+      }
+      chat.active = chat.active || { turnId: result.turnId, startedAt: new Date().toISOString(), status: "running" };
+      setChatBusy(true);
+    }).catch(function (error) {
+      chat.sending = false;
+      chat.sentLocally = false;
+      if (bubble) bubble.remove();
+      if (input && !input.value) input.value = prompt;
+      setChatBusy(false);
+      toast(t("chats.sendFailed"), "danger", error.message);
+    });
+  }
 
   // ------------------------------------------------------------ rendering
 
@@ -1198,6 +1866,10 @@
     var route = parseRoute();
     var sameView = state.route.name === route.name && state.route.id === route.id;
     state.route = route;
+    if (!sameView && (route.name !== "chats" || !route.id)) {
+      state.chat = null;
+      clearInterval(chatTimer);
+    }
     var view = VIEWS[route.name];
     var container = document.getElementById("view");
     if (!container) return;
@@ -1213,10 +1885,11 @@
       if (renderId !== state.renderId) return;
       var scroll = window.scrollY;
       container.innerHTML = out(view.render(data, route));
+      if (view.mount) view.mount(container, data, route);
       container.classList.remove("enter");
       void container.offsetWidth;
       if (!soft) container.classList.add("enter");
-      if (soft) window.scrollTo(0, scroll);
+      if (soft && !(route.name === "chats" && route.id)) window.scrollTo(0, scroll);
       setTitle(view.title(route), view.subtitle ? view.subtitle(route) : "");
       updateChrome();
     }).catch(function (error) {
@@ -1226,14 +1899,14 @@
   }
   var softRefresh = debounce(function () {
     if (!state.authenticated || sheetStack || $(".palette.open")) return;
-    if (["home", "approvals", "missions", "jobs", "audit", "runs"].indexOf(state.route.name) !== -1) navigate(true);
+    if (["home", "approvals", "missions", "jobs", "audit", "runs"].indexOf(state.route.name) !== -1 || (state.route.name === "chats" && !state.route.id)) navigate(true);
   }, 900);
 
   // -------------------------------------------------------------- palette
 
   var palette = { items: [], cursor: 0, query: "", remote: null };
   function staticPaletteItems() {
-    var pages = NAV.reduce(function (all, group) { return all.concat(group.items); }, []).map(function (item) {
+    var pages = NAV.reduce(function (all, group) { return all.concat(group.items); }, []).filter(function (item) { return !item.feature || chatsOn(); }).map(function (item) {
       return { group: "pages", icon: item.icon, label: t("nav." + item.id), hash: "#/" + item.id };
     });
     var actions = [
@@ -1389,9 +2062,23 @@
       state.unread += 1;
       updateChrome();
       var tone = entry.level === "error" ? "danger" : entry.level === "warning" ? "warning" : entry.level === "success" ? "success" : "neutral";
-      toast(t("notify." + entry.kind) + " — " + (entry.title || ""), tone, entry.body ? stateLabel(entry.body) : "");
+      var inChat = entry.body === "claude.tool" && state.route.name === "chats" && state.route.id && state.chat && state.chat.id === state.route.id;
+      if (!inChat) toast(t("notify." + entry.kind) + " — " + (entry.title || ""), tone, entry.body ? stateLabel(entry.body) : "");
       systemNotify(entry);
       softRefresh();
+    });
+    source.addEventListener("chat", function (event) {
+      var data;
+      try { data = JSON.parse(event.data); } catch (error) { return; }
+      if (state.route.name === "chats" && state.route.id === data.sessionId && (!state.chat || state.chat.id !== data.sessionId)) {
+        state.chatBacklog.push(data);
+        return;
+      }
+      if (state.chat && state.chat.id === data.sessionId) {
+        applyChatEvent(data, false);
+        return;
+      }
+      if (state.route.name === "chats" && !state.route.id && (data.type === "start" || data.type === "done")) softRefresh();
     });
     source.addEventListener("activity", function () {
       if (state.route.name === "audit" || state.route.name === "home") softRefresh();
@@ -1469,6 +2156,17 @@
       else if (seg === "skills-source") updateQuery({ source: value });
       else if (seg === "theme") { setTheme(value); navigate(true); }
       else if (seg === "lang") setLanguage(value);
+      else if (seg === "chat-project") updateQuery({ project: value, page: 1 });
+      else if (seg === "new-chat-project" && state.chat && state.chat.isNew) {
+        var draft = $("[data-composer]");
+        state.chatDraft = draft ? draft.value : "";
+        history.replaceState(null, "", location.pathname + "#/chats/new?project=" + encodeURIComponent(value));
+        navigate(true);
+      }
+      else if (seg === "login-mode") {
+        state.loginMode = value;
+        renderLogin();
+      }
       return;
     }
     var action = target.getAttribute("data-action");
@@ -1500,6 +2198,68 @@
         }).catch(function (error) { target.disabled = false; toast(t("common.error"), "danger", error.message); });
         break;
       case "skill": openSkill(id); break;
+      case "chat-new": newChatSheet(); break;
+      case "chat-stop":
+        if (!state.chat) break;
+        target.disabled = true;
+        api("/api/chats/" + encodeURIComponent(state.chat.id) + "/stop", { method: "POST", body: {} }).then(function () {
+          target.disabled = false;
+        }).catch(function (error) { target.disabled = false; toast(t("common.error"), "danger", error.message); });
+        break;
+      case "chat-earlier": {
+        var chat = state.chat;
+        if (!chat || !chat.hasMore) break;
+        target.disabled = true;
+        api("/api/chats/" + encodeURIComponent(chat.id) + "?before=" + chat.start + "&turns=12" + (chat.agent ? "&agent=" + encodeURIComponent(chat.agent) : "")).then(function (page) {
+          if (state.chat !== chat) return;
+          var before = document.body.scrollHeight;
+          var host = $("[data-chat-items]");
+          host.insertAdjacentHTML("afterbegin", out(page.items.map(messageHtml)));
+          chat.start = page.start;
+          chat.hasMore = page.hasMore;
+          var holder = target.parentNode;
+          if (!page.hasMore) holder.innerHTML = out(html`${icon("chat")}<span>${t("chats.start")}</span>`), holder.className = "chat-start";
+          else target.disabled = false;
+          window.scrollTo(0, window.scrollY + document.body.scrollHeight - before);
+        }).catch(function (error) { target.disabled = false; toast(t("common.error"), "danger", error.message); });
+        break;
+      }
+      case "copy-code": {
+        var pre = target.closest(".md-code");
+        var codeText = pre ? $("pre", pre).textContent : "";
+        var done = function () {
+          target.classList.add("copied");
+          setTimeout(function () { target.classList.remove("copied"); }, 1400);
+          toast(t("chats.copied"), "success");
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(codeText).then(done).catch(function () {});
+        break;
+      }
+      case "perm-deny":
+        target.disabled = true;
+        api("/api/approvals/" + encodeURIComponent(id) + "/decide", { method: "POST", body: { decision: "deny", note: "denied in the conversation" } }).then(function () {
+          loadPermission(id);
+        }).catch(function (error) { target.disabled = false; toast(t("common.error"), "danger", error.message); });
+        break;
+      case "logout-all":
+        openSheet(html`<div class="decision">
+          <div class="decision-head is-deny"><span class="decision-icon">${icon("logout")}</span><div><h3>${t("settings.logoutAllTitle")}</h3><p>${t("settings.logoutAllBody")}</p></div></div>
+          <div class="sheet-actions">
+            <button type="button" class="btn btn-ghost btn-lg" data-action="close-sheet">${t("common.cancel")}</button>
+            <button type="button" class="btn btn-lg btn-deny-solid" data-action="logout-all-confirm">${icon("logout")}${t("settings.logoutAll")}</button>
+          </div>
+        </div>`, { noFocus: true });
+        break;
+      case "logout-all-confirm":
+        api("/api/logout-all", { method: "POST", body: {} }).then(function (result) {
+          toast(t("settings.loggedOutAll", { count: result.ended }), "success");
+        }).catch(function () {}).finally(function () {
+          state.authenticated = false;
+          state.csrf = null;
+          closeSheet();
+          renderLogin();
+        });
+        break;
       case "page": updateQuery({ page: target.getAttribute("data-page") }); break;
       case "enable-notifications": enableNotifications(); break;
       case "install":
@@ -1541,10 +2301,15 @@
       var error = $("[data-login-error]", form);
       var button = $("button[type=submit]", form);
       button.disabled = true;
-      login({ token: String(data.get("token") || "") }).catch(function (err) {
+      var credentials = form.getAttribute("data-mode") === "password"
+        ? { username: String(data.get("username") || ""), password: String(data.get("password") || ""), code: String(data.get("code") || "").replace(/\s+/g, "") }
+        : { token: String(data.get("token") || "") };
+      login(credentials).catch(function (err) {
         button.disabled = false;
+        var codeInput = $("input[name=code]", form);
+        if (codeInput) codeInput.value = "";
         if (error) {
-          error.textContent = err.status === 429 ? t("login.tooMany") : t("login.invalid");
+          error.textContent = err.status === 429 ? t("login.tooMany") : err.status === 403 ? t("login.methodRefused") : form.getAttribute("data-mode") === "password" ? t("login.invalidPassword") : t("login.invalid");
           error.hidden = false;
         }
         form.classList.remove("shake");
@@ -1559,7 +2324,7 @@
       var decisionId = form.getAttribute("data-id");
       api("/api/approvals/" + encodeURIComponent(decisionId) + "/decide", {
         method: "POST",
-        body: { decision: form.getAttribute("data-decision"), note: String(data.get("note") || "") || null, confirm: data.get("confirm") ? String(data.get("confirm")) : null }
+        body: { decision: form.getAttribute("data-decision"), note: String(data.get("note") || "") || null, confirm: data.get("confirm") ? String(data.get("confirm")) : null, totp: data.get("totp") ? String(data.get("totp")) : null }
       }).then(function (item) {
         state.cache["approval:" + item.id] = item;
         if (navigator.vibrate) navigator.vibrate(18);
@@ -1567,7 +2332,7 @@
         softRefresh();
       }).catch(function (err) {
         submit.disabled = false;
-        formError(form, err.status === 422 ? t("approvals.codeMismatch") : err.message);
+        formError(form, err.status === 422 ? (err.body && err.body.stepUpRequired ? t("approvals.stepUpFailed") : t("approvals.codeMismatch")) : err.message);
       });
       return;
     }
@@ -1579,6 +2344,31 @@
         toast(t("missions." + op + "Done"), op === "cancel" ? "warning" : "success");
         navigate(true);
       }).catch(function (err) { formError(form, err.message); });
+      return;
+    }
+    if (kind === "chat-send") {
+      sendChat(form);
+      return;
+    }
+    if (kind === "chat-search") {
+      updateQuery({ q: String(data.get("q") || ""), page: 1 });
+      return;
+    }
+    if (kind === "perm") {
+      var permId = form.getAttribute("data-id");
+      var permButton = $("button[type=submit]", form);
+      permButton.disabled = true;
+      formError(form, "");
+      api("/api/approvals/" + encodeURIComponent(permId) + "/decide", {
+        method: "POST",
+        body: { decision: "approve", note: "allowed in the conversation", confirm: data.get("confirm") ? String(data.get("confirm")) : null, totp: data.get("totp") ? String(data.get("totp")) : null }
+      }).then(function () {
+        if (navigator.vibrate) navigator.vibrate(18);
+        loadPermission(permId);
+      }).catch(function (err) {
+        permButton.disabled = false;
+        formError(form, err.status === 422 ? (err.body && err.body.stepUpRequired ? t("approvals.stepUpFailed") : t("approvals.codeMismatch")) : err.message);
+      });
       return;
     }
     if (kind === "memory-search") {
@@ -1617,6 +2407,16 @@
       paletteSearch();
       return;
     }
+    if (target.hasAttribute("data-composer")) {
+      autosize(target);
+      var send = $("[data-send]", target.closest("form"));
+      if (send) send.disabled = !target.value.trim();
+      return;
+    }
+    if (target.hasAttribute("data-chat-search")) {
+      chatSearch(target.value);
+      return;
+    }
     if (target.classList.contains("code-input")) {
       var form = target.closest("form");
       var item = state.cache["approval:" + form.getAttribute("data-id")];
@@ -1625,6 +2425,12 @@
       target.classList.toggle("is-valid", Boolean(match));
     }
   });
+  var chatSearch = debounce(function (value) {
+    if (state.route.name === "chats" && !state.route.id && String(value) !== String(state.route.query.q || "")) {
+      updateQuery({ q: value, page: 1 });
+    }
+  }, 350);
+
   document.addEventListener("change", function (event) {
     var target = event.target;
     if (target.hasAttribute("data-filter")) {
@@ -1641,6 +2447,12 @@
       event.preventDefault();
       if (paletteOpen) closePalette();
       else openPalette();
+      return;
+    }
+    if (event.key === "Enter" && event.target && event.target.hasAttribute && event.target.hasAttribute("data-composer") && !event.shiftKey && !event.isComposing && !(window.matchMedia && window.matchMedia("(pointer: coarse)").matches)) {
+      event.preventDefault();
+      var composerForm = event.target.closest("form");
+      if (composerForm && event.target.value.trim()) sendChat(composerForm);
       return;
     }
     if (event.key === "Escape") {
@@ -1683,10 +2495,11 @@
 
   function boot() {
     return fetch("/api/session", { credentials: "same-origin", cache: "no-store" }).then(function (r) { return r.json(); }).then(function (session) {
+      if (session.login) state.login = session.login;
       if (!session.authenticated) {
         state.authenticated = false;
         var ticket = /(?:^|[#&])ticket=([A-Za-z0-9_-]+)/.exec(location.hash);
-        if (ticket) {
+        if (ticket && !(state.login && state.login.remote)) {
           history.replaceState(null, "", location.pathname + "#/home");
           return login({ ticket: ticket[1] }).catch(function () { renderLogin(t("login.ticketFailed")); });
         }
@@ -1696,6 +2509,7 @@
       state.authenticated = true;
       state.csrf = session.csrf;
       state.features = session.features || {};
+      state.session = { user: session.user || null, method: session.method || "token", stepUp: Boolean(session.stepUp), remote: Boolean(session.server && session.server.remote) };
       renderShell();
       navigate();
       startEvents();

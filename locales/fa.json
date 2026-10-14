@@ -69,7 +69,7 @@
       "sandbox": "اجرای فرمان در محیط ایزوله داکر: status، images، require، exec -- <فرمان>.",
       "a2a": "درگاه گفت‌وگوی عامل با عامل (A2A): serve، card، status.",
       "gateway": "پیام‌رسان مالک: فرمان از واتس‌اپ و تلگرام، گزارش و تأیید از گوشی، پیام صوتی فارسی محلی.",
-      "console": "کنسول آرامین: اپ نصب‌شدنی برای تأییدها، مأموریت‌ها، حافظه و پایش (open | start | token | status)."
+      "console": "کنسول آرامین: اپ نصب‌شدنی برای گفت‌وگوها، تأییدها، مأموریت‌ها و پایش (open | start | token | status | user)."
     },
     "project": {
       "usage": "فرمان‌های پروژه: init، demo، list، status، board، backlog، add، move، start، done، block، unblock، charter، milestone، sprint، risk، gate، advance، baseline، critical-path، forecast، next، digest، decision، scaffold، raci، report، templates",
@@ -596,8 +596,28 @@
       "alreadyRunning": "آرامین از قبل روشن است: {url} (pid {pid})",
       "portBusy": "درگاه {port} اشغال است؛ با --port یک درگاه دیگر بدهید.",
       "openFailed": "مرورگر باز نشد؛ این نشانی را خودتان باز کنید: {url}",
-      "unknownAction": "کار ناشناخته برای console: {action} (start | token | status)",
-      "opened": "آرامین در مرورگر باز شد و خودکار وارد می‌شوید: {url} (کد ورود یک‌بارمصرف است و پس از یک دقیقه باطل می‌شود)."
+      "unknownAction": "کار ناشناخته برای console: {action} (open | start | token | status | user)",
+      "opened": "آرامین در مرورگر باز شد و خودکار وارد می‌شوید: {url} (کد ورود یک‌بارمصرف است و پس از یک دقیقه باطل می‌شود).",
+      "remoteRunning": "درگاه اینترنتی روشن است: {url} ← {publicUrl} (گفت‌وگوها: {chat}، Cloudflare Access: {access})",
+      "remoteStopped": "درگاه اینترنتی روشن نشد: {reason}",
+      "remoteStarted": "درگاه اینترنتی روشن شد: {url} (نشانی عمومی: {publicUrl})",
+      "usersState": "کاربرهای کنسول: {count} — با ورود دومرحله‌ای: {totp}",
+      "userNone": "هنوز کاربری برای کنسول ساخته نشده است. بسازید: astack console user set <نام>",
+      "userUpdated": "آخرین تغییر: {at}",
+      "userUsage": "نحوه استفاده: astack console user set|remove|totp <نام> [--disable] یا astack console user list",
+      "passwordPrompt": "رمز عبور (دست‌کم ۱۰ نویسه؛ نمایش داده نمی‌شود): ",
+      "passwordAgain": "دوباره همان رمز: ",
+      "passwordMismatch": "دو رمز یکی نبود؛ چیزی ذخیره نشد.",
+      "userCreated": "کاربر «{username}» ساخته شد. فقط خلاصه‌ی رمز (scrypt) نگه داشته شد، نه خود رمز.",
+      "userUpdatedNow": "رمز کاربر «{username}» عوض شد.",
+      "totpHint": "برای امنیت بیشتر، به‌ویژه اگر آرامین از اینترنت باز می‌شود، ورود دومرحله‌ای را روشن کنید: astack console user totp {username}",
+      "userRemoved": "کاربر «{username}» حذف شد.",
+      "userUnknown": "کاربری به نام «{username}» نیست.",
+      "totpDisabled": "ورود دومرحله‌ای برای «{username}» خاموش شد.",
+      "totpEnabled": "ورود دومرحله‌ای برای «{username}» روشن شد. این کلید را در برنامه‌ی Authenticator (Google Authenticator، Microsoft Authenticator، 1Password و…) وارد کنید:",
+      "totpSecret": "کلید: {secret}",
+      "totpUri": "یا این نشانی را به برنامه بدهید:",
+      "totpWarning": "این کلید را جایی ذخیره نکنید و برای کسی نفرستید؛ از این به بعد هر ورود کد ۶ رقمی برنامه را هم می‌خواهد."
     }
   },
   "delivery": {
@@ -820,7 +840,8 @@
       "groupMain": "اصلی",
       "groupOps": "عملیات",
       "groupKnowledge": "دانش",
-      "groupSystem": "سیستم"
+      "groupSystem": "سیستم",
+      "chats": "گفت‌وگوها"
     },
     "login": {
       "title": "ورود به آرامین",
@@ -832,7 +853,18 @@
       "invalid": "توکن درست نیست.",
       "tooMany": "تلاش‌ها زیاد شد؛ یک دقیقه صبر کنید.",
       "ticketFailed": "پیوند ورود منقضی شده است؛ توکن را وارد کنید.",
-      "secure": "اتصال فقط روی همین دستگاه است؛ نشست در کوکی امن نگه داشته می‌شود."
+      "secure": "اتصال فقط روی همین دستگاه است؛ نشست در کوکی امن نگه داشته می‌شود.",
+      "subtitleRemote": "ورود از راه اینترنت — نام کاربری، رمز و کد دومرحله‌ای",
+      "withPassword": "نام کاربری",
+      "withToken": "توکن",
+      "usernameLabel": "نام کاربری",
+      "passwordLabel": "رمز عبور",
+      "codeLabel": "کد ۶ رقمی برنامه‌ی Authenticator",
+      "codeOptional": "(اگر روشن است)",
+      "userHint": "کاربر را در ترمینال بسازید:",
+      "secureRemote": "اتصال رمزنگاری‌شده است؛ ورود بدون کد دومرحله‌ای ممکن نیست.",
+      "invalidPassword": "نام کاربری، رمز یا کد درست نیست.",
+      "methodRefused": "این روش ورود این‌جا بسته است."
     },
     "home": {
       "morning": "صبح بخیر",
@@ -911,7 +943,9 @@
       "decidedBy": "تصمیم‌گیرنده",
       "decided": "تصمیم",
       "open": "باز کردن",
-      "expiresIn": "انقضا {time}"
+      "expiresIn": "انقضا {time}",
+      "stepUp": "کد تازه‌ی برنامه‌ی Authenticator (برای تأیید از راه اینترنت)",
+      "stepUpFailed": "کد Authenticator درست نیست یا قبلاً به کار رفته است؛ کد بعدی را بزنید."
     },
     "states": {
       "pending": "در انتظار",
@@ -1130,7 +1164,16 @@
       "installed": "آرامین به‌صورت اپ باز شده است",
       "installManual": "از منوی مرورگر گزینه‌ی «نصب برنامه» یا «Add to Home Screen» را بزنید.",
       "logout": "خروج از این دستگاه",
-      "about": "آرامین، کنسول AStack — بدون وابستگی، روی همین دستگاه."
+      "about": "آرامین، کنسول AStack — بدون وابستگی، روی همین دستگاه.",
+      "account": "حساب و نشست‌ها",
+      "signedInAs": "واردشده با کاربر {user}",
+      "signedInToken": "واردشده با توکن مالک",
+      "viaInternet": "از راه اینترنت",
+      "logoutAllHint": "اگر گوشی یا رایانه‌ای گم شد یا مطمئن نیستید، همه‌ی دستگاه‌ها را یک‌جا خارج کنید.",
+      "logoutAll": "خروج از همه‌ی دستگاه‌ها",
+      "logoutAllTitle": "همه‌ی دستگاه‌ها خارج شوند؟",
+      "logoutAllBody": "همه‌ی نشست‌ها، از جمله همین دستگاه، بسته می‌شوند و باید دوباره وارد شوید.",
+      "loggedOutAll": "{count} نشست بسته شد."
     },
     "palette": {
       "placeholder": "جست‌وجو در مأموریت‌ها، تأییدها، حافظه، مهارت‌ها و فرمان‌ها…",
@@ -1166,7 +1209,60 @@
       "board": "کارهای چندعاملی",
       "gateway": "پیام‌رسان مالک",
       "system": "نسخه‌ها و سلامت",
-      "settings": "پوسته، زبان، اعلان"
+      "settings": "پوسته، زبان، اعلان",
+      "chats": "گفت‌وگو با Claude Code",
+      "memory": "یادآوری و گراف دانش"
+    },
+    "chats": {
+      "title": "گفت‌وگوها",
+      "subtitle": "جلسه‌های Claude Code پروژه‌ها",
+      "newTitle": "گفت‌وگوی تازه",
+      "search": "جست‌وجو در عنوان گفت‌وگوها…",
+      "new": "گفت‌وگوی تازه",
+      "untitled": "گفت‌وگوی بی‌عنوان",
+      "messages": "{count} پیام",
+      "subagents": "{count} زیرعامل",
+      "answering": "در حال پاسخ",
+      "today": "امروز:",
+      "turns": "{count} نوبت",
+      "budget": "سقف روزانه",
+      "emptyTitle": "هنوز گفت‌وگویی نیست",
+      "emptyBody": "جلسه‌های Claude Code این پروژه‌ها این‌جا می‌آیند؛ یک گفت‌وگوی تازه هم می‌توانید شروع کنید.",
+      "pickProject": "گفت‌وگو در کدام پروژه؟",
+      "sessionsCount": "{count} گفت‌وگو",
+      "projectMissing": "پوشه‌ی پروژه پیدا نشد",
+      "unavailableTitle": "گفت‌وگوها این‌جا در دسترس نیست",
+      "unavailableRemote": "گفت‌وگو با Claude Code از راه اینترنت بسته است؛ فقط روی همین رایانه (یا شبکه‌ی امن خودتان) باز است.",
+      "unavailableOff": "گفت‌وگوها در تنظیمات خاموش است (console.chats.enabled).",
+      "copy": "رونوشت",
+      "copied": "کد رونوشت شد",
+      "toolInput": "ورودی",
+      "toolResult": "نتیجه",
+      "toolError": "خطا",
+      "images": "{count} تصویر",
+      "compacted": "گفت‌وگو این‌جا خلاصه شد",
+      "permTitle": "Claude اجازه می‌خواهد: {tool}",
+      "permDetails": "جزئیات درخواست",
+      "allow": "اجازه بده",
+      "placeholder": "پیام به Claude…",
+      "placeholderNew": "چه کاری انجام شود؟",
+      "send": "فرستادن",
+      "stop": "توقف",
+      "hint": "Enter برای فرستادن، Shift+Enter برای خط تازه",
+      "newHello": "گفت‌وگوی تازه با Claude Code",
+      "newBody": "در پروژه‌ی «{project}» شروع می‌شود؛ پاسخ زنده این‌جا نمایش داده می‌شود.",
+      "permNote": "هر ابزاری که چیزی را تغییر دهد یا فرمانی اجرا کند، اول از شما اجازه می‌گیرد.",
+      "viewingAgent": "گفت‌وگوی یک زیرعامل (فقط خواندنی)",
+      "backToMain": "بازگشت به گفت‌وگوی اصلی",
+      "earlier": "پیام‌های قبلی",
+      "start": "آغاز گفت‌وگو",
+      "starting": "در حال راه‌اندازی Claude Code…",
+      "working": "Claude در حال کار است…",
+      "usingTool": "در حال استفاده از {tool}…",
+      "waitingYou": "منتظر اجازه‌ی شما",
+      "stopping": "در حال توقف…",
+      "failed": "پاسخ کامل نشد",
+      "sendFailed": "پیام فرستاده نشد"
     }
   }
 }
