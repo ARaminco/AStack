@@ -211,7 +211,24 @@ astack console status
 | `console open` | While a console runs (in the daemon or `console start`), open the browser already signed in with a one-time ticket (one login, one minute) |
 | `console start` | Run the console in this terminal on `http://127.0.0.1:7717`; `--open` also opens the browser signed in |
 | `console token` | Print the owner token for the sign-in screen; `--rotate` makes a new one and signs every device out |
-| `console status` | Whether a console is running, its address, and how many devices are signed in |
+| `console status` | Whether a console is running, its address, how many devices are signed in, the internet listener (3.1) and the console users |
+
+### Console users (3.1)
+
+```bash
+astack console user set <username>           # create or change the password (hidden prompt, or stdin)
+astack console user totp <username>          # turn on two-factor sign-in; prints the key and the otpauth:// URI
+astack console user totp <username> --disable
+astack console user list
+astack console user remove <username>
+```
+
+The password is read from a hidden prompt (asked twice on a terminal) or from
+stdin (`"..." | astack console user set ali`; a PowerShell byte-order mark is
+stripped). Only an scrypt hash is stored, in `.astack/console/users.json`.
+`totp` prints a base32 key and an `otpauth://totp/...` URI for an
+authenticator app; from then on every password sign-in needs the 6-digit code.
+The internet listener (`console.remote`) starts only when a user has TOTP on.
 
 ## Search (3.0)
 
