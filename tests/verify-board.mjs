@@ -18,7 +18,8 @@ import { ToolRegistry } from "../tool-registry/tool-registry.mjs";
 import { SchedulerEngine } from "../scheduler-engine/scheduler-engine.mjs";
 import { BoardEngine, extractHandoff, extractVerdict } from "../board-engine/board-engine.mjs";
 import { createService } from "../board-engine/service.mjs";
-import { SandboxEngine, parseMountSpec, runRequiredSandbox } from "../sandbox-engine/sandbox-engine.mjs";
+import { SandboxEngine, parseMountSpec, runRequiredSandbox, sensitivePaths } from "../sandbox-engine/sandbox-engine.mjs";
+import { safePath } from "../tool-registry/tool-registry.mjs";
 import { A2AServer, isLoopbackHost } from "../interop-engine/a2a-server.mjs";
 import { createRuntime } from "../runtime/astack-runtime.mjs";
 
@@ -465,7 +466,7 @@ const mounted = await sbx.exec({ command: ["node", "--version"], mounts: [sbxWs 
 assert.equal(mounted.ok, true);
 const mountArgs = lastRun();
 assert.ok(mountArgs.some((arg) => arg.startsWith("type=bind,source=" + sbxWs) && arg.endsWith(",target=/work,readonly")), "mounts are read-only by default");
-assert.ok(mountArgs.includes("type=tmpfs,target=/work/.astack/security,tmpfs-size=4096"), "secret stores are hidden inside a mounted workspace");
+assert.ok(mountArgs.includes("type=tmpfs,target=/work/.astack,tmpfs-size=4096"), "the whole .astack folder is hidden inside a mounted workspace");
 assert.ok(mountArgs.some((arg) => arg.endsWith("target=/work/.env,readonly")), ".env files are replaced by an empty file");
 assert.equal(mountArgs[mountArgs.indexOf("--workdir") + 1], "/work");
 const outside = await sbx.exec({ command: ["node", "--version"], mounts: [{ source: fakeDir, target: "/x" }] });
@@ -521,7 +522,7 @@ const routedTool = await sbxTools.invoke("shell", "run", { command: "node", args
 assert.equal(routedTool.ok, true, routedTool.summary);
 assert.equal(routedTool.data.sandbox, true, "the shell tool ran the matching command in the sandbox");
 assert.match(routedTool.data.stdout, /ran node:22-alpine: node --version/);
-assert.ok(lastRun().includes("type=tmpfs,target=/work/.astack/security,tmpfs-size=4096"), "the routed run mounts the workspace with secrets hidden");
+assert.ok(lastRun().includes("type=tmpfs,target=/work/.astack,tmpfs-size=4096"), "the routed run mounts the workspace with secrets hidden");
 
 const scheduler = new SchedulerEngine(sbxWs, { clock, services: {}, policy: reloaded });
 const job = scheduler.create({ name: "sandboxed node", kind: "command", schedule: { every: "1h" }, payload: { command: "node", args: ["--version"] } });
@@ -531,6 +532,52 @@ assert.match(jobRun.run.summary, /in sandbox/, "a command job matching required_
 const deniedJob = scheduler.create({ name: "denied", kind: "command", schedule: { every: "1h" }, payload: { command: "rm", args: ["-rf", "x"] } });
 const deniedRun = await scheduler.runJob(deniedJob.id, { manual: true });
 assert.match(deniedRun.run.summary, /automation policy/, "the policy still decides first");
+// --- 3.0 hardening: secrets hidden at any depth, env via file, image/user from config
+const deepWs = workspace("astack-sbx-deep-");
+for (const folder of [join("app", ".astack", "gateway"), join("app", "nested", ".ssh"), ".claude", join("lib", ".git"), join("node_modules", "pkg")]) {
+  mkdirSync(join(deepWs, folder), { recursive: true });
+}
+writeFileSync(join(deepWs, "app", ".env.local"), "TOKEN=1");
+writeFileSync(join(deepWs, "app", "nested", ".env"), "TOKEN=2");
+writeFileSync(join(deepWs, "lib", ".git", "config"), "[remote]");
+writeFileSync(join(deepWs, "node_modules", "pkg", ".env"), "ignored");
+writeFileSync(join(deepWs, "app", "index.js"), "1");
+const hidden = sensitivePaths(deepWs).map((entry) => entry.kind + ":" + entry.path).sort();
+assert.deepEqual(hidden, ["directory:.claude", "directory:app/.astack", "directory:app/nested/.ssh", "file:app/.env.local", "file:app/nested/.env", "file:lib/.git/config"], "sensitive paths are found at any depth");
+const deepSbx = new SandboxEngine(deepWs, { clock, audit: sbxAudit, policy: sbxPolicy, docker: [process.execPath, fakeDocker] });
+assert.equal((await deepSbx.exec({ command: ["node", "--version"], mounts: [deepWs + ":/work"] })).ok, true);
+const deepArgs = lastRun();
+for (const directory of ["/work/app/.astack", "/work/app/nested/.ssh", "/work/.claude"]) {
+  assert.ok(deepArgs.includes("type=tmpfs,target=" + directory + ",tmpfs-size=4096"), "hidden: " + directory);
+}
+for (const file of ["/work/app/.env.local", "/work/app/nested/.env", "/work/lib/.git/config"]) {
+  assert.ok(deepArgs.some((arg) => arg.endsWith("target=" + file + ",readonly")), "replaced by an empty file: " + file);
+}
+const envRun = await sbx.exec({ command: ["node", "--version"], env: { API_TOKEN: "sbx-env-secret-123" } });
+assert.equal(envRun.ok, true);
+const envArgs = lastRun();
+assert.ok(!envArgs.join(" ").includes("sbx-env-secret-123"), "environment values never reach the docker command line");
+const envFile = envArgs[envArgs.indexOf("--env-file") + 1];
+assert.ok(envFile && envFile.endsWith(".env"), "values travel in an env file");
+assert.equal(existsSync(envFile), false, "the env file is removed after the run");
+assert.equal((await sbx.exec({ command: ["node", "--version"], env: { BAD: "a\nb" } })).denied, true, "a multi-line value is refused");
+const otherImage = await sbx.exec({ command: ["node", "--version"], image: "attacker/image:latest" });
+assert.equal(otherImage.denied, true);
+assert.match(otherImage.reason, /sandbox\.image/, "the image comes only from configuration");
+assert.equal((await sbx.exec({ command: ["node", "--version"], image: "node:22-alpine" })).ok, true, "naming the configured image is fine");
+const rootUser = await sbx.exec({ command: ["node", "--version"], user: "0:0" });
+assert.equal(rootUser.denied, true);
+assert.match(rootUser.reason, /sandbox\.user/, "the user comes only from configuration");
+const callerOutside = await sbx.exec({ command: ["node", "--version"], mounts: [{ source: fakeDir, target: "/x", allowOutside: true }] });
+assert.equal(callerOutside.denied, true, "a caller cannot widen mounts outside the workspace");
+const outsideRequired = await runRequiredSandbox(reloaded, { command: "node", args: ["--version"], cwd: fakeDir });
+assert.equal(outsideRequired.denied, true);
+assert.match(outsideRequired.reason, /inside the workspace/, "runRequiredSandbox mounts only workspace folders");
+// The filesystem tool never reads 3.0 state folders either.
+for (const path of [".astack/gateway/owners.json", ".astack/search/index.db", ".astack/a2a/tasks/x.json", ".astack/console/state.json", ".astack/vault/x.dpapi", "sub/.env.production"]) {
+  assert.throws(() => safePath(sbxWs, path), /credentials or session material/, "not readable through a tool: " + path);
+}
+assert.ok(safePath(sbxWs, "docs/readme.md"));
 console.log("sandbox: fake docker, policy gate, isolation flags, routing ok");
 
 // --- one real run when Docker is up
@@ -552,7 +599,7 @@ const calls = [];
 const store = new Map();
 const fakeRun = (command, args, { input = null } = {}) => {
   calls.push({ command, args, input });
-  if (command === "powershell") {
+  if (/^[A-Za-z]:\\.*\\System32\\WindowsPowerShell\\v1\.0\\powershell\.exe$/i.test(command)) {
     const script = Buffer.from(args[args.indexOf("-EncodedCommand") + 1], "base64").toString("utf16le");
     if (script.includes("ConvertFrom-SecureString")) {
       return { status: 0, stdout: Buffer.from(Buffer.from(input, "base64").toString("utf8")).toString("hex"), stderr: "" };
@@ -611,6 +658,9 @@ for (const [platform, backend] of [["darwin", "macos"], ["linux", "linux"], ["wi
     assert.ok(!call.args.join(" ").includes("value-سلام"), backend + ": the value never travels in argv");
   }
   assert.ok(calls.some((call) => String(call.input ?? "").length > 0), backend + ": the value travels on stdin");
+  if (backend === "windows") {
+    assert.ok(calls.every((call) => /\\System32\\WindowsPowerShell\\v1\.0\\powershell\.exe$/i.test(call.command)), "PowerShell is started by its absolute path, never from PATH");
+  }
   assert.equal(broker.available(reference), true);
   assert.equal(broker.resolve(reference, { requester: "test" }), secretValue, backend + ": round trip through the broker");
   if (backend === "windows") {
