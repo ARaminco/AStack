@@ -28,3 +28,4 @@ dist/
 graphify-out/
 .astack/runner/
 .astack/daemon/
+.astack/search/

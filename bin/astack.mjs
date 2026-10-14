@@ -16,6 +16,7 @@ import { runUpdateCommand } from "../cli/update-cli.mjs";
 import { pendingMigrations } from "../upgrade-engine/migrations.mjs";
 import { runDaemonCommand, runRunCommand, runRunnerCommand } from "../cli/runner-cli.mjs";
 import { DaemonEngine } from "../daemon-engine/daemon-engine.mjs";
+import { runSearchCommand } from "../cli/search-cli.mjs";
 
 const i18n = createLocalization();
 const runtime = createRuntime();
@@ -25,7 +26,8 @@ const COMMANDS = [
   "context", "memory", "graph", "learn", "skill",
   "mission", "schedule", "signal", "browser",
   "authority", "approval", "audit", "secret", "tool", "runtime", "interop", "mcp", "graphify",
-  "domain", "team", "agent", "lead", "project", "workflow", "provider", "plugin", "knowledge", "backup"
+  "domain", "team", "agent", "lead", "project", "workflow", "provider", "plugin", "knowledge", "backup",
+  "search"
 ];
 COMMANDS.push("run", "runner", "daemon");
 
@@ -88,6 +90,7 @@ function doctor({ verbose = false } = {}) {
   console.log("Daemon: " + (new DaemonEngine({ runtime }).status().running ? "running" : "stopped"));
   console.log("Browser: " + runtime.browser.status().driver);
   console.log("Authority default: " + runtime.authority.describe().defaultLevel);
+  console.log("Search: " + searchDoctorLine());
   console.log("Telemetry: disabled");
   // An install that upgraded from an older core ran the previous upgrade command,
   // which had no migration step. Report what is still waiting rather than letting
@@ -104,6 +107,15 @@ function doctor({ verbose = false } = {}) {
     const context = runtime.context.stats();
     console.log("Context index: " + (context.built ? context.files + " files, " + context.symbols + " symbols" : "not built"));
     console.log("Context savings: " + Math.round(context.savingsRatio * 100) + "%");
+  }
+}
+
+function searchDoctorLine() {
+  try {
+    const status = runtime.search.status();
+    return status.backend + (status.exists ? ", " + status.docs + " docs" : ", index not built (astack search reindex)") + (status.fallback ? " — " + status.fallback : "");
+  } catch (error) {
+    return "unavailable (" + error.message + ")";
   }
 }
 
@@ -247,6 +259,9 @@ async function run() {
       return;
     case "knowledge":
       list(i18n.t("cli.knowledgeList"), runtime.knowledgePackRegistry.list());
+      return;
+    case "search":
+      await runSearchCommand(context);
       return;
     case "backup":
       console.log(i18n.t("cli.backupCreated", { path: runtime.memory.backup() }));
