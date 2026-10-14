@@ -152,6 +152,11 @@ export async function runScheduleCommand({ runtime, i18n, tokens }) {
       out(t("cli.schedule.policyUpdated", { what: "command " + positionals[1] }));
       return;
     }
+    if (positionals[0] === "allow-private") {
+      policy.allowPrivateNetworksPermanently();
+      out(t("cli.schedule.policyUpdated", { what: "private networks" }));
+      return;
+    }
     if (positionals[0] === "allow-host") {
       policy.allowHostPermanently(positionals[1]);
       out(t("cli.schedule.policyUpdated", { what: "host " + positionals[1] }));

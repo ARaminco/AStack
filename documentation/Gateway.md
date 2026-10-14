@@ -36,10 +36,9 @@ Endpoints used (all with `Authorization: Bearer <channel token>`):
 `GET /media/{message id}` for voice notes, `GET /health`. The cursor is the
 newest timestamp seen; `time_from` is inclusive and the boundary message is
 dropped by the gateway's dedup. A private address (`127.0.0.1`, LAN) is refused
-by the automation policy until the owner allows private targets deliberately:
-set `"allowPrivateNetworks": true` under `network` in
-`.astack/security/automation.json` (the policy's error text names an
-`astack schedule policy allow-private` command that 3.0.0 does not have yet).
+by the automation policy until the owner allows private targets deliberately
+with `astack schedule policy allow-private` (sets `network.allowPrivateNetworks`
+in `.astack/security/automation.json`).
 
 ### whatsapp-bridge (linked device)
 ```bash

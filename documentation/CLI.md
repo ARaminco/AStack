@@ -68,7 +68,7 @@ astack schedule add "<name>" --kind http-check --every 10m --url <url> --expectS
 astack schedule list | show <id> | run <id> | tick | status | history <id> | incidents
 astack schedule watch [--interval 60s] | stop
 astack schedule enable <id> | disable <id> | remove <id> | defaults | kinds
-astack schedule policy [allow-command <cmd> | allow-host <host>]
+astack schedule policy [allow-command <cmd> | allow-host <host> | allow-private]
 ```
 
 ## Inbound hooks
