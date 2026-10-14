@@ -1,7 +1,7 @@
 project:
   name: AStack Enterprise
   product: AI Operating System for Any Practice
-  version: 3.0.0
+  version: 3.1.0
   philosophy: enterprise_modular_platform
   primary_runtime: claude-code
   compatibility:
@@ -621,3 +621,38 @@ secrets:
 #   poll_interval: 3s        # how often durable state is compared for live updates
 #   session_days: 30         # how long a signed-in device stays signed in
 #   locale: fa               # default UI language (fa | en); the app remembers the owner's choice
+#   # 3.1: sign-in. Users: astack console user set <name> (+ totp <name>).
+#   auth: null               # token | password | both; null = both once a user exists, else token
+#   session_idle: null       # end a session unused for this long (e.g. 12h); null = never
+#   lockout:                 # failed sign-ins per address and per username
+#     attempts: 5
+#     minutes: 15
+#   # 3.1: the internet listener a tunnel points at (see Aramin-Console.md).
+#   # 7717 never answers the public host name; this listener answers nothing else.
+#   remote:
+#     enabled: false
+#     host: 127.0.0.1        # loopback only: the tunnel connector runs on this machine
+#     port: 7718
+#     hostname: null         # the public host name, e.g. console.example.com
+#     session_hours: 12      # 12 at most
+#     idle_minutes: 60
+#     chat: false            # conversations stay closed over the internet
+#     access:                # optional Cloudflare Access check (defence in depth)
+#       team: null           # <team> of <team>.cloudflareaccess.com
+#       aud: null            # the application's AUD tag
+#   # 3.1: conversations with Claude Code (the first tab).
+#   chats:
+#     enabled: true
+#     projects: []           # absolute paths; [] = this workspace only
+#     permission_mode: default   # default | acceptEdits | plan | dontAsk (bypassPermissions is refused)
+#     allowed_tools: Read,Grep,Glob   # pre-allowed without a permission card
+#     disallowed_tools: []   # added to the mandatory .astack/** and `astack approval` denies
+#     tools: null            # built-in tools to load (--tools); null = Claude Code's default set
+#     approval_timeout_minutes: 10   # an unanswered permission card is a deny
+#     daily_budget_usd: null # null = no cap; else each turn gets --max-budget-usd for what is left
+#     max_parallel: 2        # conversations answering at the same time
+#     model: null
+#     strict_mcp: true       # load only the astack server (--strict-mcp-config)
+#     partial_messages: true # stream text as it is written
+#     command: null          # null = runner.claude.command or claude; must pass the automation policy
+#     claude_home: null      # null = CLAUDE_CONFIG_DIR or ~/.claude

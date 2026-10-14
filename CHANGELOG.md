@@ -3,6 +3,69 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 3.1.0 — Conversations and password login
+
+Aramin gains a first tab for Claude Code sessions and a sign-in that can face
+the internet.
+
+### Conversations (گفت‌وگوها)
+
+- Lists the Claude Code sessions of `console.chats.projects` (default: this
+  workspace) from `~/.claude/projects/<slug>/*.jsonl`, grouped by project,
+  newest first, with title, last activity, message count, branch and
+  sub-agents; search and paging.
+- Opens a session as a chat: safe markdown (escaped first, code blocks with a
+  copy button, tables, per-block text direction), tool calls as one-line chips
+  with a redacted preview, thinking and injected tags hidden, the last turns
+  first with "earlier messages". Everything sent to the browser is
+  strict-redacted.
+- Continues a session (`claude -p --resume`) or starts one
+  (`--session-id <uuid>`) in its project folder, with the prompt on stdin,
+  `--output-format stream-json --verbose --include-partial-messages`, live
+  streaming over the console's SSE channel, cost and duration per turn,
+  today's total, a lock per session, a Stop button that ends the process tree
+  and an optional `console.chats.daily_budget_usd`.
+- Tool permissions go through `--permission-prompt-tool
+  mcp__astack__permission_prompt`: a new tool on the astack MCP server that
+  creates a `claude.tool` approval, notifies the console and the gateway,
+  waits (10 minutes, then deny) and answers Claude Code's allow/deny contract.
+  The owner decides on an inline card in the chat, through the same approvals
+  engine. `Read,Grep,Glob` are pre-allowed by default; `bypassPermissions` is
+  refused; the runner's mandatory `.astack/**` and `astack approval` denies
+  always apply.
+
+### Sign-in
+
+- `astack console user set|list|remove|totp`: usernames with scrypt-hashed
+  passwords (N = 2^15, a salt per user) and optional RFC 6238 TOTP (key and
+  `otpauth://` URI printed, no QR library).
+- `console.auth: token | password | both` (default `both` once a user
+  exists); the sign-in screen adapts. Lockout per address and per username
+  (5 failures → 15 minutes), uniform errors, every attempt audited without the
+  secret, optional idle timeout (`console.session_idle`), "Sign out
+  everywhere" in Settings. Token sign-in and one-time tickets keep working;
+  a ticket is accepted only from this computer.
+
+### Internet exposure
+
+- `console.remote`: a second listener (loopback, default port 7718) for a
+  tunnel. It answers only its public host name (port 7717 keeps refusing it),
+  trusts `CF-Connecting-IP`, accepts username + password + mandatory TOTP only
+  (no token, no ticket), refuses to start until a user has TOTP, caps sessions
+  at 12 hours with `Secure; HttpOnly; SameSite=Strict` `__Host-` cookies,
+  checks `Origin: https://<hostname>` and CSRF, asks for a fresh TOTP code
+  before irreversible approvals, can verify Cloudflare Access assertions
+  (RS256 JWT against the team's certs, `aud`/`iss`/`exp`), and keeps
+  conversations closed (`remote.chat: false`).
+- SSE keep-alives every 20 seconds; `astack console status` and the daemon
+  service report both listeners.
+
+### Compatibility
+
+Additive: token sign-in, `console open`, every existing endpoint and test
+behave as before. New state lives in `.astack/console/` (`users.json`,
+`chats/ledger.jsonl`). New suite: `tests/verify-console-chats.mjs`.
+
 ## 3.0.0 — Always on, in your pocket, and Aramin
 
 AStack 3.0 adds an unattended runner and one background daemon, a two-way owner

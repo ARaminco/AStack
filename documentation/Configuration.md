@@ -289,6 +289,37 @@ console:
   poll_interval: 3s
   session_days: 30
   locale: fa                    # fa | en
+  auth: null                    # 3.1: token | password | both (null: both once a user exists)
+  session_idle: null            # 3.1: e.g. 12h; null = no idle timeout
+  lockout:                      # 3.1: per address and per username
+    attempts: 5
+    minutes: 15
+  remote:                       # 3.1: the internet listener (off unless enabled)
+    enabled: false
+    host: 127.0.0.1             # loopback only
+    port: 7718
+    hostname: null              # public host name the tunnel serves
+    session_hours: 12           # at most 12
+    idle_minutes: 60
+    chat: false                 # conversations over the internet
+    access:                     # optional Cloudflare Access verification
+      team: null
+      aud: null
+  chats:                        # 3.1: conversations with Claude Code
+    enabled: true
+    projects: []                # [] = this workspace
+    permission_mode: default    # default | acceptEdits | plan | dontAsk
+    allowed_tools: Read,Grep,Glob
+    disallowed_tools: []
+    tools: null
+    approval_timeout_minutes: 10
+    daily_budget_usd: null
+    max_parallel: 2
+    model: null
+    strict_mcp: true
+    partial_messages: true
+    command: null
+    claude_home: null
 
 board:
   max_parallel: 2

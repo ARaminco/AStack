@@ -69,7 +69,7 @@
       "sandbox": "Docker-isolated command execution: status, images, require, exec -- <command>.",
       "a2a": "Agent-to-Agent (A2A) endpoint: serve, card, status.",
       "gateway": "Owner messaging gateway: commands from WhatsApp and Telegram, reports and approvals on the phone, local Persian voice notes.",
-      "console": "Aramin console: installable app for approvals, missions, memory and monitoring (open | start | token | status)."
+      "console": "Aramin console: installable app for conversations, approvals, missions and monitoring (open | start | token | status | user)."
     },
     "project": {
       "usage": "Project commands: init, demo, list, status, board, backlog, add, move, start, done, block, unblock, charter, milestone, sprint, risk, gate, advance, baseline, critical-path, forecast, next, digest, decision, scaffold, raci, report, templates",
@@ -596,8 +596,28 @@
       "alreadyRunning": "Aramin is already running: {url} (pid {pid})",
       "portBusy": "Port {port} is in use; pass another one with --port.",
       "openFailed": "Could not open a browser; open this address yourself: {url}",
-      "unknownAction": "Unknown console action: {action} (start | token | status)",
-      "opened": "Aramin opened in your browser, signed in automatically: {url} (the one-time ticket expires after a minute)."
+      "unknownAction": "Unknown console action: {action} (open | start | token | status | user)",
+      "opened": "Aramin opened in your browser, signed in automatically: {url} (the one-time ticket expires after a minute).",
+      "remoteRunning": "Internet listener running: {url} ← {publicUrl} (conversations: {chat}, Cloudflare Access: {access})",
+      "remoteStopped": "Internet listener not running: {reason}",
+      "remoteStarted": "Internet listener started: {url} (public address: {publicUrl})",
+      "usersState": "Console users: {count} — with two-factor sign-in: {totp}",
+      "userNone": "No console user yet. Create one: astack console user set <name>",
+      "userUpdated": "last changed: {at}",
+      "userUsage": "Usage: astack console user set|remove|totp <name> [--disable] or astack console user list",
+      "passwordPrompt": "Password (at least 10 characters, not shown): ",
+      "passwordAgain": "Same password again: ",
+      "passwordMismatch": "The two passwords differ; nothing was saved.",
+      "userCreated": "User \"{username}\" created. Only an scrypt hash of the password was kept.",
+      "userUpdatedNow": "Password of \"{username}\" changed.",
+      "totpHint": "For more safety, especially when Aramin is reachable from the internet, turn on two-factor sign-in: astack console user totp {username}",
+      "userRemoved": "User \"{username}\" removed.",
+      "userUnknown": "No user named \"{username}\".",
+      "totpDisabled": "Two-factor sign-in turned off for \"{username}\".",
+      "totpEnabled": "Two-factor sign-in is on for \"{username}\". Add this key to an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password, …):",
+      "totpSecret": "Key: {secret}",
+      "totpUri": "or give the app this URI:",
+      "totpWarning": "Do not store or send this key anywhere; from now on every sign-in also asks for the app's 6-digit code."
     }
   },
   "delivery": {
@@ -820,7 +840,8 @@
       "groupMain": "Main",
       "groupOps": "Operations",
       "groupKnowledge": "Knowledge",
-      "groupSystem": "System"
+      "groupSystem": "System",
+      "chats": "Conversations"
     },
     "login": {
       "title": "Sign in to Aramin",
@@ -832,7 +853,18 @@
       "invalid": "That token is not right.",
       "tooMany": "Too many attempts; wait a minute.",
       "ticketFailed": "The sign-in link expired; enter the token instead.",
-      "secure": "The connection stays on this machine; the session lives in a secure cookie."
+      "secure": "The connection stays on this machine; the session lives in a secure cookie.",
+      "subtitleRemote": "Signing in over the internet — username, password and authenticator code",
+      "withPassword": "Username",
+      "withToken": "Token",
+      "usernameLabel": "Username",
+      "passwordLabel": "Password",
+      "codeLabel": "6-digit authenticator code",
+      "codeOptional": "(if enabled)",
+      "userHint": "Create a user in a terminal:",
+      "secureRemote": "The connection is encrypted; signing in always needs the authenticator code.",
+      "invalidPassword": "Username, password or code is not correct.",
+      "methodRefused": "This sign-in method is not available here."
     },
     "home": {
       "morning": "Good morning",
@@ -911,7 +943,9 @@
       "decidedBy": "Decided by",
       "decided": "Decided",
       "open": "Open",
-      "expiresIn": "Expires {time}"
+      "expiresIn": "Expires {time}",
+      "stepUp": "A fresh authenticator code (approving over the internet)",
+      "stepUpFailed": "The authenticator code is wrong or was already used; enter the next one."
     },
     "states": {
       "pending": "Pending",
@@ -1130,7 +1164,16 @@
       "installed": "Aramin is running as an app",
       "installManual": "Use the browser menu: “Install app” or “Add to Home Screen”.",
       "logout": "Sign out on this device",
-      "about": "Aramin, the AStack console — zero dependencies, on this machine."
+      "about": "Aramin, the AStack console — zero dependencies, on this machine.",
+      "account": "Account and sessions",
+      "signedInAs": "Signed in as {user}",
+      "signedInToken": "Signed in with the owner token",
+      "viaInternet": "over the internet",
+      "logoutAllHint": "Lost a phone or not sure who is signed in? Sign every device out at once.",
+      "logoutAll": "Sign out everywhere",
+      "logoutAllTitle": "Sign out every device?",
+      "logoutAllBody": "Every session, including this one, ends and you sign in again.",
+      "loggedOutAll": "{count} session(s) ended."
     },
     "palette": {
       "placeholder": "Search missions, approvals, memory, skills and commands…",
@@ -1166,7 +1209,60 @@
       "board": "Multi-agent work",
       "gateway": "Owner messaging",
       "system": "Versions and health",
-      "settings": "Theme, language, alerts"
+      "settings": "Theme, language, alerts",
+      "chats": "Talk to Claude Code",
+      "memory": "Recall and the knowledge graph"
+    },
+    "chats": {
+      "title": "Conversations",
+      "subtitle": "Claude Code sessions of your projects",
+      "newTitle": "New conversation",
+      "search": "Search conversation titles…",
+      "new": "New conversation",
+      "untitled": "Untitled conversation",
+      "messages": "{count} messages",
+      "subagents": "{count} sub-agents",
+      "answering": "answering",
+      "today": "Today:",
+      "turns": "{count} turns",
+      "budget": "daily cap",
+      "emptyTitle": "No conversations yet",
+      "emptyBody": "Claude Code sessions of these projects show up here; you can also start a new one.",
+      "pickProject": "Which project?",
+      "sessionsCount": "{count} conversations",
+      "projectMissing": "project folder not found",
+      "unavailableTitle": "Conversations are not available here",
+      "unavailableRemote": "Conversations with Claude Code are closed over the internet; they are available on this computer (or your own private network) only.",
+      "unavailableOff": "Conversations are turned off (console.chats.enabled).",
+      "copy": "Copy",
+      "copied": "Code copied",
+      "toolInput": "Input",
+      "toolResult": "Result",
+      "toolError": "Error",
+      "images": "{count} image(s)",
+      "compacted": "The conversation was compacted here",
+      "permTitle": "Claude asks to use {tool}",
+      "permDetails": "Request details",
+      "allow": "Allow",
+      "placeholder": "Message Claude…",
+      "placeholderNew": "What should be done?",
+      "send": "Send",
+      "stop": "Stop",
+      "hint": "Enter to send, Shift+Enter for a new line",
+      "newHello": "A new Claude Code conversation",
+      "newBody": "It starts in \"{project}\"; the reply streams here live.",
+      "permNote": "Any tool that changes something or runs a command asks you first.",
+      "viewingAgent": "A sub-agent's conversation (read only)",
+      "backToMain": "Back to the main conversation",
+      "earlier": "Earlier messages",
+      "start": "Start of the conversation",
+      "starting": "Starting Claude Code…",
+      "working": "Claude is working…",
+      "usingTool": "Using {tool}…",
+      "waitingYou": "Waiting for your permission",
+      "stopping": "Stopping…",
+      "failed": "The reply did not finish",
+      "sendFailed": "The message was not sent"
     }
   }
 }

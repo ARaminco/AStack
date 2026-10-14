@@ -685,3 +685,55 @@ export function createEngines({ config = {}, policy = null, fetch = undefined, s
     mock: new MockEngine({ config: config.mock ?? {} })
   };
 }
+
+/**
+ * Start a resolved command for a streaming caller (the console's
+ * conversations): the same rules as `runProcess` — no shell unless the
+ * command could not be unwrapped, and then no argument with a shell
+ * metacharacter — but the child is returned so its output can be read live.
+ * The prompt is written to stdin and stdin is closed; nothing reaches argv.
+ * On POSIX the child leads its own process group so `killProcessTree` can
+ * end everything it started.
+ */
+export function startProcess(resolved, args, { input = "", cwd, env = process.env } = {}) {
+  if (resolved.shell) {
+    for (const argument of args) {
+      if (/["%^&|<>!\r\n]/.test(String(argument))) {
+        throw new Error("refusing to pass an unsafe argument through the shell: " + String(argument).slice(0, 40));
+      }
+    }
+  }
+  const finalArgs = [...resolved.prefix, ...args].map((argument) => (resolved.shell && /\s/.test(argument) ? "\"" + argument + "\"" : argument));
+  const child = spawn(resolved.shell ? "\"" + resolved.file + "\"" : resolved.file, finalArgs, {
+    cwd,
+    env,
+    shell: resolved.shell,
+    windowsHide: true,
+    detached: process.platform !== "win32",
+    stdio: ["pipe", "pipe", "pipe"]
+  });
+  child.stdin.on("error", () => {});
+  child.stdin.end(input, "utf8");
+  return child;
+}
+
+/** End a child and everything it started (Windows: taskkill /T; POSIX: the process group). */
+export function killProcessTree(child) {
+  if (!child?.pid || child.exitCode !== null) {
+    return false;
+  }
+  try {
+    if (process.platform === "win32") {
+      spawnSync("taskkill", ["/pid", String(child.pid), "/T", "/F"], { windowsHide: true, stdio: "ignore", timeout: 10000 });
+    } else {
+      process.kill(-child.pid, "SIGTERM");
+    }
+  } catch {
+    try {
+      child.kill("SIGKILL");
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}

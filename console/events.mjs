@@ -45,6 +45,9 @@ export class ConsoleEvents {
     this.log = log;
     this.clock = clock ?? (() => new Date());
     this.clients = new Set();
+    // Per-client options: `chat: false` keeps conversation events away from
+    // a listener where conversations are not available.
+    this.clientOptions = new WeakMap();
     this.notifications = [];
     this.sequence = 0;
     this.snapshot = null;
@@ -104,8 +107,9 @@ export class ConsoleEvents {
     this.pending.unref?.();
   }
 
-  addClient(response) {
+  addClient(response, options = {}) {
     this.clients.add(response);
+    this.clientOptions.set(response, { chat: options.chat !== false });
     response.on("close", () => this.clients.delete(response));
     this.write(response, "hello", { at: this.clock().toISOString(), counts: this.counts() });
   }
@@ -121,6 +125,9 @@ export class ConsoleEvents {
 
   broadcast(type, data) {
     for (const client of this.clients) {
+      if (type === "chat" && this.clientOptions.get(client)?.chat === false) {
+        continue;
+      }
       this.write(client, type, data);
     }
   }
