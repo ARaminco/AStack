@@ -14,6 +14,8 @@ import { runGraphifyCommand } from "../cli/graphify-cli.mjs";
 import { runSetupCommand } from "../cli/setup-cli.mjs";
 import { runUpdateCommand } from "../cli/update-cli.mjs";
 import { pendingMigrations } from "../upgrade-engine/migrations.mjs";
+import { runConsoleCommand } from "../console/cli.mjs";
+import { readServerRecord } from "../console/server.mjs";
 
 const i18n = createLocalization();
 const runtime = createRuntime();
@@ -23,7 +25,8 @@ const COMMANDS = [
   "context", "memory", "graph", "learn", "skill",
   "mission", "schedule", "signal", "browser",
   "authority", "approval", "audit", "secret", "tool", "runtime", "interop", "mcp", "graphify",
-  "domain", "team", "agent", "lead", "project", "workflow", "provider", "plugin", "knowledge", "backup"
+  "domain", "team", "agent", "lead", "project", "workflow", "provider", "plugin", "knowledge", "backup",
+  "console"
 ];
 
 function printHelp() {
@@ -83,6 +86,8 @@ function doctor({ verbose = false } = {}) {
   console.log("Missions: " + runtime.missions.list().length);
   console.log("Browser: " + runtime.browser.status().driver);
   console.log("Authority default: " + runtime.authority.describe().defaultLevel);
+  const consoleRecord = readServerRecord(runtime.workspaceRoot);
+  console.log("Console (Aramin): " + (consoleRecord?.alive ? consoleRecord.url : "stopped (astack console start)"));
   console.log("Telemetry: disabled");
   // An install that upgraded from an older core ran the previous upgrade command,
   // which had no migration step. Report what is still waiting rather than letting
@@ -242,6 +247,9 @@ async function run() {
       return;
     case "knowledge":
       list(i18n.t("cli.knowledgeList"), runtime.knowledgePackRegistry.list());
+      return;
+    case "console":
+      await runConsoleCommand(context);
       return;
     case "backup":
       console.log(i18n.t("cli.backupCreated", { path: runtime.memory.backup() }));
