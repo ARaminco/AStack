@@ -264,6 +264,13 @@ export class AutomationPolicy {
     return this.save(policy);
   }
 
+  /** Allow private and link-local network targets (a LAN service such as a local gateway). */
+  allowPrivateNetworksPermanently() {
+    const policy = this.load();
+    policy.network.allowPrivateNetworks = true;
+    return this.save(policy);
+  }
+
   allowActionPermanently(action) {
     const policy = this.load();
     policy.actions.allow = [...new Set([...(policy.actions.allow ?? []), String(action)])];

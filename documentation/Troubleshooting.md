@@ -150,10 +150,9 @@ prompt or include its four-character code. Forwarded messages and voice notes ne
 account already decided that request.
 
 **WhatsApp via a local wapi gateway is refused by the network policy**
-Private and loopback addresses are denied for unattended work by default. The error text suggests
-`astack schedule policy allow-private`, which is not a CLI command in 3.0.0; allow private targets
-deliberately by setting `"allowPrivateNetworks": true` under `network` in
-`.astack/security/automation.json`.
+Private and loopback addresses are denied for unattended work by default. Allow private targets
+deliberately with `astack schedule policy allow-private` (it sets `network.allowPrivateNetworks` in
+`.astack/security/automation.json`).
 
 **Cloud API messages fail with Graph error 131047**
 Meta accepts free-form messages only within 24 hours of your last message to the business number.
