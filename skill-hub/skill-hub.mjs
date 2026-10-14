@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { estimateTokens, uniqueTokens } from "../lib/text.mjs";
 import { DEFAULT_TIERS, copySkill, describeSkill, discoverSkills, findLicense } from "./importer.mjs";
@@ -20,6 +20,32 @@ export const DEFAULT_PACK_SETTINGS = {
 };
 
 const STATUS_BY_RISK = { low: "auxiliary", medium: "auxiliary", high: "review", blocked: "blocked" };
+
+/**
+ * Local overrides: `skill-packs/<pack>/OVERRIDES.json` is written by the
+ * owner, not by the importer, and survives a re-import (the importer carries
+ * it into the new copy of the pack). An override can only block a skill:
+ *
+ *   { "skills": { "<skill-id>": { "status": "blocked", "reason": "..." } } }
+ *
+ * A blocked skill keeps its files but is never listed for selection, never
+ * found by a search and never offered to an agent.
+ */
+export const OVERRIDES_FILE = "OVERRIDES.json";
+
+export function readOverrides(directory) {
+  const value = readJson(join(directory, OVERRIDES_FILE), null);
+  return value && typeof value === "object" && value.skills && typeof value.skills === "object" ? value : { skills: {} };
+}
+
+/** The override for one skill when it blocks it, otherwise null. */
+export function blockingOverride(overrides, skillId) {
+  const entry = overrides?.skills?.[skillId];
+  if (!entry || typeof entry !== "object") {
+    return null;
+  }
+  return entry.status === "blocked" || entry.risk === "blocked" ? { status: "blocked", reason: String(entry.reason ?? "blocked by a local override") } : null;
+}
 
 function safeId(value) {
   return String(value ?? "")
@@ -138,12 +164,14 @@ export class SkillHub {
         }
         seen.add(entry.name);
         const catalog = readJson(join(directory, entry.name, "catalog.json"), { skills: [] });
+        const overrides = readOverrides(join(directory, entry.name));
         const byRisk = {};
         for (const level of RISK_LEVELS) {
           byRisk[level] = 0;
         }
         for (const skill of catalog.skills ?? []) {
-          byRisk[skill.risk] = (byRisk[skill.risk] ?? 0) + 1;
+          const risk = blockingOverride(overrides, skill.id) ? "blocked" : skill.risk;
+          byRisk[risk] = (byRisk[risk] ?? 0) + 1;
         }
         packs.push({
           name: entry.name,
@@ -153,6 +181,7 @@ export class SkillHub {
           license: catalog.license ?? null,
           importedAt: catalog.importedAt ?? null,
           byRisk,
+          overrides: Object.keys(overrides.skills ?? {}).length,
           excluded: (catalog.excluded ?? []).length
         });
       }
@@ -180,7 +209,8 @@ export class SkillHub {
       try {
         return readdirSync(directory).map((name) => {
           const path = join(directory, name, "catalog.json");
-          return existsSync(path) ? name + ":" + statSync(path).mtimeMs : "";
+          const overrides = join(directory, name, OVERRIDES_FILE);
+          return existsSync(path) ? name + ":" + statSync(path).mtimeMs + (existsSync(overrides) ? "+" + statSync(overrides).mtimeMs : "") : "";
         }).join(",");
       } catch {
         return "";
@@ -199,11 +229,14 @@ export class SkillHub {
         continue;
       }
       const catalog = readJson(join(summary.directory, "catalog.json"), { skills: [] });
+      const overrides = readOverrides(summary.directory);
       const relativeBase = summary.directory.startsWith(this.workspaceRoot) ? summary.directory.slice(this.workspaceRoot.length + 1) : join("skill-packs", summary.name);
       for (const skill of catalog.skills ?? []) {
         const id = summary.name + "/" + skill.id;
-        const status = retired[id] ? "retired" : STATUS_BY_RISK[skill.risk] ?? "review";
-        if (!includeBlocked && skill.risk === "blocked") {
+        const override = blockingOverride(overrides, skill.id);
+        const risk = override ? "blocked" : skill.risk;
+        const status = retired[id] ? "retired" : STATUS_BY_RISK[risk] ?? "review";
+        if (!includeBlocked && risk === "blocked") {
           continue;
         }
         if (!includeRetired && status === "retired") {
@@ -224,7 +257,8 @@ export class SkillHub {
           category: skill.category ?? null,
           tier: skill.tier ?? null,
           compat: skill.compat ?? "portable",
-          risk: skill.risk,
+          risk,
+          ...(override ? { override, scannedRisk: skill.risk } : {}),
           findings: skill.findings ?? 0,
           hasScripts: Boolean(skill.hasScripts),
           requiresReview: Boolean(skill.requiresReview),
@@ -412,13 +446,19 @@ export class SkillHub {
     if (dryRun) {
       return report;
     }
+    const destination = join(this.packsDirectory, pack);
+    // The owner's local overrides survive a re-import.
+    const previousOverrides = [join(destination, OVERRIDES_FILE), join(this.shippedDirectory, pack, OVERRIDES_FILE)].find((path) => existsSync(path));
+    if (previousOverrides) {
+      copyFileSync(previousOverrides, join(staging, OVERRIDES_FILE));
+    }
+    const overrides = readOverrides(staging);
     writeAtomic(join(staging, "catalog.json"), JSON.stringify(catalog, null, 2) + "\n");
-    writeAtomic(join(staging, "PACK.md"), renderPackDocument(catalog));
-    writeAtomic(join(staging, "SCAN.md"), renderScanReport(pack, staging, catalog));
+    writeAtomic(join(staging, "PACK.md"), renderPackDocument(catalog, overrides));
+    writeAtomic(join(staging, "SCAN.md"), renderScanReport(pack, staging, catalog, null, overrides));
     if (license) {
       writeAtomic(join(staging, "LICENSE"), renderLicense(catalog, license));
     }
-    const destination = join(this.packsDirectory, pack);
     if (existsSync(destination)) {
       this.trash(destination, pack);
     }
@@ -465,7 +505,7 @@ export class SkillHub {
     catalog.counts = summarize(catalog.skills ?? []);
     catalog.scannedAt = this.now();
     writeAtomic(join(directory, "catalog.json"), JSON.stringify(catalog, null, 2) + "\n");
-    writeAtomic(join(directory, "SCAN.md"), renderScanReport(pack, directory, catalog, results));
+    writeAtomic(join(directory, "SCAN.md"), renderScanReport(pack, directory, catalog, results, readOverrides(directory)));
     this.memo = null;
     return { pack, directory, counts: catalog.counts, results };
   }
@@ -550,7 +590,23 @@ function escapeCell(value) {
   return String(value ?? "").replace(/\|/g, "\\|").replace(/`/g, "'");
 }
 
-export function renderPackDocument(catalog) {
+function overrideLines(overrides) {
+  const blocked = Object.entries(overrides?.skills ?? {}).filter(([id]) => blockingOverride(overrides, id));
+  if (!blocked.length) {
+    return [];
+  }
+  return [
+    "## Local overrides",
+    "",
+    "`" + OVERRIDES_FILE + "` (written by the owner, kept across re-imports) blocks these skills. Their files stay in the folder",
+    "but they are never listed, searched or offered to an agent:",
+    "",
+    ...blocked.map(([id, entry]) => "- " + id + ": " + String(entry.reason ?? "blocked by a local override")),
+    ""
+  ];
+}
+
+export function renderPackDocument(catalog, overrides = null) {
   const counts = catalog.counts;
   const source = catalog.source;
   const lines = [
@@ -579,6 +635,7 @@ export function renderPackDocument(catalog) {
     "Files are copied unchanged; only `catalog.json`, `PACK.md`, `SCAN.md` and the attribution header of",
     "`LICENSE` are generated by AStack.",
     "",
+    ...overrideLines(overrides),
     "## Categories",
     "",
     table([["Category", "Skills"], ["---", "---"], ...Object.entries(counts.byCategory).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([category, count]) => [escapeCell(category), String(count)])]),
@@ -601,7 +658,7 @@ export function renderPackDocument(catalog) {
   return lines.join("\n");
 }
 
-export function renderScanReport(pack, directory, catalog, results = null) {
+export function renderScanReport(pack, directory, catalog, results = null, overrides = null) {
   const scans = results ?? (catalog.skills ?? []).map((skill) => ({ id: skill.id, ...scanSkill(join(directory, skill.id)) }));
   const counts = catalog.counts;
   const lines = [
@@ -649,6 +706,7 @@ export function renderScanReport(pack, directory, catalog, results = null) {
   }
   const review = scans.filter((scan) => scan.risk === "high" || scan.risk === "blocked").map((scan) => scan.id + " (" + scan.risk + ")");
   lines.push("## Skills that need review before use", "", review.length ? review.map((entry) => "- " + entry).join("\n") : "None.", "");
+  lines.push(...overrideLines(overrides));
   return lines.join("\n");
 }
 
@@ -659,7 +717,7 @@ export function renderLicense(catalog, license) {
     "Commit: " + (catalog.source.commit ?? "unknown"),
     "Imported: " + catalog.importedAt.slice(0, 10),
     "The upstream licence (" + (license.spdx ?? "see below") + ") is reproduced verbatim below and applies to every file in this folder",
-    "except catalog.json, PACK.md and SCAN.md, which AStack generated.",
+    "except catalog.json, PACK.md and SCAN.md, which AStack generated, and OVERRIDES.json, which the owner wrote.",
     "",
     "----------------------------------------------------------------------",
     "",

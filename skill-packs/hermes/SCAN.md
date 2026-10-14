@@ -65,3 +65,11 @@ Skills with scripts: 61. Every one of them is marked `requiresReview`; scripts a
 - qmd (high)
 - godmode (high)
 - web-pentest (high)
+
+## Local overrides
+
+`OVERRIDES.json` (written by the AStack maintainers, kept across re-imports) blocks these skills. Their files stay in the folder
+but they are never listed, searched or offered to an agent:
+
+- godmode: LLM jailbreak toolkit (GODMODE / Parseltongue): its purpose is to bypass model safety rules. Blocked by the AStack 3.0 security review.
+- obliteratus: Removes refusal behaviour from model weights (abliteration). Blocked by the AStack 3.0 security review.
