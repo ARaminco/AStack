@@ -76,6 +76,10 @@ function doctor({ verbose = false } = {}) {
   console.log("Agents: " + runtime.agents.list().length);
   console.log("Memory facets: " + runtime.memory.facetNames().length);
   console.log("Skills: " + runtime.skills.stats().skills);
+  if (runtime.skillHub) {
+    const hub = runtime.skillHub.status();
+    console.log("Skill packs: " + hub.packs + " (" + hub.skills + " skills, " + (hub.enabled ? hub.selectable + " selectable" : "disabled") + ")");
+  }
   console.log("Tools: " + runtime.tools.stats().tools);
   console.log("Runtimes: " + runtime.runtimes.list().map((entry) => entry.id).join(", "));
   console.log("Jobs: " + runtime.scheduler.list().length);

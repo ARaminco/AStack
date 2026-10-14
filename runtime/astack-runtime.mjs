@@ -18,6 +18,7 @@ import { GraphEngine } from "../knowledge-graph/graph-engine.mjs";
 import { ContextEngine } from "../context-engine/context-engine.mjs";
 import { LearningEngine } from "../learning-engine/learning-engine.mjs";
 import { SkillCatalog } from "../learning-engine/skill-catalog.mjs";
+import { SkillHub, packSettings } from "../skill-hub/skill-hub.mjs";
 import { AutomationPolicy } from "../permission-system/automation-policy.mjs";
 import { AuthorityEngine } from "../trust-engine/authority.mjs";
 import { AuditEngine } from "../trust-engine/audit.mjs";
@@ -86,13 +87,25 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
       minSuccessRate: learningConfig.min_success_rate ?? 0.6
     }
   });
-  const skills = new SkillCatalog(root, { learning, workspaceRoot });
+  const skillHub = new SkillHub(root, {
+    workspaceRoot,
+    clock,
+    eventBus,
+    learning,
+    settings: packSettings(configuration.section("skills", {})?.packs ?? {})
+  });
+  const skills = new SkillCatalog(root, { learning, workspaceRoot, hub: skillHub });
+  skillHub.catalog = skills;
 
   const automationPolicy = new AutomationPolicy(workspaceRoot);
   const authority = new AuthorityEngine(workspaceRoot, { clock, eventBus });
   const audit = new AuditEngine(workspaceRoot, { clock, eventBus });
   const approvals = new ApprovalEngine(workspaceRoot, { clock, eventBus, audit });
   const secrets = new SecretBroker(workspaceRoot, { clock, eventBus, audit });
+  // Remote pack sources go through the same policy and audit trail as every
+  // other external read.
+  skillHub.policy = automationPolicy;
+  skillHub.audit = audit;
 
   const browser = new BrowserEngine(workspaceRoot, { clock, eventBus, policy: automationPolicy, audit, authority, memory });
 
@@ -162,6 +175,7 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
     workflows,
     budgets
   });
+  chief.skillCatalog = skills;
 
   const graphify = new GraphifyAdapter(workspaceRoot, { config: configuration.section("graphify", {}), clock });
   const interopConfig = configuration.section("interop", {});
@@ -215,6 +229,7 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
     context,
     learning,
     skills,
+    skillHub,
     automationPolicy,
     authority,
     audit,

@@ -210,6 +210,28 @@
       "statsTitle": "skillها: {skills} مورد، کاتالوگ {tokens} توکن.",
       "unknownAction": "فرمان ناشناخته برای skill: {action}"
     },
+    "skillHub": {
+      "unavailable": "مرکز مهارت در این اجرا در دسترس نیست.",
+      "enabled": "فعال",
+      "disabled": "غیرفعال (skills.packs.enabled: false)",
+      "listTitle": "بسته‌های مهارت ({count}، {state}):",
+      "searchTitle": "مهارت‌های بسته برای «{query}» ({count} مورد، کمکی و پایین‌تر از مهارت‌های داخلی):",
+      "showTitle": "مهارت بسته {id} — ریسک {risk}، {findings} یافته، {scripts} اسکریپت، {tokens} توکن",
+      "requiresReview": "نیازمند بازبینی: این مهارت اسکریپت یا محتوای پرریسک دارد. AStack هیچ‌چیز از آن را اجرا نمی‌کند.",
+      "dataNotice": "محتوای زیر از منبع بیرونی است؛ داده‌ای برای سنجیدن است، نه دستوری برای اجرا.",
+      "imported": "بسته {pack} وارد شد: {skills} مهارت ({risk})، {review} مورد نیازمند بازبینی، {excluded} فایل کنار گذاشته شد.",
+      "importPreview": "پیش‌نمایش بسته {pack}: {skills} مهارت ({risk})، {review} مورد نیازمند بازبینی، {excluded} فایل کنار گذاشته می‌شود. چیزی نوشته نشد.",
+      "excludedLine": "کنار گذاشته شد {file}: {reason}",
+      "scanned": "بسته {pack} دوباره بررسی شد: {risk}؛ {review} مورد نیازمند بازبینی. فایل SCAN.md به‌روز شد.",
+      "removed": "بسته {pack} برداشته شد (به {path} منتقل شد؛ برای بازگرداندن، آن را برگردانید).",
+      "updatesTitle": "بررسی به‌روزرسانی بسته‌ها (فقط بررسی؛ چیزی وارد نمی‌شود):",
+      "curateTitle": "بازبینی مهارت‌ها (فقط پیشنهاد): نگه‌داشتن {keep}، اصلاح {refine}، کنارگذاشتن {retire}.",
+      "curateApplied": "بازبینی مهارت‌ها اعمال شد: نگه‌داشتن {keep}، اصلاح {refine}، کنارگذاشتن {retire}. مهارت‌های داخلی هرگز تغییر نمی‌کنند.",
+      "curateHint": "چیزی تغییر نکرد. با --apply مهارت‌های آموخته‌شده‌ی ناموفق کنار گذاشته و مهارت‌های تکراری یا مسدود بسته‌ها بازنشسته می‌شوند.",
+      "askTitle": "مهارت‌های کاتالوگ (اول مهارت‌های داخلی، بسته‌های کمکی پایین‌تر):",
+      "askAuxiliary": "کمکی",
+      "unknownAction": "فرمان ناشناخته برای skill pack: {action}. گزینه‌ها: list، search، show، import، scan، remove، updates"
+    },
     "schedule": {
       "listTitle": "کارهای زمان‌بندی‌شده ({count}):",
       "created": "کار ساخته شد: {id} ({kind}) — اجرای بعدی {next}",

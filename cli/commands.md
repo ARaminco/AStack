@@ -19,3 +19,5 @@ AStack Enterprise CLI commands are implemented in `bin/astack.mjs` (with handler
 | `astack memory` | List memory scopes |
 | `astack knowledge` | List knowledge packs |
 | `astack backup` | Back up memory scopes |
+| `astack skill pack <list\|search\|show\|import\|scan\|remove\|updates>` | Auxiliary third-party skill packs (see `documentation/Skill-Hub.md`) |
+| `astack skill curate [--apply]` | Keep / refine / retire report over built-in, learned and pack skills |
