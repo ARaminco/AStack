@@ -1,5 +1,5 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -26,6 +26,9 @@ export class ConsoleAuth {
     // Optional idle timeout (console.session_idle); null keeps sessions alive until they expire.
     this.idleMs = Number(idleMs) > 0 ? Number(idleMs) : null;
     this.sessions = null;
+    // The sessions file as this process last read or wrote it: another
+    // process (`astack console user …`, `console token --rotate`) may change it.
+    this.sessionsStamp = null;
     this.tickets = new Map();
     this.failures = new Map();
   }
@@ -148,15 +151,27 @@ export class ConsoleAuth {
     this.failures.set(address, entry);
   }
 
+  fileStamp() {
+    try {
+      const stat = statSync(this.sessionsPath);
+      return stat.mtimeMs + ":" + stat.size;
+    } catch {
+      return "missing";
+    }
+  }
+
+  /** The sessions, reread when another process changed the file. */
   loadSessions() {
-    if (this.sessions) {
+    const stamp = this.fileStamp();
+    if (this.sessions && stamp === this.sessionsStamp) {
       return this.sessions;
     }
     try {
-      this.sessions = existsSync(this.sessionsPath) ? JSON.parse(readFileSync(this.sessionsPath, "utf8")) : {};
+      this.sessions = stamp !== "missing" ? JSON.parse(readFileSync(this.sessionsPath, "utf8")) : {};
     } catch {
       this.sessions = {};
     }
+    this.sessionsStamp = stamp;
     return this.sessions;
   }
 
@@ -166,14 +181,17 @@ export class ConsoleAuth {
     const live = Object.fromEntries(Object.entries(this.sessions ?? {}).filter(([, session]) => session.expiresAt > now));
     this.sessions = live;
     atomicWrite(this.sessionsPath, JSON.stringify(live, null, 2) + "\n");
+    this.sessionsStamp = this.fileStamp();
   }
 
   /**
    * `channel` is the listener the session belongs to ("local" or "remote"):
    * a session is only ever valid on the listener that created it. `idleMs`
    * ends a session that has not been used for that long; `maxAgeMs` caps it.
+   * `credentialVersion` binds a password session to the user's credentials
+   * at sign-in; the server refuses the session once they change.
    */
-  createSession({ userAgent = null, user = null, channel = "local", method = "token", maxAgeMs = null, idleMs = null } = {}) {
+  createSession({ userAgent = null, user = null, channel = "local", method = "token", maxAgeMs = null, idleMs = null, credentialVersion = null } = {}) {
     const sessions = this.loadSessions();
     const id = randomBytes(32).toString("base64url");
     const csrf = randomBytes(24).toString("base64url");
@@ -187,6 +205,7 @@ export class ConsoleAuth {
       expiresAt: now + lifetime,
       device: userAgent ? String(userAgent).slice(0, 120) : null,
       ...(user ? { user } : {}),
+      ...(user && credentialVersion ? { credentialVersion } : {}),
       ...(channel !== "local" ? { channel } : {}),
       ...(method !== "token" ? { method } : {}),
       ...(idle ? { idleMs: idle } : {})
@@ -228,6 +247,23 @@ export class ConsoleAuth {
     this.sessions = {};
     this.saveSessions();
     return count;
+  }
+
+  /** End every session of one console user. Returns how many ended. */
+  destroyUserSessions(username) {
+    const name = String(username ?? "").trim().toLowerCase();
+    const sessions = this.loadSessions();
+    let ended = 0;
+    for (const [key, session] of Object.entries(sessions)) {
+      if (session.user && session.user === name) {
+        delete sessions[key];
+        ended += 1;
+      }
+    }
+    if (ended) {
+      this.saveSessions();
+    }
+    return ended;
   }
 
   destroySession(id) {
