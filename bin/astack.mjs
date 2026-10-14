@@ -278,6 +278,7 @@ async function run() {
       return;
     case "search":
       await runSearchCommand(context);
+      return;
     case "gateway":
       await runGatewayCommand(context);
       return;
@@ -292,6 +293,7 @@ async function run() {
       return;
     case "daemon":
       await runDaemonCommand(context);
+      return;
     case "board":
       await runBoardCommand(context);
       return;
