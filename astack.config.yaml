@@ -496,3 +496,38 @@ secrets:
 #     paths:                   # memory.import_paths are always added
 #       - documentation
 #     exclude: []
+
+# --- AStack 3.0 (P6) — all optional; the defaults below apply when absent.
+# board:                          # multi-agent kanban (board-engine)
+#   max_parallel: 2               # cards run at once per board
+#   max_retries: 2                # retries after the first failed attempt
+#   backoff_ms: 2000              # first retry delay; doubles each retry
+#   backoff_max_ms: 300000
+#   max_review_rounds: 2          # reviewer rejections before the card fails
+#   tick_ms: 15000                # daemon service tick
+#   ceiling: null                 # authority ceiling passed to the runner (null: runner default)
+#   engine: auto
+# sandbox:                        # Docker-isolated execution (sandbox-engine)
+#   image: node:22-alpine
+#   network: none                 # none | bridge
+#   memory: 512m
+#   cpus: "1"
+#   pids_limit: 128
+#   timeout_ms: 120000
+#   user: "65534:65534"
+#   allow_inline_eval_when_isolated: true
+#   allow_mounts_outside_workspace: false
+#   docker: docker
+#   # Routing shell commands into the sandbox is an automation-policy setting:
+#   # astack sandbox require <pattern>  (sandbox.required_for in .astack/security/automation.json)
+# vault:                          # OS keychain backends for credential://… references
+#   # Register a reference with --source vault:windows | vault:macos | vault:linux |
+#   # vault:bitwarden | vault:1password, then: astack secret vault set <ref>
+# a2a:                            # Agent-to-Agent endpoint (interop-engine/a2a-server.mjs)
+#   host: 127.0.0.1               # loopback only unless allow_remote is true
+#   port: 41241
+#   path: /a2a
+#   ceiling: L1                   # capped by authority.default_level, never above L3
+#   allow_remote: false
+#   public_url: null              # URL advertised in the agent card
+#   # Bearer token: credential://a2a/token

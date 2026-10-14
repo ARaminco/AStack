@@ -64,7 +64,10 @@
       "run": "اجرای یک هدف یا مأموریت بدون حضور شما، همین حالا: Claude Code بی‌رابط، codex exec یا مدل محلی (‎--engine، ‎--dry-run، ‎--mission، ‎--queue).",
       "runner": "اجراهای خودکار: فهرست، نمایش، ادامه پس از تأیید، وضعیت، اجرای صف، موتورها.",
       "daemon": "یک پردازش پس‌زمینه برای اجراکننده، زمان‌بند و هوک‌ها: شروع، توقف، وضعیت، گزارش، نصب سرویس.",
-      "search": "یادآوری هوشمند در حافظه، گفت‌وگوهای قبلی، گزارش‌ها، مهارت‌ها و مأموریت‌ها: search \"<پرسش>\" | reindex | status | owner-profile."
+      "search": "یادآوری هوشمند در حافظه، گفت‌وگوهای قبلی، گزارش‌ها، مهارت‌ها و مأموریت‌ها: search \"<پرسش>\" | reindex | status | owner-profile.",
+      "board": "تابلوی چندعاملی: کارت‌ها با تلاش دوباره، مسیر بازبین و هدایت زنده: create، list، show، add، run، steer، retry، cancel.",
+      "sandbox": "اجرای فرمان در محیط ایزوله داکر: status، images، require، exec -- <فرمان>.",
+      "a2a": "درگاه گفت‌وگوی عامل با عامل (A2A): serve، card، status."
     },
     "project": {
       "usage": "فرمان‌های پروژه: init، demo، list، status، board، backlog، add، move، start، done، block، unblock، charter، milestone، sprint، risk، gate، advance، baseline، critical-path، forecast، next، digest، decision، scaffold، raci، report، templates",
@@ -470,6 +473,53 @@
       "alsoFound": "در گفت‌وگوهای قبلی هم پیدا شد ({count}):",
       "profileSaved": "نمایهٔ مالک ذخیره شد: {path} (حدود {tokens} توکن)",
       "summaryUnavailable": "خلاصهٔ مدل در دسترس نیست: {reason}"
+    },
+    "board": {
+      "created": "تابلو ساخته شد: {id}",
+      "listTitle": "تابلوها ({count}):",
+      "showTitle": "تابلوی {id} — {name} ({cards} کارت):",
+      "added": "کارت {id} به تابلوی {board} اضافه شد.",
+      "reviewerAdded": "کارت بازبین {id} اضافه شد؛ کارت فقط پس از تأیید بازبین تمام می‌شود.",
+      "ran": "تابلوی {id}: {started} تلاش کارت شروع شد.",
+      "locked": "تابلوی {id} همین حالا در فرایند دیگری در حال اجراست؛ رد شد.",
+      "steered": "راهنمایی به {id} اضافه شد؛ تلاش بعدی آن را دریافت می‌کند.",
+      "retried": "کارت {id} با سهمیه تلاش تازه دوباره در صف است.",
+      "cancelled": "{kind} {id} لغو شد.",
+      "noRunner": "اجراکننده (runner) نصب نیست: کارت‌های آماده تا نصب آن «مسدود — اجراکننده نصب نیست» می‌مانند.",
+      "unknownAction": "عملیات board ناشناخته: {action} (create | list | show | add | run | steer | retry | cancel)"
+    },
+    "sandbox": {
+      "running": "محیط ایزوله آماده است: داکر {version} در حال اجراست.",
+      "daemonDown": "داکر {version} نصب است ولی سرویس آن اجرا نمی‌شود. Docker Desktop (یا سرویس docker) را روشن کنید و دوباره امتحان کنید.",
+      "notInstalled": "داکر نصب نیست؛ محیط ایزوله در دسترس نیست.",
+      "requiredFor": "فرمان‌هایی که فقط در محیط ایزوله اجرا می‌شوند (سیاست sandbox.required_for): {patterns}",
+      "imagesTitle": "ایمیج‌های محلی ({count}):",
+      "patternRequired": "الگوی فرمان لازم است، مثلاً: astack sandbox require npm",
+      "required": "فرمان‌های منطبق با «{pattern}» از این پس فقط در محیط ایزوله اجرا می‌شوند.",
+      "commandRequired": "فرمان را بعد از -- بدهید، مثلاً: astack sandbox exec -- node -e \"console.log(1+1)\"",
+      "denied": "سیاست خودکارسازی اجازه نداد: {reason}",
+      "failed": "اجرا در محیط ایزوله ناموفق بود (کد خروج {code}) {reason}",
+      "unknownAction": "عملیات sandbox ناشناخته: {action} (status | images | require | exec)"
+    },
+    "vault": {
+      "statusTitle": "گاوصندوق‌های رمز (پیش‌فرض این دستگاه: {backend}):",
+      "references": "مرجع‌های نگه‌داری‌شده در گاوصندوق: {count}",
+      "unknownBackend": "گاوصندوق ناشناخته: {backend}. یکی از این‌ها را بدهید: {backends}",
+      "prompt": "مقدار {reference} (نمایش داده نمی‌شود): ",
+      "stored": "{reference} در {location} نگه‌داری شد. مقدار نه چاپ شد و نه در گزارشی آمد.",
+      "linked": "{reference} از این پس از {source} خوانده می‌شود (فقط‌خواندنی؛ مقدار را در همان مدیر رمز نگه دارید).",
+      "unknownReference": "مرجع اعتبارنامه ناشناخته: {reference}",
+      "testOk": "{reference} از {source} خوانده شد ({length} نویسه).",
+      "testFailed": "{reference} خوانده نشد: {reason}",
+      "removed": "{reference} از گاوصندوق حذف شد.",
+      "unknownAction": "عملیات vault ناشناخته: {action} (status | set | test | remove)"
+    },
+    "a2a": {
+      "statusTitle": "درگاه A2A: {host}:{port}{path} | حالت {mode} | سقف اختیار {ceiling}",
+      "tokenReady": "توکن دسترسی تنظیم شده است ({reference}).",
+      "tokenMissing": "توکن دسترسی تنظیم نشده: پیش از راه‌اندازی، {reference} را ثبت کنید (astack secret register یا astack secret vault set).",
+      "listening": "درگاه A2A روی {url} آماده است (حالت {mode}، سقف اختیار {ceiling}). برای توقف Ctrl+C بزنید.",
+      "unknownAction": "عملیات a2a ناشناخته: {action} (serve | card | status)"
     }
   },
   "delivery": {
