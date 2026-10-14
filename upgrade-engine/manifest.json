@@ -8,6 +8,7 @@
     "cli",
     "config",
     "configuration-engine",
+    "console",
     "context-engine",
     "core",
     "delivery-engine",
