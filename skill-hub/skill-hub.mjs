@@ -12,6 +12,9 @@ export const DEFAULT_PACK_SETTINGS = {
   weight: 0.6,
   runtimePenalty: 0.5,
   reviewPenalty: 0.8,
+  // High-risk (needs review) pack skills are never picked automatically; an
+  // explicit "skill pack search/show" still finds them.
+  autoSelectReview: false,
   updateCheck: false,
   updateCheckHours: 24
 };
@@ -51,6 +54,7 @@ export function packSettings(section = {}) {
     weight: Number.isFinite(Number(value.weight)) && value.weight !== null && value.weight !== "" ? Number(value.weight) : DEFAULT_PACK_SETTINGS.weight,
     runtimePenalty: Number(value.runtime_penalty ?? DEFAULT_PACK_SETTINGS.runtimePenalty),
     reviewPenalty: Number(value.review_penalty ?? DEFAULT_PACK_SETTINGS.reviewPenalty),
+    autoSelectReview: value.auto_select_review === true || value.auto_select_review === "true",
     updateCheck: value.update_check === true || value.update_check === "true",
     updateCheckHours: Number(value.update_check_hours ?? DEFAULT_PACK_SETTINGS.updateCheckHours)
   };
@@ -253,6 +257,7 @@ export class SkillHub {
     ];
     const hit = (token, entry) => entry === token || (token.length >= 4 && entry.length >= 4 && (entry.startsWith(token) || token.startsWith(entry)));
     return this.entries({ pack })
+      .filter((skill) => !(weighted && skill.status === "review" && !this.settings.autoSelectReview))
       .map((skill) => {
         const scored = fields(skill);
         let total = 0;

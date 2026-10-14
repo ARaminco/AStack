@@ -300,6 +300,9 @@ if (hermes) {
   for (const [query, id] of Object.entries(expectations)) {
     assert.ok(shipped.search(query, { pack: "hermes", limit: 5 }).some((hit) => hit.id === id), "hermes search for " + query + " finds " + id);
   }
+  // High-risk skills are never picked automatically, only by an explicit raw search.
+  assert.ok(!shipped.search("godmode", { pack: "hermes", limit: 20 }).some((hit) => hit.id === "hermes/godmode"), "high-risk skill not auto-selected");
+  assert.ok(shipped.search("godmode", { pack: "hermes", limit: 20, weighted: false }).some((hit) => hit.id === "hermes/godmode"), "raw search still finds a high-risk skill");
 }
 
 console.log("AStack skill hub verification passed.");
