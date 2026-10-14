@@ -460,3 +460,39 @@ secrets:
 #     interval: 60s               # default: scheduler.tick_interval
 #   signal-engine:
 #     port: 8787                  # default: signals.server
+
+# Smarter recall (AStack 3.0, P3). Optional: every value below is the default
+# used when the section is absent. Uncomment to change one.
+# search:
+#   enabled: true
+#   storage: .astack/search
+#   backend: auto              # auto (node:sqlite FTS5, JSON fallback) | json
+#   sources:                   # what reindex covers
+#     - memory
+#     - sessions
+#     - reports
+#     - skills
+#     - missions
+#   default_sources:           # what a query searches when --source is absent
+#     - memory
+#     - sessions
+#     - reports
+#     - skills
+#   k: 10
+#   budget: 1200               # tokens for rendered results
+#   hooks: true                # memory/context search add "also found in past sessions"
+#   reindex_every: 15m         # daemon service interval
+#   semantic:
+#     mode: auto               # auto | on | off
+#     url: http://127.0.0.1:11434
+#     model: bge-m3
+#     batch_size: 16
+#     min_similarity: 0.35
+#   sessions:
+#     claude: true             # ~/.claude/projects/<workspace slug>/*.jsonl
+#     codex: true              # ~/.codex/sessions/**, filtered by working directory
+#     project_roots: []        # default: this workspace only
+#   reports:
+#     paths:                   # memory.import_paths are always added
+#       - documentation
+#     exclude: []

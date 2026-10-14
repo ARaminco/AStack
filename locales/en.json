@@ -63,7 +63,8 @@
       "setup": "Install or update AStack and set everything up for Claude Code and Codex: core, migrations, wiring, Graphify, index, global skill.",
       "run": "Run an objective or a mission unattended now: Claude Code headless, codex exec or a local model (--engine, --dry-run, --mission, --queue).",
       "runner": "Unattended runs: list, show, resume after an approval, status, drain the queue, engines.",
-      "daemon": "One background process for the runner, scheduler and webhooks: start, stop, status, logs, install-service."
+      "daemon": "One background process for the runner, scheduler and webhooks: start, stop, status, logs, install-service.",
+      "search": "Smarter recall over memory, past sessions, reports, skills and missions: search \"<query>\" | reindex | status | owner-profile."
     },
     "project": {
       "usage": "Project commands: init, demo, list, status, board, backlog, add, move, start, done, block, unblock, charter, milestone, sprint, risk, gate, advance, baseline, critical-path, forecast, next, digest, decision, scaffold, raci, report, templates",
@@ -453,6 +454,22 @@
       "dryRun": "Dry run: nothing was created or changed.",
       "serviceDone": "Done: {action} {name}",
       "unknownAction": "Unknown daemon action: {action}"
+    },
+    "search": {
+      "usage": "Usage: astack search \"<query>\" [--source memory,sessions,reports,skills,missions] [--k 10] [--semantic on|off|auto] [--json] | reindex | status | owner-profile",
+      "reindexed": "Search index updated in {ms} ms ({backend}).",
+      "sourceLine": "{units} units, {indexed} reindexed, {unchanged} unchanged, {removed} removed, {docs} docs",
+      "embedded": "Semantic layer: {count} new embedding(s) with {model}.",
+      "semanticOff": "Semantic layer not used: {reason}",
+      "fallback": "Note: {reason}",
+      "statusTitle": "Search index ({backend}): {path}",
+      "statusLine": "{docs} docs, {kb} KB, last indexed {at}",
+      "notBuilt": "The search index has not been built yet. Run: astack search reindex",
+      "resultsTitle": "Search \"{query}\": {count} result(s) in {ms} ms ({mode})",
+      "omitted": "{omitted} more result(s) omitted to fit {budget} tokens; raise --budget or --k to see them.",
+      "alsoFound": "Also found in past sessions ({count}):",
+      "profileSaved": "Owner profile saved: {path} (~{tokens} tokens)",
+      "summaryUnavailable": "No model summary: {reason}"
     }
   },
   "delivery": {

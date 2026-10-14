@@ -63,7 +63,8 @@
       "setup": "نصب یا به‌روزرسانی AStack و راه‌اندازی کامل برای Claude Code و Codex: هسته، مهاجرت‌ها، سیم‌کشی، Graphify، ایندکس و مهارت سراسری.",
       "run": "اجرای یک هدف یا مأموریت بدون حضور شما، همین حالا: Claude Code بی‌رابط، codex exec یا مدل محلی (‎--engine، ‎--dry-run، ‎--mission، ‎--queue).",
       "runner": "اجراهای خودکار: فهرست، نمایش، ادامه پس از تأیید، وضعیت، اجرای صف، موتورها.",
-      "daemon": "یک پردازش پس‌زمینه برای اجراکننده، زمان‌بند و هوک‌ها: شروع، توقف، وضعیت، گزارش، نصب سرویس."
+      "daemon": "یک پردازش پس‌زمینه برای اجراکننده، زمان‌بند و هوک‌ها: شروع، توقف، وضعیت، گزارش، نصب سرویس.",
+      "search": "یادآوری هوشمند در حافظه، گفت‌وگوهای قبلی، گزارش‌ها، مهارت‌ها و مأموریت‌ها: search \"<پرسش>\" | reindex | status | owner-profile."
     },
     "project": {
       "usage": "فرمان‌های پروژه: init، demo، list، status، board، backlog، add، move، start، done، block، unblock، charter، milestone، sprint، risk، gate، advance، baseline، critical-path، forecast، next، digest، decision، scaffold، raci، report، templates",
@@ -453,6 +454,22 @@
       "dryRun": "اجرای آزمایشی: چیزی ساخته یا تغییر داده نشد.",
       "serviceDone": "انجام شد: {action} {name}",
       "unknownAction": "دستور ناشناخته برای daemon: {action}"
+    },
+    "search": {
+      "usage": "روش استفاده: astack search \"<پرسش>\" [--source memory,sessions,reports,skills,missions] [--k 10] [--semantic on|off|auto] [--json] | reindex | status | owner-profile",
+      "reindexed": "نمایهٔ جست‌وجو در {ms} میلی‌ثانیه به‌روز شد ({backend}).",
+      "sourceLine": "{units} واحد، {indexed} نمایه‌سازی دوباره، {unchanged} بدون تغییر، {removed} حذف‌شده، {docs} سند",
+      "embedded": "لایهٔ معنایی: {count} بردار تازه با مدل {model} ساخته شد.",
+      "semanticOff": "لایهٔ معنایی استفاده نشد: {reason}",
+      "fallback": "توجه: {reason}",
+      "statusTitle": "نمایهٔ جست‌وجو ({backend}): {path}",
+      "statusLine": "{docs} سند، {kb} کیلوبایت، آخرین نمایه‌سازی {at}",
+      "notBuilt": "نمایهٔ جست‌وجو هنوز ساخته نشده است. اجرا کنید: astack search reindex",
+      "resultsTitle": "جست‌وجوی «{query}»: {count} نتیجه در {ms} میلی‌ثانیه ({mode})",
+      "omitted": "{omitted} نتیجهٔ دیگر برای ماندن در سقف {budget} توکن نشان داده نشد؛ برای دیدنشان --budget یا --k را بیشتر کنید.",
+      "alsoFound": "در گفت‌وگوهای قبلی هم پیدا شد ({count}):",
+      "profileSaved": "نمایهٔ مالک ذخیره شد: {path} (حدود {tokens} توکن)",
+      "summaryUnavailable": "خلاصهٔ مدل در دسترس نیست: {reason}"
     }
   },
   "delivery": {
