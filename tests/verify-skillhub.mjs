@@ -306,8 +306,48 @@ if (hermes) {
     assert.ok(shipped.search(query, { pack: "hermes", limit: 5 }).some((hit) => hit.id === id), "hermes search for " + query + " finds " + id);
   }
   // High-risk skills are never picked automatically, only by an explicit raw search.
-  assert.ok(!shipped.search("godmode", { pack: "hermes", limit: 20 }).some((hit) => hit.id === "hermes/godmode"), "high-risk skill not auto-selected");
-  assert.ok(shipped.search("godmode", { pack: "hermes", limit: 20, weighted: false }).some((hit) => hit.id === "hermes/godmode"), "raw search still finds a high-risk skill");
+  assert.ok(!shipped.search("axolotl fine tuning", { pack: "hermes", limit: 20 }).some((hit) => hit.id === "hermes/axolotl"), "high-risk skill not auto-selected");
+  assert.ok(shipped.search("axolotl fine tuning", { pack: "hermes", limit: 20, weighted: false }).some((hit) => hit.id === "hermes/axolotl"), "raw search still finds a high-risk skill");
+  // godmode and obliteratus are blocked by the pack's local OVERRIDES.json.
+  for (const id of ["hermes/godmode", "hermes/obliteratus"]) {
+    const name = id.split("/")[1];
+    assert.ok(existsSync(join(hermes.directory, name, "SKILL.md")), id + ": files are kept");
+    assert.ok(!shipped.entries().some((skill) => skill.id === id), id + ": never listed for selection");
+    assert.ok(!shipped.search(name, { pack: "hermes", limit: 50 }).some((hit) => hit.id === id), id + ": not found by search");
+    assert.ok(!shipped.search(name, { pack: "hermes", limit: 50, weighted: false }).some((hit) => hit.id === id), id + ": not even by a raw search");
+    const blocked = shipped.entries({ includeBlocked: true }).find((skill) => skill.id === id);
+    assert.equal(blocked.status, "blocked");
+    assert.equal(blocked.risk, "blocked");
+    assert.equal(blocked.scannedRisk, "high", "the scan result itself is kept");
+    assert.match(blocked.override.reason, /security review/);
+  }
+  assert.ok(hermes.byRisk.blocked >= 2, "the pack summary counts the override");
+  assert.match(readFileSync(join(hermes.directory, "PACK.md"), "utf8"), /## Local overrides[\s\S]*godmode/);
+  assert.match(readFileSync(join(hermes.directory, "SCAN.md"), "utf8"), /## Local overrides[\s\S]*obliteratus/);
+  const catalogWithPacks = new SkillCatalog(repoRoot, { learning: new LearningEngine(sandbox("hermes-learning")), workspaceRoot: repoRoot, hub: shipped });
+  shipped.catalog = catalogWithPacks;
+  assert.ok(!catalogWithPacks.catalog({ includePacks: true, budget: 1000000 }).lines.some((line) => /hermes\/(godmode|obliteratus)/.test(line)), "blocked skills are not in the catalog");
+}
+
+// ------------------------------------- local overrides survive a re-import
+{
+  const overrideWs = sandbox("overrides");
+  const overrideHub = new SkillHub(overrideWs, { workspaceRoot: overrideWs, clock: () => new Date("2026-10-14T10:00:00Z") });
+  overrideHub.import(upstream, { pack: "fixture" });
+  const overrideDir = join(overrideWs, "skill-packs", "fixture");
+  assert.ok(overrideHub.entries().some((skill) => skill.id === "fixture/paper-search"));
+  writeFileSync(join(overrideDir, "OVERRIDES.json"), JSON.stringify({ skills: { "paper-search": { status: "blocked", reason: "owner test block" } } }));
+  assert.ok(!overrideHub.entries().some((skill) => skill.id === "fixture/paper-search"), "an override blocks a low-risk skill at once");
+  assert.ok(!overrideHub.search("arxiv papers").some((hit) => hit.id === "fixture/paper-search"));
+  overrideHub.import(upstream, { pack: "fixture" });
+  assert.ok(existsSync(join(overrideDir, "OVERRIDES.json")), "a re-import keeps OVERRIDES.json");
+  assert.ok(!overrideHub.entries().some((skill) => skill.id === "fixture/paper-search"), "the block survives the re-import");
+  assert.match(readFileSync(join(overrideDir, "PACK.md"), "utf8"), /## Local overrides[\s\S]*paper-search: owner test block/);
+  assert.match(readFileSync(join(overrideDir, "SCAN.md"), "utf8"), /## Local overrides/);
+  overrideHub.scan("fixture");
+  assert.match(readFileSync(join(overrideDir, "SCAN.md"), "utf8"), /## Local overrides/, "a re-scan keeps the note");
+  writeFileSync(join(overrideDir, "OVERRIDES.json"), JSON.stringify({ skills: { "paper-search": { status: "auxiliary" } } }));
+  assert.ok(overrideHub.entries().some((skill) => skill.id === "fixture/paper-search"), "an override can only block, never unblock or relabel");
 }
 
 console.log("AStack skill hub verification passed.");

@@ -87,9 +87,19 @@ docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-
 
 - No shell anywhere: the command is an argv, in exec form.
 - Mounts are read-only unless `readOnly: false` (or `src:dst:rw`), must be inside
-  the workspace unless `sandbox.allow_mounts_outside_workspace`, and secret
-  stores inside a mounted folder (`.astack/security`, `.astack/vault`, browser
-  sessions and profiles, `.env*`) are hidden behind empty overlays.
+  the workspace unless the owner sets `sandbox.allow_mounts_outside_workspace`
+  (a caller cannot widen this), and secrets inside a mounted folder are hidden
+  at any depth: every `.astack/`, `.ssh/`, `.claude/`, `.gnupg/` and `.aws/`
+  folder becomes an empty tmpfs, every `.env*` file and every `.git/config`
+  an empty read-only file. `node_modules` is not scanned; a folder with more
+  than 50 000 entries fails closed (mount a narrower folder).
+- `env` values reach the container through a temporary `--env-file` (mode
+  0600, removed after the run), never the command line; a value with a line
+  break is refused.
+- The image and the user come only from `sandbox.image` / `sandbox.user`; a
+  call naming anything else is denied.
+- The routed path (`sandbox.required_for`) mounts only folders inside the
+  workspace.
 - **The automation policy stays the gate.** A command it denies (deny list, not
   allowlisted, shell control characters) is denied in the sandbox too. One rule
   is relaxed, and only for a fully isolated run (network `none`, nothing
@@ -124,7 +134,7 @@ the existing `astack secret` subcommands are unchanged.
 
 | Source | Store | Status |
 |--------|-------|--------|
-| `vault:windows` | DPAPI for the current Windows user (PowerShell SecureString); ciphertext in `.astack/vault/<provider>.<name>.dpapi` | real, tested on Windows |
+| `vault:windows` | DPAPI for the current Windows user (PowerShell SecureString, started by its absolute `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe` path, never from PATH); ciphertext in `.astack/vault/<provider>.<name>.dpapi` | real, tested on Windows |
 | `vault:macos` | login keychain via `security` | adapter-ready (not exercised on a Mac here) |
 | `vault:linux` | Secret Service via `secret-tool` | adapter-ready |
 | `vault:bitwarden` | `bw get password <item>`, needs `BW_SESSION` | adapter-ready, read only |
@@ -168,11 +178,17 @@ version advertised as `1.0`, JSON-RPC 2.0 over HTTP, no streaming):
   owner data, no learned skills.
 - **Loopback by default** (`127.0.0.1:41241/a2a`); binding another address needs
   `a2a.allow_remote: true`.
-- **Untrusted input**: inbound text is quarantined for instruction-shaped
-  content and handed to `runtime.runner` as a quoted request from an external
-  agent, under an authority ceiling of `a2a.ceiling` (default L1), capped by
-  the owner's default level and never above L3. Without a runner the task is
-  answered plan-only through `runtime.chief.dryRun` and nothing executes.
+- **Untrusted input**: a request with instruction-shaped content (English or
+  Persian) is refused outright: task state `rejected`, nothing planned or run.
+- **Plan only by default.** A request is answered with a plan through
+  `runtime.chief.dryRun` unless the owner sets `a2a.execute: true`; only then
+  is it handed to `runtime.runner` as a quoted request from an external agent,
+  read-only (source `a2a`), under an authority ceiling of `a2a.ceiling`
+  (default L1), capped by the owner's default level and never above L3, with
+  no automatic pack skills and no past sessions. The agent card offers the
+  `execute` skill only when execution is enabled.
+- Artifacts, plans and error texts pass the strict pattern redactor and the
+  resolved-secret guard.
 - A run that needs approval maps to task state `input-required`. A remote
   agent cannot approve; a follow-up message only refreshes the task. Every task
   and every failed authentication is audited.

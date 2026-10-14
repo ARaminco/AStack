@@ -59,7 +59,14 @@ astack signal serve --port 8787
 
 Requests are checked for the shared token or an HMAC-SHA256 signature over the
 raw body, a timestamp window, a replay nonce, a size cap and a per address rate
-limit. A failed check is refused and logged.
+limit (a bounded map). A failed check is refused and logged; a processing
+failure answers `500 {"error": "internal error"}` with the detail only in the
+log. The listener binds loopback only unless `signals.server.allow_remote:
+true` (or `astack signal serve --allow-remote`) is set deliberately.
+
+A `run-agent` reaction hands the runner the hook's own `defaults.domain` only,
+never a domain detected from the message, and the run (source `signal:<hook>`)
+stays read-only and capped at the owner's default authority level.
 
 ### Normalization and reactions
 

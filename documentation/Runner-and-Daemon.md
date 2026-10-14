@@ -56,6 +56,33 @@ objective always comes from the owner's rule, never from the message.
   refused.
 - The ceiling defaults to the configured autonomous ceiling
   (`astack authority`); a caller may lower it, never raise it.
+- The ceiling is enforced in the tools, not only in the prompt. At L0–L2, and
+  for every run whose source is not the owner's own request, Claude gets only
+  `Read`, `Grep`, `Glob` with `dontAsk` and codex the `read-only` sandbox,
+  whatever `runner.claude.*` / `runner.codex.*` say. The configured tools apply
+  only at L3+ for the sources `cli`, `console` and `gateway:*`. `a2a` and
+  `signal:*` runs are always read-only.
+- A2A and signal runs are capped at the owner's default authority level: a
+  domain ceiling (`astack authority scope domains …`) never raises them, and the
+  signal engine passes only the hook's own `defaults.domain`, never a domain
+  detected from the message. They also get no automatic pack skills and no
+  past-session context.
+- Approval forgery is blocked twice: every Claude run is started with
+  mandatory denies (`Write`/`Edit` on `.astack/**`, any `astack approval` and
+  any Bash touching `.astack`), which a custom `disallowed_tools` cannot drop;
+  and every runner child gets `ASTACK_UNATTENDED=1`, under which the approval
+  engine, `astack approval approve|reject|deny` and `astack browser resume`
+  refuse to decide anything.
+- `runner.claude.permission_mode` must be one of `default`, `dontAsk`,
+  `acceptEdits`, `plan`; codex `args` that switch its sandbox or approvals off
+  (`--dangerously-bypass-approvals-and-sandbox`, `--yolo`, `--full-auto`,
+  `--sandbox`, `-c sandbox_mode=…`, `-c approval_policy=…`) are refused.
+- Inbound content is fenced with a random per-run tag; any fence-shaped marker
+  in the content is removed before it is quoted.
+- Run records, prompts and outputs pass the strict pattern redactor
+  (`redactSecretsStrict`: keywords, provider token shapes, Persian credential
+  words, card numbers, IBANs) and the resolved-secret guard before they are
+  written.
 - Missions run through `runtime.missions` unchanged: a step above the ceiling
   stops at `waiting-approval` exactly as before, and the tool registry still
   verifies and consumes the receipt.
