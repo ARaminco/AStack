@@ -316,6 +316,17 @@ learning:
   min_distinct_days: 2
   min_success_rate: 0.6
 
+# Skill hub (skill-hub/): auxiliary third-party skill packs in skill-packs/.
+# Optional; these are the defaults when the section is absent.
+# skills:
+#   packs:
+#     enabled: true            # false hides every pack from search, catalog and ask
+#     weight: 0.6              # auxiliary weight; packs always rank below built-in and learned skills
+#     runtime_penalty: 0.5     # extra factor for skills tied to another agent runtime (compat: hermes-runtime)
+#     review_penalty: 0.8      # extra factor for skills whose scan risk is high
+#     update_check: false      # daemon service: periodically compare git-sourced packs with upstream (check only)
+#     update_check_hours: 24
+
 runtime:
   default: claude-code
   registry: runtime-providers/agent-runtime.mjs

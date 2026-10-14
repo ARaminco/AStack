@@ -10,7 +10,7 @@
   "scripts": {
     "bootstrap": "node scripts/bootstrap-enterprise.mjs",
     "doctor": "node bin/astack.mjs doctor",
-    "test": "node tests/verify-astack.mjs && node tests/verify-delivery.mjs && node tests/verify-orchestration.mjs && node tests/verify-intelligence.mjs && node tests/verify-autonomy.mjs && node tests/verify-interop.mjs",
+    "test": "node tests/verify-astack.mjs && node tests/verify-delivery.mjs && node tests/verify-orchestration.mjs && node tests/verify-intelligence.mjs && node tests/verify-autonomy.mjs && node tests/verify-interop.mjs && node tests/verify-skillhub.mjs",
     "upgrade": "node bin/astack.mjs upgrade",
     "claude:doctor": "node bin/astack.mjs doctor --claude-code",
     "list:knowledge": "node bin/astack.mjs knowledge list",
@@ -22,6 +22,7 @@
     "setup": "node bin/astack.mjs setup",
     "update:check": "node bin/astack.mjs update --check",
     "test:browser": "node tests/verify-browser-e2e.mjs",
+    "test:skillhub": "node tests/verify-skillhub.mjs",
     "standup": "node bin/astack.mjs standup",
     "tick": "node bin/astack.mjs schedule tick"
   },

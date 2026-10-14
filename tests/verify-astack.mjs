@@ -82,7 +82,9 @@ assert.match(review, /Departmentهای فعال/);
 
 const files = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard"], { cwd: root, encoding: "utf8" }).split(/\r?\n/).filter(Boolean);
 const banned = ["TO" + "DO", "PLACE" + "HOLDER", "FIX" + "ME"];
-for (const file of files) {
+// skill-packs/ holds third-party skills copied verbatim (see
+// documentation/Skill-Hub.md); their wording is upstream's, not ours.
+for (const file of files.filter((entry) => !entry.startsWith("skill-packs/"))) {
   const text = readFileSync(join(root, file), "utf8");
   assert.ok(!text.includes("G" + "Stack"), "legacy product reference in " + file);
   for (const marker of banned) {
