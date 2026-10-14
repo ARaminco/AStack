@@ -101,6 +101,34 @@ function fakeEmbedder({ ok = true } = {}) {
   assert.ok(redact("AKIAABCDEFGHIJKLMNOP").includes("[redacted-key]"), "AWS access keys are redacted");
   assert.ok(isSecretFile("credentials.md") && isSecretFile("api-key-notes.md") && isSecretFile(".env.production") && isSecretFile("id_rsa"), "credential-like files are recognised");
   assert.ok(!isSecretFile("2026-10-06-report.md"), "ordinary report names are not secret files");
+
+  // Persian and short credential keywords, card numbers and IBANs (3.0 hardening).
+  const persian = [
+    ["رمز عبور: Kx9-portal-77", "Kx9-portal-77"],
+    ["رمز من 48213977 است", "48213977"],
+    ["پسورد=Qwer7788", "Qwer7788"],
+    ["گذرواژه: hunter22", "hunter22"],
+    ["کلمه عبور: ab12cd34", "ab12cd34"],
+    ["کد تایید ۵۴۳۲۱۹", "۵۴۳۲۱۹"],
+    ["کد ورود: 784512", "784512"],
+    ["توکن: tg-55aa66bb", "tg-55aa66bb"],
+    ["pass: s3cretPass", "s3cretPass"],
+    ["pwd=Zx81-qq", "Zx81-qq"],
+    ["pin: 4821", "4821"],
+    ["otp = 662211", "662211"],
+    ["2fa: 908172", "908172"],
+    ["cvv: 381", "381"],
+    ["شماره کارت 6037 9911 2345 6789", "6037 9911 2345 6789"],
+    ["کارت ۶۰۳۷۹۹۱۱۲۳۴۵۶۷۸۹", "۶۰۳۷۹۹۱۱۲۳۴۵۶۷۸۹"],
+    ["شبا IR820540102680020817909002", "IR820540102680020817909002"],
+    ["IBAN AE07 0331 2345 6789 0123 456", "AE07 0331 2345 6789 0123 456"]
+  ];
+  for (const [text, secret] of persian) {
+    assert.ok(!redact(text).includes(secret), "redacted in «" + text + "»");
+  }
+  for (const prose of ["رمز عبور را فراموش کردم و باید عوض شود", "pin the dependency version", "pass the test suite", "قرارداد شماره 1404 در تاریخ 05/10/2026"]) {
+    assert.equal(redact(prose), prose, "prose stays readable: " + prose);
+  }
 }
 
 // ---------------------------------------------------------------- 3. session parsing (fixtures)
