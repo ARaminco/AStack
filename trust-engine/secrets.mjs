@@ -1,6 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { shortHash } from "../lib/text.mjs";
+import { rememberResolvedSecret } from "./redaction.mjs";
+import { VaultBackends } from "./vault.mjs";
 
 const REFERENCE = /^credential:\/\/([a-z0-9._-]+)\/([a-z0-9._-]+)$/i;
 
@@ -16,7 +18,7 @@ const REFERENCE = /^credential:\/\/([a-z0-9._-]+)\/([a-z0-9._-]+)$/i;
  * value comes from, who may use them and when they expire.
  */
 export class SecretBroker {
-  constructor(root, { clock, eventBus, audit = null, env = process.env } = {}) {
+  constructor(root, { clock, eventBus, audit = null, env = process.env, vault = null } = {}) {
     this.root = root;
     this.directory = join(root, ".astack", "security");
     this.path = join(this.directory, "credentials.json");
@@ -24,6 +26,8 @@ export class SecretBroker {
     this.eventBus = eventBus ?? null;
     this.audit = audit;
     this.env = env;
+    // OS keychain and password-manager backends for `source: "vault:<backend>"`.
+    this.vault = vault ?? new VaultBackends(root, { env });
   }
 
   now() {
@@ -114,6 +118,9 @@ export class SecretBroker {
       if (record.source === "file") {
         return existsSync(join(this.directory, "vault", record.provider + "." + record.name));
       }
+      if (VaultBackends.isVaultSource(record.source)) {
+        return this.vault.available(record);
+      }
       return false;
     } catch {
       return false;
@@ -138,6 +145,11 @@ export class SecretBroker {
     } else if (record.source === "file") {
       const path = join(this.directory, "vault", record.provider + "." + record.name);
       value = existsSync(path) ? readFileSync(path, "utf8").trim() : null;
+    } else if (VaultBackends.isVaultSource(record.source)) {
+      value = this.vault.read(record);
+      if (!value) {
+        throw new Error("Credential " + reference + " has no value in " + record.source + ". Store it with: astack secret vault set " + record.reference);
+      }
     }
     if (!value) {
       throw new Error(
@@ -153,6 +165,8 @@ export class SecretBroker {
       fingerprint: shortHash(value).slice(0, 8)
     };
     this.write(state);
+    // The exfiltration guard scrubs this value from audit, logs and runner output.
+    rememberResolvedSecret(value, record.reference);
     this.audit?.record({
       actor: requester,
       action: "credential-resolved",

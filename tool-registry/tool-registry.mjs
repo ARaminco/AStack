@@ -388,6 +388,20 @@ export class ToolRegistry {
           if (!verdict.allowed) {
             return { ok: false, summary: "blocked by automation policy: " + verdict.reason };
           }
+          if (this.policy?.requiresSandbox?.(params.command, params.args ?? [])) {
+            // sandbox.required_for matched: run isolated in Docker or not at all.
+            const { runRequiredSandbox } = await import("../sandbox-engine/sandbox-engine.mjs");
+            const boxed = await runRequiredSandbox(this.policy, {
+              command: params.command,
+              args: params.args ?? [],
+              cwd: params.cwd ? safePath(root, params.cwd) : root,
+              timeoutMs: params.timeoutMs ?? 60000,
+              source: "tool:shell"
+            });
+            return boxed.ok
+              ? { ok: true, summary: "command finished in sandbox", data: { stdout: boxed.stdout.slice(-4000), sandbox: true } }
+              : { ok: false, summary: "sandboxed command failed: " + (boxed.reason ?? "exit " + boxed.exitCode), data: { stderr: String(boxed.stderr ?? "").slice(-2000), sandbox: true } };
+          }
           const { execFile } = await import("node:child_process");
           return new Promise((resolveResult) => {
             execFile(
@@ -422,7 +436,8 @@ const SENSITIVE = [
   ".astack/security",
   ".astack/browser/sessions",
   ".astack/browser/profiles",
-  ".env"
+  ".env",
+  ".astack/vault"
 ];
 
 /**

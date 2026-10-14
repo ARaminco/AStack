@@ -1,6 +1,7 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { redactSecrets, shortHash } from "../lib/text.mjs";
+import { redactResolvedSecrets } from "./redaction.mjs";
 
 /**
  * Append only audit trail for everything that touches the world.
@@ -55,10 +56,10 @@ export class AuditEngine {
       mission,
       tool,
       action,
-      target: target ? redactSecrets(String(target)).slice(0, 400) : null,
+      target: target ? redactResolvedSecrets(redactSecrets(String(target))).slice(0, 400) : null,
       riskLevel,
       approval,
-      result: result ? redactSecrets(String(result)).slice(0, 1000) : null,
+      result: result ? redactResolvedSecrets(redactSecrets(String(result))).slice(0, 1000) : null,
       evidence,
       metadata
     };
