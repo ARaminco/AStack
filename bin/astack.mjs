@@ -14,6 +14,10 @@ import { runGraphifyCommand } from "../cli/graphify-cli.mjs";
 import { runSetupCommand } from "../cli/setup-cli.mjs";
 import { runUpdateCommand } from "../cli/update-cli.mjs";
 import { pendingMigrations } from "../upgrade-engine/migrations.mjs";
+import { runBoardCommand } from "../cli/board-cli.mjs";
+import { runSandboxCommand } from "../cli/sandbox-cli.mjs";
+import { runVaultCommand } from "../cli/vault-cli.mjs";
+import { runA2ACommand } from "../cli/a2a-cli.mjs";
 
 const i18n = createLocalization();
 const runtime = createRuntime();
@@ -23,7 +27,8 @@ const COMMANDS = [
   "context", "memory", "graph", "learn", "skill",
   "mission", "schedule", "signal", "browser",
   "authority", "approval", "audit", "secret", "tool", "runtime", "interop", "mcp", "graphify",
-  "domain", "team", "agent", "lead", "project", "workflow", "provider", "plugin", "knowledge", "backup"
+  "domain", "team", "agent", "lead", "project", "workflow", "provider", "plugin", "knowledge", "backup",
+  "board", "sandbox", "a2a"
 ];
 
 function printHelp() {
@@ -199,6 +204,10 @@ async function run() {
       runAuditCommand(context);
       return;
     case "secret":
+      if (tokens[0] === "vault") {
+        await runVaultCommand(context);
+        return;
+      }
       runSecretCommand(context);
       return;
     case "tool":
@@ -245,6 +254,15 @@ async function run() {
       return;
     case "backup":
       console.log(i18n.t("cli.backupCreated", { path: runtime.memory.backup() }));
+      return;
+    case "board":
+      await runBoardCommand(context);
+      return;
+    case "sandbox":
+      await runSandboxCommand(context);
+      return;
+    case "a2a":
+      await runA2ACommand(context);
       return;
     default:
       throw new Error(i18n.t("cli.unknownCommand", { command }));

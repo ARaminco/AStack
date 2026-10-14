@@ -1,6 +1,7 @@
 {
   "managed": [
     "agent-engine",
+    "board-engine",
     "bin",
     "browser",
     "browser-engine",
@@ -32,6 +33,7 @@
     "roles",
     "runtime",
     "runtime-providers",
+    "sandbox-engine",
     "scheduler-engine",
     "scripts",
     "signal-engine",

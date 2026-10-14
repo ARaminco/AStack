@@ -37,6 +37,9 @@ import { MissionEngine } from "../mission-engine/mission-engine.mjs";
 import { SchedulerEngine } from "../scheduler-engine/scheduler-engine.mjs";
 import { SignalEngine } from "../signal-engine/signal-engine.mjs";
 import { ChiefOfStaff } from "../chief-of-staff/chief-of-staff.mjs";
+import { BoardEngine } from "../board-engine/board-engine.mjs";
+import { SandboxEngine } from "../sandbox-engine/sandbox-engine.mjs";
+import { A2AServer } from "../interop-engine/a2a-server.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -176,6 +179,14 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
     standup: () => chief.standup()
   });
 
+  // AStack 3.0 (P6): multi-agent board, Docker sandbox, A2A endpoint. The
+  // board and A2A reach the runner and gateway through the finished runtime
+  // (bound by the getters below), because those engines may not be installed.
+  const sandbox = new SandboxEngine(workspaceRoot, { clock, eventBus, audit, policy: automationPolicy, config: configuration.section("sandbox", {}) });
+  automationPolicy.sandboxEngine = sandbox;
+  const board = new BoardEngine(workspaceRoot, { clock, eventBus, audit, agents, teams, config: configuration.section("board", {}) });
+  const a2a = new A2AServer(workspaceRoot, { clock, eventBus, audit, secrets, authority, domains, config: configuration.section("a2a", {}) });
+
   const departments = JSON.parse(readFileSync(join(root, "departments", "departments.json"), "utf8")).departments;
   const providers = providerRegistry.list();
   const orchestrator = new Orchestrator({
@@ -232,6 +243,13 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
     chief,
     departments,
     providers,
-    orchestrator
+    orchestrator,
+    sandbox,
+    get board() {
+      return board.bind(this);
+    },
+    get a2a() {
+      return a2a.bind(this);
+    }
   };
 }

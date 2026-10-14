@@ -115,7 +115,9 @@ export class AutomationPolicy {
       return {
         commands: { ...DEFAULT_POLICY.commands, ...(stored.commands ?? {}) },
         network: { ...DEFAULT_POLICY.network, ...(stored.network ?? {}) },
-        actions: { ...DEFAULT_POLICY.actions, ...(stored.actions ?? {}) }
+        actions: { ...DEFAULT_POLICY.actions, ...(stored.actions ?? {}) },
+        // Optional: shell commands that must run inside the Docker sandbox.
+        ...(stored.sandbox ? { sandbox: { ...stored.sandbox } } : {})
       };
     } catch {
       return structuredClone(DEFAULT_POLICY);
@@ -217,6 +219,37 @@ export class AutomationPolicy {
       return { allowed: false, reason: "Action needs owner confirmation: " + action };
     }
     return { allowed: false, reason: "Unknown automation action: " + action };
+  }
+
+  /**
+   * Shell commands matching a `sandbox.required_for` pattern must run inside
+   * the Docker sandbox (sandbox-engine) instead of on the host. A pattern
+   * without a space matches the binary ("npm", "py*"); a pattern with a space
+   * matches the whole command line ("npm install*"); "*" matches everything.
+   * Unset, nothing changes. The sandbox never relaxes allowCommand: a denied
+   * command stays denied.
+   */
+  requiresSandbox(command, args = []) {
+    const patterns = this.policy.sandbox?.required_for ?? [];
+    if (!patterns.length) {
+      return false;
+    }
+    const words = String(command ?? "").trim().split(/\s+/).filter(Boolean);
+    const binary = (String(words[0] ?? "").split(/[/\\]+/).filter(Boolean).pop() ?? "").toLowerCase().replace(/\.(exe|cmd|bat|ps1|sh)$/, "");
+    const line = [binary, ...words.slice(1), ...(args ?? []).map(String)].join(" ").toLowerCase();
+    return patterns.some((pattern) => {
+      const text = String(pattern).trim().toLowerCase();
+      const escaped = text.split("*").map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&"));
+      const regex = new RegExp("^" + escaped.join(".*") + "$");
+      return text.includes(" ") ? regex.test(line) : regex.test(binary);
+    });
+  }
+
+  requireSandboxPermanently(pattern) {
+    const policy = this.load();
+    const current = policy.sandbox?.required_for ?? [];
+    policy.sandbox = { ...(policy.sandbox ?? {}), required_for: [...new Set([...current, String(pattern).trim()])] };
+    return this.save(policy);
   }
 
   allowCommandPermanently(command) {

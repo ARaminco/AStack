@@ -26,3 +26,7 @@ dist/
 .astack/tools/
 .astack/interop/
 graphify-out/
+.astack/board/
+.astack/sandbox/
+.astack/vault/
+.astack/a2a/

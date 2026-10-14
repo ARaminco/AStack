@@ -1,0 +1,10 @@
+### P6 — Board, sandbox, vault, A2A
+
+**Added**
+- `board-engine/`: durable multi-agent kanban (`runtime.board`, `astack board create|list|show|add|run [--once]|steer|retry|cancel`). Cards with agent/team assignees, dependencies, retries with exponential backoff, structured per-attempt handoffs and transcripts, parallel fan-out (`board.max_parallel`), an independent reviewer lane (`--review`), live steering, approval waits, crash recovery and a per-board lock. Executes through `runtime.runner.execute`; without a runner cards are `blocked: runner not installed`. Emits `board.card.*` events and notifies `runtime.gateway` when a card fails. Daemon service in `board-engine/service.mjs`.
+- `sandbox-engine/`: Docker-isolated execution (`runtime.sandbox.exec`, `astack sandbox status|images|require|exec -- <command>`): no network, read-only root, all capabilities dropped, no-new-privileges, pids/memory/CPU limits, read-only mounts with secret stores hidden. The automation policy remains the gate; every run is audited.
+- Automation policy: optional `sandbox.required_for` patterns route matching shell-tool commands and `command` jobs into the sandbox (fail closed). Unset, nothing changes.
+- Vault backends for the secret broker: `vault:windows` (DPAPI), `vault:macos` (`security`), `vault:linux` (`secret-tool`), `vault:bitwarden` (`bw`, read only), `vault:1password` (`op`, read only). `astack secret vault status|set|test|remove`; values via stdin or a hidden prompt only.
+- Exfiltration guard `trust-engine/redaction.mjs` (`redactResolvedSecrets`, `redactResolvedDeep`): resolved secret values are scrubbed from audit records, board transcripts, sandbox output and A2A responses.
+- A2A endpoint `interop-engine/a2a-server.mjs` (`runtime.a2a`, `astack a2a serve|card|status`): agent card, `message/send`, `tasks/get`, `tasks/cancel` over JSON-RPC with bearer auth (`credential://a2a/token`), loopback by default, inbound tasks treated as untrusted under a capped authority ceiling; plan-only through the chief of staff when no runner is installed.
+- `tests/verify-board.mjs` appended to `npm test`; `documentation/Board-Sandbox-Vault.md`.
