@@ -207,7 +207,8 @@ claude -p --resume <session id> | --session-id <new uuid>
        --output-format stream-json --verbose --include-partial-messages
        --permission-mode default --strict-mcp-config --mcp-config <turn file>
        --permission-prompt-tool mcp__astack__permission_prompt
-       --disallowedTools <console.chats.disallowed_tools + the runner's mandatory .astack/** and approval denies>
+       --disallowedTools <console.chats.disallowed_tools + the runner's mandatory .astack/** and approval denies
+                          + the console/vault/gateway state denies (3.1.1)>
        --allowedTools Read Grep Glob [--max-budget-usd <what is left today>]
 ```
 
@@ -217,11 +218,33 @@ permission, done with cost and duration). One turn per session runs at a
 time (a second message gets 409); Stop ends the process tree (`taskkill /T`
 on Windows, the process group elsewhere). A new conversation picks a project
 and starts with `--session-id <uuid>`; it appears in the list as soon as
-Claude Code writes its transcript. `ASTACK_UNATTENDED` is **not** set for
-conversations — they are the owner's own — but the mandatory denies always
+Claude Code writes its transcript. Since 3.1.1 the Claude Code child runs with
+`ASTACK_UNATTENDED=1`, like a runner child: it and everything it starts can
+request approvals but never decide one, and `astack console token` and
+`astack console user set|remove|totp` refuse to run there. Decisions are made
+by the console server process (which is not unattended): the MCP permission
+server only records the request and waits. The mandatory denies always
 apply, so a conversation cannot write `.astack/**` or run `astack approval`.
 The binary must pass the automation policy (`astack schedule policy
 allow-command claude`), like the runner's.
+
+**State denies (3.1.1).** Every turn, local or remote, also gets
+`CHAT_STATE_DENIES` (`console/chats.mjs`):
+`Read(//**/.astack/{console,vault,gateway}/**)` and the matching `Edit(…)`
+rules (plus the same patterns relative to the project), `Edit(//**/.astack/**)`
+(the workspace may sit outside the project folder),
+`Bash(*.astack/{console,vault,gateway}*)`, `Bash(*astack* console*)`,
+`Bash(*astack.mjs* console*)` and the PowerShell equivalents. The syntax
+follows Claude Code 2.1.x's permission rules: file access is checked against
+`Read(path)` and `Edit(path)` only — a `Read` deny also covers Grep and
+Glob (best effort) and blocks Edit and Write on the same path, an `Edit` deny
+covers every editing tool — while `Write(…)`, `Grep(…)` and `Glob(…)` path
+rules are accepted but never consulted, so they are not used. `//` anchors at
+the filesystem root (`//**` spans every drive on Windows, whose paths are
+matched as `/c/...`); `*` in a Bash or PowerShell rule matches any text.
+Permission rules match what Claude writes; they are not an OS sandbox (a
+script that opens files itself is not covered), which is why the
+unattended environment and the server-side checks stay in place as well.
 
 **Permissions.** With `permission_mode: default`, every tool use outside
 `console.chats.allowed_tools` (default `Read,Grep,Glob`) is sent to
@@ -258,18 +281,34 @@ console:
     host: 127.0.0.1          # loopback only: cloudflared runs on this machine
     port: 7718
     hostname: console.example.com
-    access:                  # optional, recommended: Cloudflare Access in front
+    runner: false            # 3.1.1: true allows real runs and "run now" (with a step-up code)
+    access:                  # 3.1.1: required — the listener does not start without team and aud
       team: example          # example.cloudflareaccess.com
       aud: <application AUD tag>
+      emails: [owner@example.com]   # 3.1.1: optional allowlist of Access identities
 ```
 
 ```yaml
-# cloudflared config.yml
+# cloudflared config.yml (locally managed tunnel)
+tunnel: <tunnel id>
+credentials-file: <path to the tunnel's credentials JSON>
 ingress:
   - hostname: console.example.com
-    service: http://127.0.0.1:7718
-  - service: http_status:404
+    service: http://127.0.0.1:7718      # the internet listener, never 7717
+    originRequest:
+      access:                           # cloudflared itself rejects requests without a valid Access token
+        required: true
+        teamName: example
+        audTag:
+          - <application AUD tag>
+  - service: http_status:404            # catch-all: nothing else is served
 ```
+
+Do not set `httpHostHeader` (or `originServerName`): the listener answers only
+`Host: <hostname>`, which cloudflared passes through unchanged. A
+dashboard-managed tunnel takes the same settings in its public hostname's
+"Additional application settings" (Access: "Protect with Access", the team
+name and the AUD tag).
 
 What the internet listener does differently:
 
@@ -278,37 +317,75 @@ What the internet listener does differently:
   lockout applies per real client;
 - signs in with username + password + TOTP only — token and one-time-ticket
   sign-in get 403 — and refuses to start (with a clear message in the log
-  and in `astack console status`) until a console user has TOTP on;
+  and in `astack console status`) until a console user has TOTP on and, since
+  3.1.1, until `access.team` and `access.aud` are set;
 - sessions last at most 12 hours (`session_hours`) and end after
   `idle_minutes` (60) unused; the cookie is `__Host-aramin_sid` with
   `Secure; HttpOnly; SameSite=Strict`; a session belongs to the listener
   that created it;
 - every write needs the CSRF token and `Origin: https://<hostname>`;
 - approving anything irreversible (L4+, or a send/pay/delete/publish…
-  verb) asks for a fresh TOTP code as well as the typed confirmation;
-- with `access.team` and `access.aud` set, every request (the app shell
-  included) must carry a valid `Cf-Access-Jwt-Assertion`: an RS256 JWT
-  checked against `https://<team>.cloudflareaccess.com/cdn-cgi/access/certs`
-  (keys cached for an hour), with `aud`, `iss`, `exp` and `nbf` verified —
-  defence in depth next to cloudflared's own enforcement;
+  verb) asks for a fresh TOTP code as well as the typed confirmation; a
+  successful step-up is audited (`console-step-up`, never the code);
+- every request (the app shell included) must carry a valid
+  `Cf-Access-Jwt-Assertion`: an RS256 JWT checked against
+  `https://<team>.cloudflareaccess.com/cdn-cgi/access/certs` (keys cached for
+  an hour), with `aud`, `iss`, `exp` and `nbf` verified — defence in depth
+  next to cloudflared's own enforcement. With `access.emails` set, the JWT's
+  `email` claim must be one of them (compared without case); the Access
+  identity is written into every login audit record;
+- runs: a dry-run preview works; a real run (`dryRun: false`) and "run now"
+  on a job are 403 unless `remote.runner: true`, and then need a fresh TOTP
+  code (`totp` in the body) as well;
 - conversations are closed (`remote.chat: false`: every `/api/chats` call is
-  403 and the tab is hidden with a short explanation). If `remote.chat: true`
-  is ever set after a further review, internet turns get no pre-allowed tools,
-  each tool approval needs a fresh TOTP code, and reads/writes of `.env*`,
-  `.astack/**`, `.ssh`, `.claude` and `Z:/**` are denied;
+  403 and the tab is hidden with a short explanation). Their tool requests
+  (`claude.tool` approvals) are left out of the approvals list, detail,
+  counts, home screen, search, notifications and the SSE stream (`activity`,
+  `notification`, `counts`); approving one is 403, denying one is allowed.
+  If `remote.chat: true` is ever set after a further review, internet turns
+  get no pre-allowed tools, each tool approval needs a fresh TOTP code, and
+  reads/writes of `.env*`, `.astack/**`, `.ssh`, `.claude` and `Z:/**` are
+  denied;
+- 4xx/5xx answers carry a generic text (`forbidden`, `not found`, …) and
+  never an internal error message; flags the app needs (`stepUpRequired`,
+  `remoteRunner`) stay; a malformed `%` escape in a path or cookie is a 400;
 - the SSE stream sends a keep-alive comment every 20 seconds (Cloudflare drops
   idle connections after about 100).
 
-Checklist before exposing it:
+The local listener (7717) is never behind a proxy: since 3.1.1 it refuses
+(403, `request refused`) any request carrying `CF-Connecting-IP`, `CF-Ray`,
+`Cf-Access-Jwt-Assertion`, `Forwarded`, `X-Real-IP` or any `X-Forwarded-*`
+header, and it refuses `Host: <remote hostname>` (421) even when
+`console.host` is not loopback. A tunnel pointed at the wrong port therefore
+gets nothing.
+
+Exposure checklist:
 
 1. `astack console user set <name>` and `astack console user totp <name>`; add
-   the key to an authenticator app.
-2. Put a Cloudflare Access application (one allowed e-mail, a short session)
-   in front of the host name and copy its AUD tag into `console.remote.access`.
-3. Set `console.remote` as above; keep `allowed_hosts` free of the public name.
-4. `astack console status` shows both listeners; open
-   `https://<hostname>` from a phone and sign in with the code.
-5. Optional: `console.session_idle: 12h` for the local listener too.
+   the key to an authenticator app. On Windows the TOTP secret is kept with
+   DPAPI (`vault:windows`); `astack console user list` shows where.
+2. Create a Cloudflare Access self-hosted application for the host name: one
+   allow policy for your own e-mail, a short session (for example 12 hours),
+   and copy the team name and AUD tag into `console.remote.access`; list the
+   same e-mail in `console.remote.access.emails`.
+3. Configure cloudflared as above: ingress to `http://127.0.0.1:7718` only,
+   `originRequest.access.required: true` with `teamName` and `audTag`, no
+   `httpHostHeader`, the `http_status:404` catch-all last. Never point the
+   tunnel at 7717.
+4. Set `console.remote` as above. Keep `remote.chat: false` and
+   `remote.runner: false` unless you have decided otherwise; keep
+   `allowed_hosts` free of the public name.
+5. Restart the console. `astack console status` must show the internet
+   listener running with `access: on`; if it is stopped, the line says why.
+6. From outside: `https://<hostname>` first shows the Cloudflare Access
+   login, then Aramin's sign-in, which needs the authenticator code. On the
+   machine, a request straight to `http://127.0.0.1:7718` is refused (421 for
+   any other host name, 403 without a valid Access token), and `curl -H "X-Forwarded-For: 1.2.3.4" http://127.0.0.1:7717/api/health`
+   gets 403.
+7. After any password or TOTP change (`astack console user set|totp`) the
+   user's sessions end everywhere; `astack console token --rotate` ends every
+   session. Use `logout-all` from Settings if a phone is lost.
+8. Optional: `console.session_idle: 12h` for the local listener too.
 
 ## Security
 
@@ -327,6 +404,17 @@ Checklist before exposing it:
 - 3.1: the internet listener adds `Secure` `__Host-` cookies, a 12-hour cap,
   mandatory TOTP, step-up TOTP for irreversible approvals and optional
   Cloudflare Access verification (see [Internet exposure](#internet-exposure-31)).
+- 3.1.1: Cloudflare Access is required on the internet listener (with an
+  optional e-mail allowlist); the local listener refuses proxy headers and the
+  public host name; password sessions are bound to the user's credential
+  version (a password or TOTP change, or removing the user, ends them); the
+  lockout counters are persisted in `.astack/console/lockouts.json` (SHA-256
+  hashes of the keys, expiry times only), so a restart does not reset them;
+  new and changed password hashes use scrypt N=2^17 (older hashes still verify
+  and are upgraded at the next successful sign-in); TOTP secrets are
+  DPAPI-encrypted on Windows (`.astack/vault/console-totp.<user>.dpapi`; a
+  plaintext secret from 3.1.0 moves there at the next sign-in) and printed
+  only at enrolment; strict redaction also masks labelled base32 secrets.
 - Every write needs the session's CSRF token in `x-csrf-token` and a same-origin
   request.
 - Strict CSP (`default-src 'self'`, no inline script or style, `frame-ancestors 'none'`),
@@ -377,9 +465,9 @@ caches or intercepts `/api/*`. The server stamps a content hash of
 | GET | `/api/missions?state=`, `/api/missions/:id` | |
 | POST | `/api/missions/:id/pause\|resume\|cancel` | `{ reason? }` |
 | GET | `/api/runs`, `/api/runs/:id` | |
-| POST | `/api/runs` | `{ objective, dryRun: true }` then `{ objective, dryRun: false, previewId }` |
+| POST | `/api/runs` | `{ objective, dryRun: true }` then `{ objective, dryRun: false, previewId }` (internet listener: `remote.runner` and `totp`) |
 | GET | `/api/jobs`, `/api/hooks` | |
-| POST | `/api/jobs/:id/run` | safe kinds only |
+| POST | `/api/jobs/:id/run` | safe kinds only (internet listener: `remote.runner` and `{ totp }`) |
 | GET | `/api/audit?action=&risk=&month=&q=&page=&size=` | |
 | GET | `/api/memory?q=&facet=`, `/api/memory/entity?q=`, `/api/memory/stats` | |
 | GET | `/api/skills?q=&source=`, `/api/skills/:id` | |
@@ -392,7 +480,8 @@ All optional (see the commented `console:` block in `astack.config.yaml`):
 `enabled`, `host`, `port` (7717), `allow_remote`, `allowed_hosts`,
 `poll_interval` (3s), `session_days` (30), `locale` (`fa`); 3.1 adds `auth`,
 `session_idle`, `lockout.attempts|minutes`, `remote.*` (enabled, host, port,
-hostname, session_hours, idle_minutes, chat, access.team, access.aud) and
+hostname, session_hours, idle_minutes, chat, access.team, access.aud; 3.1.1:
+runner, access.emails) and
 `chats.*` (enabled, projects, permission_mode, allowed_tools,
 disallowed_tools, tools, approval_timeout_minutes, daily_budget_usd,
 max_parallel, model, strict_mcp, partial_messages, command, claude_home).
