@@ -414,7 +414,7 @@ assert.match(readFileSync(join(existingProject, "AGENTS.md"), "utf8"), /^# App r
 assert.ok(new InteropEngine(existingProject, { home: setupHome }).status().parity);
 const again = runSetup(existingProject);
 assert.ok(!existsSync(join(existingProject, ".github")) && !existsSync(join(existingProject, "Dockerfile")), "a second run still respects the embed");
-assert.match(again, /2\.\d+\.\d+/);
+assert.match(again, /\d+\.\d+\.\d+/);
 assert.equal(readFileSync(join(existingProject, "AGENTS.md"), "utf8").split("astack:contract:begin").length - 1, 1, "setup is idempotent");
 
 // An old core is upgraded, migrated and wired in the same command.

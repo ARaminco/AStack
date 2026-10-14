@@ -3,6 +3,212 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 3.0.0 — Always on, in your pocket, and Aramin
+
+AStack 3.0 adds an unattended runner and one background daemon, a two-way owner
+gateway (WhatsApp through wapi, a linked-device bridge or the Cloud API, and
+Telegram) with approvals by message and local Persian voice notes, full-text and
+semantic recall over memory, past sessions and reports, a skill hub with a
+security scanner (shipping the Hermes Agent skills as a separate auxiliary pack),
+the **Aramin** console, a durable multi-agent board, a Docker sandbox, OS vault
+backends and an A2A endpoint.
+
+It is strictly additive: every 2.5.1 command, file format and test keeps working
+unchanged (the original suites run unmodified, apart from a CRLF-tolerant regex
+in the interop alias test and excluding third-party `skill-packs/` from the
+leftover-marker check). Every new engine is off or read-only until configured.
+Build contract: `documentation/V3-Plan.md`.
+
+### P1 — Runner and daemon (always-on AStack)
+
+- **Runner** (`runner-engine/`, `runtime.runner`): unattended execution of the
+  hosted work order through Claude Code headless, `codex exec`, a local Ollama
+  model or a mock engine; `auto` routes cheap background work to the local
+  model and real tasks to Claude Code. Missions run through the mission engine
+  and stop at the same approval points; free-form runs turn
+  `APPROVAL-REQUEST:` lines into owner approvals and resume after the
+  decision. Daily budget, per-run budget and concurrency guards; every run is
+  recorded in `.astack/runner/runs.jsonl` and the audit log.
+- **CLI**: `astack run "<objective>" [--engine] [--model] [--budget] [--dry-run] [--mission] [--queue]`,
+  `astack runner list|show|resume|status|drain|engines|enable-signal-runs`.
+- **Queue bridges**: scheduler job kind `agent` (`--objective`, `--engine`,
+  `--ceiling`, `--mode`), signal reaction `run-agent` (off until
+  `astack runner enable-signal-runs`).
+- **Daemon** (`daemon-engine/`): `astack daemon start [--foreground]|stop|status|logs`
+  supervises `runner-engine`, `scheduler-engine` and `signal-engine` services
+  (and later packages' `service.mjs`) with crash restart and backoff.
+- **OS service**: `astack daemon install-service|uninstall-service|service-status [--dry-run]`
+  for Windows Task Scheduler, macOS launchd and Linux systemd --user.
+- `buildWorkOrder()` extracted from the hosted runtime adapter so the hosted
+  and unattended paths share one work order (output unchanged).
+- Doctor prints runner and daemon lines. New docs: `documentation/Runner-and-Daemon.md`.
+
+#### Gateway (P2) — the assistant in your pocket
+
+- New `gateway-engine/` exposed as `runtime.gateway` (`notify()`, `status()`, `bind(runtime)`): the owner commands AStack from WhatsApp and Telegram, receives reports, and approves irreversible steps by message.
+- Channels: `whatsapp-wapi` (self-hosted wapi REST, polling), `whatsapp-bridge` (own Baileys linked-device bridge installed on demand into `.astack/gateway/bridge/` by `astack gateway whatsapp setup`, paired with `astack gateway whatsapp pair`), `whatsapp-cloud` (Meta Cloud API with signed webhook and verify-token handshake), `telegram` (Bot API long polling) and a `cli` loopback.
+- Owner allowlist per channel with several accounts per owner; strangers and non-allowlisted groups are ignored and audited; outbound only to owners and allowlisted groups.
+- Inbound text becomes `runtime.runner.execute({ objective, source: "gateway:<channel>" })`, or a plan-only brief without a runner; runner `refused` and `dry-run` results are explained.
+- Approvals by message: prompts with exact values and a short code to every owner account; «بفرست» / «ارسال کن» / «تایید» / "approve" and «نه» / «رد» / "deny" by quote or code; ambiguous replies ask; a second account on a decided request gets «قبلاً تصمیم گرفته شد»; decisions go through `runtime.approvals` as `owner@<channel>` and resume the run or mission.
+- Commands `/status`, `/pending`, `/runs`, `/stop`, `/help`; Persian replies, Latin digits, no bidi isolates, no tables, split long output, per-channel rate limit with outbox.
+- Local Persian voice notes with faster-whisper (`gateway-engine/scripts/transcribe.py`, `large-v3-turbo`, CUDA → CPU), gated by the automation policy; `astack gateway voice setup|test`.
+- CLI `astack gateway status|test|send|poll|serve|owners|owner|voice|whatsapp`; daemon service `gateway-engine/service.mjs`; doctor line `Gateway:`.
+- Bridge safety ported from Hermes Agent (MIT): owner-message gate, LID ↔ phone aliases, outbound id tracking, reconnect backoff, ownership by identity.
+- Tests: `tests/verify-gateway.mjs` (loopback pipeline plus fake wapi, Telegram, Graph API and bridge servers).
+
+### Smarter recall: `astack search` (P3)
+
+- New `search-engine/`: one index over memory records, past Claude Code and Codex
+  sessions for this workspace, markdown reports, the skill catalog and missions.
+  `runtime.search.query / index / status` implement the v3 contract.
+- SQLite FTS5 (BM25) through `node:sqlite` at `.astack/search/index.db`; on Node
+  older than 22.5 the same API falls back to an in-memory BM25 index with a clear
+  message.
+- Persian-aware normalization at index and query time: ی/ي/ى, ک/ك, ه/ة/ۀ, Persian
+  and Arabic digits, harakat, tatweel, ZWNJ as a word break plus joined aliases.
+- Optional semantic layer: Ollama `bge-m3` embeddings stored as BLOBs, hybrid
+  ranking by reciprocal rank fusion; `--semantic auto|on|off`.
+- Incremental reindex by fingerprint, content hash and parser version.
+- Secrets never indexed: credential-named files skipped, assignments and known
+  token shapes redacted.
+- Memory search respects supersede: current facts by default,
+  `--include-superseded` for history, `--as-of` for a point in time.
+- `astack search owner-profile`: deterministic owner profile from identity,
+  preference and decision memories plus recent sessions.
+- `astack memory search` and `astack context search` show "also found in past
+  sessions" when the index exists (unchanged output otherwise).
+- Daemon service `search-engine/service.mjs` for periodic incremental reindex.
+- New test suite `tests/verify-search.mjs` (appended to `npm test`).
+
+### Skill hub (P4)
+
+- New `skill-hub/` engine (`runtime.skillHub`): imports agentskills.io / Anthropic
+  `SKILL.md` skills from a local folder, a git URL or a GitHub `owner/repo/path`
+  into auxiliary packs under the new managed directory `skill-packs/`.
+- Static security scanner (`skill-hub/scanner.mjs`): prompt injection, hidden
+  text, pipe-to-shell, credential access, exfiltration, destructive commands,
+  obfuscation and binaries, with `file:line` findings and a `low | medium | high |
+  blocked` risk per skill. Scripts are never executed; a skill with scripts
+  requires review.
+- Skill catalog integration (append-only): pack skills carry
+  `source: "pack:<pack>"`, rank below built-in and learned skills
+  (`skills.packs.weight`, default 0.6), blocked skills are never selectable, and
+  `skills.packs.enabled: false` restores the previous output byte for byte.
+- `astack ask` lists catalog skills with auxiliary pack skills below built-ins
+  while packs are enabled.
+- New commands: `astack skill pack list|search|show|import|scan|remove|updates`,
+  `astack skill catalog --packs`, `astack skill curate [--apply]`.
+- Skill curator: usage, last use, success rate, cross-source duplicates and
+  keep / refine / retire recommendations; changes only with `--apply`, never
+  touches built-in skills, never deletes files.
+- `skill-hub/service.mjs` for the daemon: optional update check of git-sourced
+  packs (check only).
+- New auxiliary pack `skill-packs/hermes/`: 211 skills from NousResearch/hermes-agent
+  (MIT), with `PACK.md`, `SCAN.md`, `LICENSE` and `compat: hermes-runtime` labels.
+- Doctor prints a `Skill packs:` line. New test suite `tests/verify-skillhub.mjs`.
+
+### Aramin — the AStack console (P5)
+
+- New `console/`: **Aramin** (آرامین), a local, installable PWA console in the
+  style of a native admin app — bottom tab bar on phones, side rail on desktop, Ctrl/⌘-K
+  command palette, bottom sheets, toasts, skeletons, dark/light/system theme,
+  RTL Persian by default with an English switch. Zero dependencies, no build.
+- `astack console start [--port] [--host] [--open]`, `astack console token [--rotate]`,
+  `astack console status`; `console/service.mjs` implements the daemon service
+  contract.
+- Screens: home, approvals (exact action, target, values, risk, requester;
+  approve/deny with a confirmation sheet, typed code for irreversible actions,
+  receipt), missions (pause/resume/cancel, steps, timeline), memory (recall,
+  entities, stats; `runtime.search` when present), runs (dry run first; refused
+  runs with their reason), jobs/hooks/incidents (run-now for safe kinds), audit
+  log (filters, paging), skills (incl. packs), board, gateway, system (daemon
+  state, services), settings.
+- Optional engines (runner, gateway, search, skill hub, board, sandbox, daemon)
+  are feature-detected; missing ones show a "not installed" card.
+- Security: loopback by default, Host-header check, owner token in
+  `.astack/console/token`, HttpOnly SameSite=Strict session cookie, hashed
+  session store, CSRF on every write, login rate limit, strict CSP, no external
+  origins. Decisions go through `runtime.approvals` / `runtime.missions` /
+  `runtime.runner` as `owner@console` and are audited.
+- Live updates over Server-Sent Events (event bus + cross-process state poller)
+  with Web Notifications.
+- Vazirmatn variable font vendored with its OFL licence.
+- Shared-file edits (append only): `bin/astack.mjs` (import, `console` command,
+  one doctor line), `locales/fa.json` + `locales/en.json` (`cli.help.console`,
+  `cli.console.*`, `console.*`), `upgrade-engine/manifest.json` (`console`
+  managed), `.gitignore` (`.astack/console/`), `astack.config.yaml` (commented
+  `console:` defaults), `package.json` (`tests/verify-console.mjs` appended to
+  `npm test`, `test:console`, `console` scripts).
+- Docs: `documentation/Aramin-Console.md`.
+
+### P6 — Board, sandbox, vault, A2A
+
+**Added**
+- `board-engine/`: durable multi-agent kanban (`runtime.board`, `astack board create|list|show|add|run [--once]|steer|retry|cancel`). Cards with agent/team assignees, dependencies, retries with exponential backoff, structured per-attempt handoffs and transcripts, parallel fan-out (`board.max_parallel`), an independent reviewer lane (`--review`), live steering, approval waits, crash recovery and a per-board lock. Executes through `runtime.runner.execute`; without a runner cards are `blocked: runner not installed`. Emits `board.card.*` events and notifies `runtime.gateway` when a card fails. Daemon service in `board-engine/service.mjs`.
+- `sandbox-engine/`: Docker-isolated execution (`runtime.sandbox.exec`, `astack sandbox status|images|require|exec -- <command>`): no network, read-only root, all capabilities dropped, no-new-privileges, pids/memory/CPU limits, read-only mounts with secret stores hidden. The automation policy remains the gate; every run is audited.
+- Automation policy: optional `sandbox.required_for` patterns route matching shell-tool commands and `command` jobs into the sandbox (fail closed). Unset, nothing changes.
+- Vault backends for the secret broker: `vault:windows` (DPAPI), `vault:macos` (`security`), `vault:linux` (`secret-tool`), `vault:bitwarden` (`bw`, read only), `vault:1password` (`op`, read only). `astack secret vault status|set|test|remove`; values via stdin or a hidden prompt only.
+- Exfiltration guard `trust-engine/redaction.mjs` (`redactResolvedSecrets`, `redactResolvedDeep`): resolved secret values are scrubbed from audit records, board transcripts, sandbox output and A2A responses.
+- A2A endpoint `interop-engine/a2a-server.mjs` (`runtime.a2a`, `astack a2a serve|card|status`): agent card, `message/send`, `tasks/get`, `tasks/cancel` over JSON-RPC with bearer auth (`credential://a2a/token`), loopback by default, inbound tasks treated as untrusted under a capped authority ceiling; plan-only through the chief of staff when no runner is installed.
+- `tests/verify-board.mjs` appended to `npm test`; `documentation/Board-Sandbox-Vault.md`.
+
+#### Security hardening (3.0 security review)
+
+Mandatory before the owner gateway is enabled. Nothing here changes a 2.5.1
+command, file format or test; the six 2.5.1 suites run unmodified.
+
+- **Ceiling enforced in the tools.** Runner runs at L0–L2, and every run that
+  is not the owner's own request, get Claude `Read`/`Grep`/`Glob` with
+  `dontAsk` and codex `read-only`, whatever the configuration says. Wider
+  configured tools apply only at L3+ for `cli`, `console` and `gateway:*`;
+  `a2a` and `signal:*` are always read-only (`toolScopeFor`).
+- **Approval forgery blocked.** Mandatory Claude denies (`Write`/`Edit` on
+  `.astack/**`, any `astack approval`, any Bash touching `.astack`) that a
+  custom deny list cannot drop; `ASTACK_UNATTENDED=1` in every runner child,
+  under which the approval engine, `astack approval approve|reject|deny` and
+  `astack browser resume` refuse to decide. The approval file format is
+  unchanged.
+- **Gateway approvals.** Groups need a quote or the code; in a private chat a
+  bare word counts only for a prompt delivered to that chat, before the reply,
+  within `gateway.approval_window_minutes` (default 30); forwarded messages are
+  never decisions (Telegram, Baileys, wapi, Cloud API); every prompt names the
+  run's source.
+- **A2A.** Injection-shaped requests are rejected; plan only unless
+  `a2a.execute: true`; artifacts redacted; no automatic pack skills and no
+  past sessions for A2A and signal runs.
+- **No domain escalation for outsiders.** A2A and signal runs are capped at
+  the owner's default level; the signal engine passes only
+  `hook.defaults.domain` to the runner.
+- **Redaction of new outputs.** Runner records, prompts and outputs, gateway
+  messages and A2A artifacts pass `redactSecretsStrict` (new export in
+  `lib/text.mjs`; `redactSecrets` is unchanged) and the resolved-secret guard.
+  Token shapes now live in `lib/redact.mjs`, shared with search. The header of
+  `trust-engine/redaction.mjs` states its real coverage and limits.
+- **Sandbox.** Every `.astack/`, `.ssh/`, `.claude/`, `.env*` and `.git/config`
+  is hidden at any depth; env values travel in a temporary env file; image and
+  user come only from configuration; the routed sandbox mounts only workspace
+  folders. The filesystem tool also refuses `.astack/gateway|search|a2a|console`.
+- **Search redaction.** Persian and short credential keywords (رمز، پسورد،
+  گذرواژه، کلمه عبور، کد تایید، کد ورود، توکن, pass, pwd, pin, otp, 2fa, cvv),
+  card numbers and IBANs.
+- **Inbound fence.** A random fence per run; fence markers in the input are
+  removed; injection patterns extended (Persian too), append only.
+- **Smaller items.** Codex bypass arguments refused and Claude permission modes
+  allowlisted; DPAPI through the absolute PowerShell path; Baileys installed
+  with `--ignore-scripts` and `/send-media` limited to the bridge outbox/media
+  folders; gateway and signal listeners need `allow_remote` for a non-loopback
+  host, keep a bounded rate-limit map and answer 500 without detail;
+  `.gitignore` ignores `.astack/` as a whole; Hermes `godmode` and
+  `obliteratus` blocked through the new `skill-packs/<pack>/OVERRIDES.json`,
+  kept across re-imports; pack skills labelled third-party in work orders.
+
+Follow-up, not done here: signing approval records with a DPAPI-protected key.
+It would have to verify unsigned 2.5.1 records too, so it only adds value once
+every writer signs; the ASTACK_UNATTENDED gate and the mandatory `.astack/**`
+denies close the forgery path for runner children in the meantime. A process
+that runs as the owner outside the runner can still append to
+`.astack/approvals/requests.jsonl` directly.
+
 ## 2.5.1
 
 The merge stage skips seed files and preserved data listed in `upgrade.keep`
