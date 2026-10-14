@@ -128,7 +128,7 @@ Keep real ids out of a committed config with
   a four-character code. The owner answers by replying to that message, or with
   the code: «بفرست», «ارسال کن», «تایید» / "approve" — or «نه», «رد» / "deny".
   A message is a decision only when nothing but the word (and code) is in it;
-  «بفرست به حسن …» is a new request.
+  «بفرست به سارا …» is a new request.
 - The decision goes through `runtime.approvals` with actor `owner@<channel>` and
   produces the normal receipt, then the run (runner) or mission (mission engine)
   resumes. A second owner account answering an already decided request gets

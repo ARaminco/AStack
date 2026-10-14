@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { RateLimiter, assertBindable } from "../lib/net.mjs";
 
 const MAX_BODY_BYTES = 1024 * 1024;
 
@@ -12,28 +13,24 @@ const MAX_BODY_BYTES = 1024 * 1024;
  * reaction can never block the sender.
  */
 export class SignalServer {
-  constructor(engine, { port = 8787, host = "127.0.0.1", log = console.log, processImmediately = true, rateLimit = 60 } = {}) {
+  constructor(engine, { port = 8787, host = "127.0.0.1", log = console.log, processImmediately = true, rateLimit = 60, allowRemote = false, maxTracked = 5000 } = {}) {
     this.engine = engine;
     this.port = Number(port);
     this.host = host;
     this.log = log;
     this.processImmediately = processImmediately;
     this.rateLimit = rateLimit;
-    this.hits = new Map();
+    // A non-loopback bind needs signals.server.allow_remote: true (or
+    // `astack signal serve --allow-remote`).
+    this.allowRemote = allowRemote === true;
+    // Bounded: a flood of addresses cannot grow memory without limit.
+    this.limiter = new RateLimiter({ limit: rateLimit, windowMs: 60 * 1000, maxEntries: maxTracked });
+    this.hits = this.limiter.hits;
     this.server = null;
   }
 
   allowRate(address) {
-    const now = Date.now();
-    const window = 60 * 1000;
-    const entry = this.hits.get(address) ?? { count: 0, since: now };
-    if (now - entry.since > window) {
-      entry.count = 0;
-      entry.since = now;
-    }
-    entry.count += 1;
-    this.hits.set(address, entry);
-    return entry.count <= this.rateLimit;
+    return this.limiter.allow(address);
   }
 
   readBody(request) {
@@ -119,16 +116,26 @@ export class SignalServer {
         reactions: processed.reactions.map((reaction) => ({ action: reaction.action, ok: reaction.ok, summary: reaction.summary }))
       });
     } catch (error) {
-      send(500, { ok: false, id: event.id, error: error.message });
+      // The detail goes to the log, never to the sender.
+      this.log("[signal] processing " + event.id + " failed: " + error.message);
+      send(500, { ok: false, id: event.id, error: "internal error" });
     }
   }
 
   start() {
+    try {
+      assertBindable(this.host, { allowRemote: this.allowRemote, setting: "signals.server.allow_remote" });
+    } catch (error) {
+      return Promise.reject(error);
+    }
     return new Promise((resolve, reject) => {
       this.server = createServer((request, response) => {
         this.handle(request, response).catch((error) => {
-          response.writeHead(500, { "content-type": "application/json" });
-          response.end(JSON.stringify({ ok: false, error: error.message }));
+          this.log("[signal] request failed: " + error.message);
+          if (!response.headersSent) {
+            response.writeHead(500, { "content-type": "application/json" });
+          }
+          response.end(JSON.stringify({ ok: false, error: "internal error" }));
         });
       });
       this.server.once("error", reject);

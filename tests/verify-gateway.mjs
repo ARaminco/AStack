@@ -13,8 +13,15 @@ import { AutomationPolicy, DEFAULT_POLICY } from "../permission-system/automatio
 import { MissionEngine } from "../mission-engine/mission-engine.mjs";
 import { parseYaml } from "../configuration-engine/configuration.mjs";
 import { createLocalization } from "../localization-engine/service.mjs";
-import { GatewayEngine, approvalIdsOf } from "../gateway-engine/gateway-engine.mjs";
+import { GatewayEngine, approvalIdsOf, approvalSource } from "../gateway-engine/gateway-engine.mjs";
 import { CliChannel } from "../gateway-engine/channels/cli.mjs";
+import { TelegramChannel } from "../gateway-engine/channels/telegram.mjs";
+import { WapiChannel } from "../gateway-engine/channels/whatsapp-wapi.mjs";
+import { WhatsAppCloudChannel } from "../gateway-engine/channels/whatsapp-cloud.mjs";
+import { WhatsAppBridgeChannel } from "../gateway-engine/channels/whatsapp-bridge.mjs";
+import { SignalServer } from "../signal-engine/http-server.mjs";
+import { RateLimiter } from "../lib/net.mjs";
+import { forgetResolvedSecret, rememberResolvedSecret } from "../trust-engine/redaction.mjs";
 import { signWebhookBody } from "../gateway-engine/channels/whatsapp-cloud.mjs";
 import { parseDecision, newApprovalCode } from "../gateway-engine/approval-replies.mjs";
 import { flattenTables, formatForChat, hasBidiControls, splitMessage, stripBidiControls } from "../gateway-engine/format.mjs";
@@ -23,7 +30,7 @@ import { GatewayListener } from "../gateway-engine/listener.mjs";
 import { createService } from "../gateway-engine/service.mjs";
 import { BridgeManager } from "../gateway-engine/bridge-manager.mjs";
 import { VoiceTranscriber } from "../gateway-engine/voice.mjs";
-import { allowedTarget, classifyInbound, createBackoff, createOutboundTracker, parseList, toJid } from "../gateway-engine/bridges/whatsapp-baileys/lib/gate.mjs";
+import { allowedTarget, classifyInbound, createBackoff, createOutboundTracker, parseList, sendablePath, toJid } from "../gateway-engine/bridges/whatsapp-baileys/lib/gate.mjs";
 
 // Placeholder identities only — this repository is public.
 const OWNER_A = "owner-a";
@@ -164,7 +171,7 @@ assert.deepEqual(parseDecision("/approve K7Q2"), { decision: "approve", code: "K
 assert.deepEqual(parseDecision("نه"), { decision: "deny", code: null });
 assert.deepEqual(parseDecision("رد ABCD"), { decision: "deny", code: "ABCD" });
 assert.deepEqual(parseDecision("deny"), { decision: "deny", code: null });
-assert.equal(parseDecision("بفرست به حسن گزارش را"), null, "a sentence containing the word is a request, not an approval");
+assert.equal(parseDecision("بفرست به سارا گزارش را"), null, "a sentence containing the word is a request, not an approval");
 assert.equal(parseDecision("نه، اول گزارش بده"), null);
 assert.equal(parseDecision("approve everything forever please"), null);
 assert.equal(parseDecision("سلام"), null);
@@ -310,7 +317,7 @@ assert.equal(parseYaml(readFileSync(join(process.cwd(), "astack.config.yaml"), "
   assert.equal(runner.calls.length, runsBefore);
 
   // A sentence with the approval word is a request, not an approval.
-  cli.receive({ id: "w1", from: OWNER_A, text: "بفرست به حسن گزارش را" });
+  cli.receive({ id: "w1", from: OWNER_A, text: "بفرست به سارا گزارش را" });
   report = await gateway.pollOnce();
   assert.equal(report.channels[0].outcomes[0].action, "run");
   assert.equal(approvals.list({ state: "approved" }).length, 0);
@@ -900,11 +907,169 @@ const json = (response, status, body) => {
   assert.ok(dry.files.some((file) => file.endsWith("bridge.mjs")));
   assert.ok(dry.files.some((file) => file.endsWith("package.json")));
   assert.match(dry.install, /^npm install --omit=dev/);
+  assert.match(dry.install, /--ignore-scripts/, "dependency install scripts never run");
   const pinned = JSON.parse(readFileSync(join(process.cwd(), "gateway-engine", "bridges", "whatsapp-baileys", "package.json"), "utf8"));
   for (const version of Object.values(pinned.dependencies)) {
     assert.match(version, /^\d+\.\d+\.\d+(-[\w.]+)?$/, "bridge dependencies are pinned exactly");
   }
   assert.ok(!existsSync(join(process.cwd(), "node_modules", "@whiskeysockets")), "Baileys is never installed into the core");
+}
+
+// ================================================= 3.0 security hardening
+{
+  // --- groups need a quote or the code; a bare word decides nothing there
+  let clockValue = Date.now();
+  const clock = () => new Date(clockValue);
+  const h = harness({ clock });
+  const promptsOf = (id) => h.gateway.state.read().prompts.find((prompt) => prompt.approvalId === id);
+  const first = h.approvals.request({ action: "group.test", summary: "group decision", parameters: { source: "gateway:cli" } });
+  await h.gateway.promptApproval(first.id);
+  h.cli.receive({ id: "grp-bare", from: OWNER_A, chatId: FAMILY_GROUP, isGroup: true, text: "بفرست" });
+  let report = await h.gateway.pollOnce();
+  assert.equal(report.channels[0].outcomes[0].action, "decision-needs-code");
+  assert.equal(report.channels[0].outcomes[0].reason, "group");
+  assert.equal(h.approvals.get(first.id).state, "pending", "a bare word in a group approves nothing");
+  assert.equal(h.cli.sent.at(-1).to, FAMILY_GROUP);
+  h.cli.receive({ id: "grp-code", from: OWNER_A, chatId: FAMILY_GROUP, isGroup: true, text: "بفرست " + promptsOf(first.id).code });
+  report = await h.gateway.pollOnce();
+  assert.equal(report.channels[0].outcomes[0].action, "decision-approved", "the code works in a group");
+
+  // --- forwarded messages are never decisions, even when quoting the prompt
+  const second = h.approvals.request({ action: "forward.test", summary: "forwarded" });
+  await h.gateway.promptApproval(second.id);
+  const toA = promptsOf(second.id).messages.find((entry) => entry.target === OWNER_A);
+  h.cli.receive({ id: "fwd-1", from: OWNER_A, text: "بفرست", quotedId: toA.id, forwarded: true });
+  report = await h.gateway.pollOnce();
+  assert.equal(report.channels[0].outcomes[0].action, "decision-refused-forwarded");
+  assert.equal(h.approvals.get(second.id).state, "pending", "a forwarded «بفرست» approves nothing");
+  assert.match(h.cli.sent.at(-1).text, /فورواردشده/);
+  assert.ok(auditActions(h.audit).includes("gateway-decision-forwarded"));
+
+  // --- DM bare word: only for a prompt delivered to this chat, before, within the window
+  h.gateway.editOwners("cli", "owner-c");
+  h.cli.receive({ id: "dm-other", from: "owner-c", text: "بفرست" });
+  report = await h.gateway.pollOnce();
+  assert.equal(report.channels[0].outcomes[0].action, "decision-needs-code", "a prompt never sent to this chat is not answered by a bare word");
+  assert.equal(report.channels[0].outcomes[0].reason, "not-delivered-here");
+  h.gateway.editOwners("cli", "owner-c", { remove: true });
+  // A reply written before the prompt went out does not count.
+  h.cli.receive({ id: "dm-early", from: OWNER_A, text: "بفرست", timestamp: Math.floor(clockValue / 1000) - 120 });
+  report = await h.gateway.pollOnce();
+  assert.equal(report.channels[0].outcomes[0].action, "decision-needs-code", "a reply older than the prompt is not a decision");
+  // Past the window (default 30 minutes) a bare word no longer counts.
+  clockValue += 31 * 60000;
+  h.cli.receive({ id: "dm-late", from: OWNER_A, text: "بفرست", timestamp: Math.floor(clockValue / 1000) });
+  report = await h.gateway.pollOnce();
+  assert.equal(report.channels[0].outcomes[0].action, "decision-needs-code", "outside approval_window_minutes a bare word is not enough");
+  assert.equal(h.approvals.get(second.id).state, "pending");
+  // Inside the window, in the chat the prompt went to: accepted.
+  clockValue -= 31 * 60000;
+  h.cli.receive({ id: "dm-ok", from: OWNER_B, text: "بفرست", timestamp: Math.floor(clockValue / 1000) + 60 });
+  clockValue += 60000;
+  report = await h.gateway.pollOnce();
+  assert.equal(report.channels[0].outcomes[0].action, "decision-approved", "a bare word right after the prompt in the same chat works");
+  assert.equal(h.gateway.settings().approval_window_minutes, 30);
+
+  // --- every prompt names where the work came from
+  for (const [source, label] of [["a2a", /منبع درخواست: عامل بیرونی \(A2A\) \(a2a\)/], ["signal:inbox", /منبع درخواست: پیام ورودی بیرونی \(سیگنال\) \(signal:inbox\)/], ["schedule:nightly", /منبع درخواست: کار زمان‌بندی‌شده/], ["cli", /منبع درخواست: خط فرمان/], ["gateway:telegram", /منبع درخواست: پیام شما در گیت‌وی/]]) {
+    const approval = h.approvals.request({ action: "source.test", summary: "source " + source, parameters: { run: "R-1", source } });
+    await h.gateway.promptApproval(approval.id);
+    assert.match(h.cli.sent.at(-1).text, label, "the prompt shows the source " + source);
+    h.approvals.reject(approval.id, { by: "owner" });
+  }
+  assert.equal(approvalSource({ requestedBy: "astack" }).category, "other");
+  assert.equal(approvalSource({ mission: "M-1", requestedBy: "mission-engine" }).category, "mission");
+
+  // --- nothing secret leaves through a chat
+  rememberResolvedSecret("gw-resolved-Secret-77", "credential://test/gw");
+  await h.gateway.notify({ text: "status: pwd=hunter22x and gw-resolved-Secret-77 and card 6037 9911 2345 6789" });
+  forgetResolvedSecret("gw-resolved-Secret-77");
+  const leakedText = h.cli.sent.slice(-2).map((message) => message.text).join("\n");
+  assert.ok(!leakedText.includes("hunter22x") && !leakedText.includes("gw-resolved-Secret-77") && !leakedText.includes("6037 9911 2345 6789"), "gateway messages are redacted");
+  assert.match(leakedText, /\[redacted:credential:\/\/test\/gw\]/);
+
+  // --- every channel reports forwarded messages
+  const dummyContext = { now: () => new Date(), secret: () => "x", assertHost: () => {}, bridgeDirectory: sandbox("fwd-bridge") };
+  const telegram = new TelegramChannel({ config: {}, context: dummyContext });
+  assert.equal(telegram.toInbound({ message_id: 5, chat: { id: 1, type: "private" }, from: { id: 1 }, text: "بفرست", date: now(), forward_origin: { type: "user" } }).forwarded, true);
+  assert.equal(telegram.toInbound({ message_id: 6, chat: { id: 1, type: "private" }, from: { id: 1 }, text: "بفرست", date: now(), forward_from: { id: 9 } }).forwarded, true);
+  assert.equal(telegram.toInbound({ message_id: 7, chat: { id: 1, type: "private" }, from: { id: 1 }, text: "بفرست", date: now() }).forwarded, false);
+  const wapi = new WapiChannel({ config: {}, context: dummyContext });
+  assert.equal(wapi.toInbound({ id: "w1", chat_id: "15550000001", from: "15550000001", type: "text", text: { body: "بفرست" }, context: { forwarded: true } }).forwarded, true);
+  assert.equal(wapi.toInbound({ id: "w2", chat_id: "15550000001", from: "15550000001", type: "text", text: { body: "بفرست" } }).forwarded, false);
+  const cloud = new WhatsAppCloudChannel({ config: {}, context: dummyContext });
+  assert.equal(cloud.toInbound({ id: "c1", from: "15550000001", type: "text", text: { body: "بفرست" }, context: { forwarded: true } }).forwarded, true);
+  assert.equal(cloud.toInbound({ id: "c2", from: "15550000001", type: "text", text: { body: "بفرست" }, context: { frequently_forwarded: true } }).forwarded, true);
+
+  // --- the bridge sends only files from its outbox / media folders
+  const bridgeRoot = sandbox("bridge-files");
+  for (const folder of ["outbox", "media", "auth"]) {
+    mkdirSync(join(bridgeRoot, folder), { recursive: true });
+  }
+  writeFileSync(join(bridgeRoot, "outbox", "report.pdf"), "pdf");
+  writeFileSync(join(bridgeRoot, "media", "note.ogg"), "ogg");
+  writeFileSync(join(bridgeRoot, "auth", "creds.json"), "{}");
+  const folders = [join(bridgeRoot, "outbox"), join(bridgeRoot, "media")];
+  assert.ok(sendablePath(join(bridgeRoot, "outbox", "report.pdf"), folders));
+  assert.ok(sendablePath(join(bridgeRoot, "media", "note.ogg"), folders));
+  assert.equal(sendablePath(join(bridgeRoot, "auth", "creds.json"), folders), null, "session credentials can never be sent");
+  assert.equal(sendablePath(join(bridgeRoot, "outbox", "..", "auth", "creds.json"), folders), null, "no escape through ..");
+  assert.equal(sendablePath(join(process.cwd(), "package.json"), folders), null, "no file outside the bridge folders");
+  assert.equal(sendablePath(join(bridgeRoot, "outbox", "missing.pdf"), folders), null);
+  const bridgeChannel = new WhatsAppBridgeChannel({ config: {}, context: { ...dummyContext, bridgeDirectory: bridgeRoot } });
+  const mediaCalls = [];
+  bridgeChannel.call = async (method, path, options) => {
+    mediaCalls.push({ path, filePath: options.body.filePath, existed: existsSync(options.body.filePath) });
+    return { id: "M1" };
+  };
+  const original = join(sandbox("report-src"), "invoice.pdf");
+  writeFileSync(original, "invoice");
+  assert.deepEqual(await bridgeChannel.sendFile("15550000001", original), { id: "M1" });
+  assert.equal(mediaCalls[0].path, "/send-media");
+  assert.ok(mediaCalls[0].filePath.startsWith(join(bridgeRoot, "outbox")), "the channel stages files in the bridge outbox");
+  assert.equal(mediaCalls[0].existed, true);
+  assert.equal(existsSync(mediaCalls[0].filePath), false, "the staged copy is removed after sending");
+
+  // --- listeners: loopback unless allow_remote, bounded rate map, generic 500
+  await assert.rejects(() => new GatewayListener(h.gateway, { host: "0.0.0.0", port: 0 }).start(), /only loopback/);
+  const remote = new GatewayListener(h.gateway, { host: "0.0.0.0", port: 0, allowRemote: true });
+  await remote.start();
+  servers.push(remote.server);
+  await remote.stop();
+  const limiter = new RateLimiter({ limit: 2, maxEntries: 50 });
+  for (let index = 0; index < 500; index += 1) {
+    limiter.allow("10.0.0." + index);
+  }
+  assert.ok(limiter.size <= 50, "the rate-limit map is bounded");
+  assert.equal(limiter.allow("1.1.1.1"), true);
+  assert.equal(limiter.allow("1.1.1.1"), true);
+  assert.equal(limiter.allow("1.1.1.1"), false, "the limit still applies");
+  const brokenListener = new GatewayListener({ enabledChannels() { throw new Error("internal-detail-do-not-leak"); } }, { port: 0 });
+  await brokenListener.start();
+  servers.push(brokenListener.server);
+  const failed = await fetch("http://127.0.0.1:" + brokenListener.port + "/gateway/cli/webhook", { method: "POST", body: "{}" });
+  assert.equal(failed.status, 500);
+  assert.doesNotMatch(await failed.text(), /internal-detail-do-not-leak/, "a 500 never carries the error detail");
+  const signalEngine = {
+    status: () => ({}),
+    exists: () => true,
+    get: () => ({ id: "h" }),
+    verify: () => ({ ok: true }),
+    normalize: () => ({ id: "SG-1" }),
+    queue: (event) => event,
+    process: async () => {
+      throw new Error("signal-detail-do-not-leak");
+    }
+  };
+  await assert.rejects(() => new SignalServer(signalEngine, { host: "0.0.0.0", port: 0, log: () => {} }).start(), /only loopback/);
+  const signalServer = new SignalServer(signalEngine, { port: 0, log: () => {} });
+  await signalServer.start();
+  servers.push(signalServer.server);
+  const signalFailed = await fetch("http://127.0.0.1:" + signalServer.server.address().port + "/hooks/h", { method: "POST", body: "{}" });
+  assert.equal(signalFailed.status, 500);
+  assert.doesNotMatch(await signalFailed.text(), /signal-detail-do-not-leak/);
+  assert.ok(new SignalServer(signalEngine, {}).limiter instanceof RateLimiter);
+  console.log("gateway hardening: groups, forwarded, window, source, redaction, bridge files, listeners ok");
 }
 
 // ---------------------------------------------- the core stays dependency free

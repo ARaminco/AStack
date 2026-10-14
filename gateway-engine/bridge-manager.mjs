@@ -85,7 +85,10 @@ export class BridgeManager {
    */
   setup({ dryRun = false, install = true } = {}) {
     const files = this.sourceFiles();
-    const npmArgs = ["install", "--omit=dev", "--no-audit", "--no-fund", "--no-save"];
+    // --ignore-scripts: Baileys 7.0.0-rc13 needs no install script (its only
+    // one, preinstall, is a Node version check; protobufjs' postinstall is a
+    // CLI helper), so nothing a dependency ships runs at install time.
+    const npmArgs = ["install", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund", "--no-save"];
     const plan = { appDirectory: this.appDirectory, files, install: install ? "npm " + npmArgs.join(" ") : null };
     if (dryRun) {
       return { ...plan, dryRun: true };
