@@ -24,6 +24,7 @@ function openBrowser(url) {
 /**
  * `astack console start [--port <n>] [--host <addr>] [--open]`
  * `astack console token [--rotate]`
+ * `astack console open` — sign in from the browser with a one-time ticket
  * `astack console status`
  */
 export async function runConsoleCommand({ runtime, i18n, tokens }) {
@@ -68,6 +69,24 @@ export async function runConsoleCommand({ runtime, i18n, tokens }) {
       out(t("cli.console.stopped"));
     }
     out(t("cli.console.tokenState", { state: auth.hasToken() ? "present" : "missing", sessions: auth.count() }));
+    return;
+  }
+
+  if (action === "open") {
+    // The console usually runs inside the daemon, so the ticket is shared
+    // through the state folder (hash only) and dies after one login or a minute.
+    const record = readServerRecord(runtime.workspaceRoot);
+    if (!record?.alive) {
+      out(t("cli.console.stopped"));
+      process.exitCode = 1;
+      return;
+    }
+    const ticket = auth.issueTicket({ shared: true });
+    if (!openBrowser(record.url + "/#ticket=" + ticket)) {
+      out(t("cli.console.openFailed", { url: record.url }));
+      return;
+    }
+    out(t("cli.console.opened", { url: record.url }));
     return;
   }
 

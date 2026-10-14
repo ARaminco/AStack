@@ -69,7 +69,7 @@
       "sandbox": "اجرای فرمان در محیط ایزوله داکر: status، images، require، exec -- <فرمان>.",
       "a2a": "درگاه گفت‌وگوی عامل با عامل (A2A): serve، card، status.",
       "gateway": "پیام‌رسان مالک: فرمان از واتس‌اپ و تلگرام، گزارش و تأیید از گوشی، پیام صوتی فارسی محلی.",
-      "console": "کنسول آرامین: اپ نصب‌شدنی برای تأییدها، مأموریت‌ها، حافظه و پایش (start | token | status)."
+      "console": "کنسول آرامین: اپ نصب‌شدنی برای تأییدها، مأموریت‌ها، حافظه و پایش (open | start | token | status)."
     },
     "project": {
       "usage": "فرمان‌های پروژه: init، demo، list، status، board، backlog، add، move، start، done، block، unblock، charter، milestone، sprint، risk، gate، advance، baseline، critical-path، forecast، next، digest، decision، scaffold، raci، report، templates",
@@ -596,7 +596,8 @@
       "alreadyRunning": "آرامین از قبل روشن است: {url} (pid {pid})",
       "portBusy": "درگاه {port} اشغال است؛ با --port یک درگاه دیگر بدهید.",
       "openFailed": "مرورگر باز نشد؛ این نشانی را خودتان باز کنید: {url}",
-      "unknownAction": "کار ناشناخته برای console: {action} (start | token | status)"
+      "unknownAction": "کار ناشناخته برای console: {action} (start | token | status)",
+      "opened": "آرامین در مرورگر باز شد و خودکار وارد می‌شوید: {url} (کد ورود یک‌بارمصرف است و پس از یک دقیقه باطل می‌شود)."
     }
   },
   "delivery": {

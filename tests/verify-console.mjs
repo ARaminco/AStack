@@ -157,6 +157,14 @@ try {
   const ticket = server.auth.issueTicket();
   assert.equal((await call(base, "/api/login", { method: "POST", body: { ticket }, origin: base })).status, 200);
   assert.equal((await call(base, "/api/login", { method: "POST", body: { ticket }, origin: base })).status, 401, "a ticket is single use");
+  // `astack console open` runs in another process: its ticket is shared through
+  // the state folder as a hash and is still single use.
+  const { ConsoleAuth } = await import("../console/auth.mjs");
+  const otherAuth = new ConsoleAuth(join(workspace, ".astack", "console"));
+  const shared = otherAuth.issueTicket({ shared: true });
+  assert.ok(!readFileSync(join(workspace, ".astack", "console", "tickets.json"), "utf8").includes(shared), "only a hash of the shared ticket reaches the disk");
+  assert.equal((await call(base, "/api/login", { method: "POST", body: { ticket: shared }, origin: base })).status, 200, "a ticket from another process signs in");
+  assert.equal((await call(base, "/api/login", { method: "POST", body: { ticket: shared }, origin: base })).status, 401, "a shared ticket is single use");
 
   // Every read endpoint answers; optional engines degrade to "not installed".
   for (const path of ["/api/home", "/api/approvals?state=all", "/api/missions", "/api/jobs", "/api/hooks", "/api/audit", "/api/memory", "/api/memory/stats", "/api/memory/entity?q=acme", "/api/skills", "/api/system", "/api/search?q=test", "/api/notifications", "/api/counts"]) {
