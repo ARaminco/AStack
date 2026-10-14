@@ -227,7 +227,12 @@ const firstPack = withPacks.lines.findIndex((line) => line.includes("[pack:"));
 assert.ok(firstPack > 0 && withPacks.lines.slice(firstPack).every((line) => line.includes("[pack:")), "pack lines come after every built-in line");
 assert.ok(!withPacks.lines.some((line) => line.includes("fixture/stealer")), "a blocked skill is not in the catalog");
 
-const selection = enabled.select("security review of docker deployment", { limit: 3, auxiliaryLimit: 2 });
+// A high-risk (needs review) pack skill is never offered automatically by default.
+assert.ok(!enabled.select("security review of docker deployment", { limit: 3, auxiliaryLimit: 2 }).auxiliary.some((hit) => hit.id === "fixture/deploy-helper"), "a high-risk pack skill is not auto-offered");
+const reviewHub = new SkillHub(workspace, { workspaceRoot: workspace, settings: packSettings({ auto_select_review: true }) });
+const reviewing = new SkillCatalog(repoRoot, { learning, workspaceRoot: workspace, hub: reviewHub });
+reviewHub.catalog = reviewing;
+const selection = reviewing.select("security review of docker deployment", { limit: 3, auxiliaryLimit: 2 });
 assert.ok(selection.primary.length >= 1, "built-in skills are selected first");
 assert.ok(selection.auxiliary.some((hit) => hit.id === "fixture/deploy-helper"), "a pack skill is offered as auxiliary");
 assert.ok(selection.all.findIndex((hit) => hit.auxiliary) >= selection.primary.length, "auxiliary skills rank below built-in skills");
