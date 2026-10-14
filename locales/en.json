@@ -64,7 +64,10 @@
       "run": "Run an objective or a mission unattended now: Claude Code headless, codex exec or a local model (--engine, --dry-run, --mission, --queue).",
       "runner": "Unattended runs: list, show, resume after an approval, status, drain the queue, engines.",
       "daemon": "One background process for the runner, scheduler and webhooks: start, stop, status, logs, install-service.",
-      "search": "Smarter recall over memory, past sessions, reports, skills and missions: search \"<query>\" | reindex | status | owner-profile."
+      "search": "Smarter recall over memory, past sessions, reports, skills and missions: search \"<query>\" | reindex | status | owner-profile.",
+      "board": "Multi-agent board: cards with retries, reviewer lane and steering: create, list, show, add, run, steer, retry, cancel.",
+      "sandbox": "Docker-isolated command execution: status, images, require, exec -- <command>.",
+      "a2a": "Agent-to-Agent (A2A) endpoint: serve, card, status."
     },
     "project": {
       "usage": "Project commands: init, demo, list, status, board, backlog, add, move, start, done, block, unblock, charter, milestone, sprint, risk, gate, advance, baseline, critical-path, forecast, next, digest, decision, scaffold, raci, report, templates",
@@ -470,6 +473,53 @@
       "alsoFound": "Also found in past sessions ({count}):",
       "profileSaved": "Owner profile saved: {path} (~{tokens} tokens)",
       "summaryUnavailable": "No model summary: {reason}"
+    },
+    "board": {
+      "created": "Board created: {id}",
+      "listTitle": "Boards ({count}):",
+      "showTitle": "Board {id} — {name} ({cards} cards):",
+      "added": "Card {id} added to board {board}.",
+      "reviewerAdded": "Reviewer card {id} added; the card is done only after the reviewer approves.",
+      "ran": "Board {id}: {started} card attempt(s) started.",
+      "locked": "Board {id} is already being run by another process; skipped.",
+      "steered": "Guidance added to {id}; the next attempt receives it.",
+      "retried": "Card {id} is queued again with a fresh retry budget.",
+      "cancelled": "Cancelled {kind} {id}.",
+      "noRunner": "The runner is not installed: ready cards are marked blocked (runner not installed) until it is.",
+      "unknownAction": "Unknown board action: {action} (create | list | show | add | run | steer | retry | cancel)"
+    },
+    "sandbox": {
+      "running": "Sandbox ready: Docker {version} is running.",
+      "daemonDown": "Docker {version} is installed but its daemon is not running. Start Docker Desktop (or the docker service) and try again.",
+      "notInstalled": "Docker is not installed; the sandbox is unavailable.",
+      "requiredFor": "Commands that must run in the sandbox (policy sandbox.required_for): {patterns}",
+      "imagesTitle": "Local images ({count}):",
+      "patternRequired": "A command pattern is required, for example: astack sandbox require npm",
+      "required": "Commands matching \"{pattern}\" now run only inside the sandbox.",
+      "commandRequired": "Give the command after --, for example: astack sandbox exec -- node -e \"console.log(1+1)\"",
+      "denied": "Denied by the automation policy: {reason}",
+      "failed": "Sandbox run failed (exit {code}) {reason}",
+      "unknownAction": "Unknown sandbox action: {action} (status | images | require | exec)"
+    },
+    "vault": {
+      "statusTitle": "Vault backends (default for this machine: {backend}):",
+      "references": "References stored in a vault: {count}",
+      "unknownBackend": "Unknown vault backend: {backend}. Use one of: {backends}",
+      "prompt": "Value for {reference} (hidden): ",
+      "stored": "Stored {reference} in {location}. The value was not printed or logged.",
+      "linked": "{reference} now reads from {source} (read only; manage the value in that password manager).",
+      "unknownReference": "Unknown credential reference: {reference}",
+      "testOk": "{reference} resolves from {source} ({length} characters).",
+      "testFailed": "{reference} could not be resolved: {reason}",
+      "removed": "Removed {reference} from the vault.",
+      "unknownAction": "Unknown vault action: {action} (status | set | test | remove)"
+    },
+    "a2a": {
+      "statusTitle": "A2A endpoint: {host}:{port}{path} | mode {mode} | ceiling {ceiling}",
+      "tokenReady": "Bearer token configured ({reference}).",
+      "tokenMissing": "No bearer token: register {reference} (astack secret register, or astack secret vault set) before serving.",
+      "listening": "A2A listening at {url} (mode {mode}, ceiling {ceiling}). Press Ctrl+C to stop.",
+      "unknownAction": "Unknown a2a action: {action} (serve | card | status)"
     }
   },
   "delivery": {

@@ -17,6 +17,10 @@ import { pendingMigrations } from "../upgrade-engine/migrations.mjs";
 import { runDaemonCommand, runRunCommand, runRunnerCommand } from "../cli/runner-cli.mjs";
 import { DaemonEngine } from "../daemon-engine/daemon-engine.mjs";
 import { runSearchCommand } from "../cli/search-cli.mjs";
+import { runBoardCommand } from "../cli/board-cli.mjs";
+import { runSandboxCommand } from "../cli/sandbox-cli.mjs";
+import { runVaultCommand } from "../cli/vault-cli.mjs";
+import { runA2ACommand } from "../cli/a2a-cli.mjs";
 
 const i18n = createLocalization();
 const runtime = createRuntime();
@@ -28,6 +32,7 @@ const COMMANDS = [
   "authority", "approval", "audit", "secret", "tool", "runtime", "interop", "mcp", "graphify",
   "domain", "team", "agent", "lead", "project", "workflow", "provider", "plugin", "knowledge", "backup",
   "search"
+  "board", "sandbox", "a2a"
 ];
 COMMANDS.push("run", "runner", "daemon");
 
@@ -216,6 +221,10 @@ async function run() {
       runAuditCommand(context);
       return;
     case "secret":
+      if (tokens[0] === "vault") {
+        await runVaultCommand(context);
+        return;
+      }
       runSecretCommand(context);
       return;
     case "tool":
@@ -274,6 +283,14 @@ async function run() {
       return;
     case "daemon":
       await runDaemonCommand(context);
+    case "board":
+      await runBoardCommand(context);
+      return;
+    case "sandbox":
+      await runSandboxCommand(context);
+      return;
+    case "a2a":
+      await runA2ACommand(context);
       return;
     default:
       throw new Error(i18n.t("cli.unknownCommand", { command }));

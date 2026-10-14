@@ -29,3 +29,7 @@ graphify-out/
 .astack/runner/
 .astack/daemon/
 .astack/search/
+.astack/board/
+.astack/sandbox/
+.astack/vault/
+.astack/a2a/

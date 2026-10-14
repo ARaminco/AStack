@@ -116,6 +116,21 @@ async function runCommand(job, context) {
   if (!verdict.allowed) {
     return failed("blocked by automation policy: " + verdict.reason);
   }
+  if (context.policy?.requiresSandbox?.(payload.command, payload.args ?? [])) {
+    // sandbox.required_for matched: run isolated in Docker or not at all.
+    const { runRequiredSandbox } = await import("../sandbox-engine/sandbox-engine.mjs");
+    const boxed = await runRequiredSandbox(context.policy, {
+      command: payload.command,
+      args: payload.args ?? [],
+      cwd: payload.cwd ? payload.cwd : context.root,
+      timeoutMs: job.policy?.timeoutMs ?? 60000,
+      source: "schedule:" + job.id
+    });
+    const metrics = { durationMs: boxed.durationMs ?? 0, exitCode: boxed.exitCode ?? null, sandbox: 1 };
+    return boxed.ok
+      ? ok("command finished in sandbox in " + metrics.durationMs + "ms", { metrics, output: boxed.stdout.slice(-4000) })
+      : failed("sandboxed command failed: " + (boxed.reason ?? "exit " + boxed.exitCode), { metrics, output: String(boxed.stdout ?? "").slice(-4000) + String(boxed.stderr ?? "").slice(-2000) });
+  }
   const started = Date.now();
   return new Promise((resolve) => {
     execFile(
