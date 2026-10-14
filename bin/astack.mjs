@@ -31,7 +31,7 @@ const COMMANDS = [
   "mission", "schedule", "signal", "browser",
   "authority", "approval", "audit", "secret", "tool", "runtime", "interop", "mcp", "graphify",
   "domain", "team", "agent", "lead", "project", "workflow", "provider", "plugin", "knowledge", "backup",
-  "search"
+  "search",
   "board", "sandbox", "a2a"
 ];
 COMMANDS.push("run", "runner", "daemon");
