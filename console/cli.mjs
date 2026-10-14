@@ -3,7 +3,8 @@ import { parseArgs } from "../delivery-engine/cli.mjs";
 import { ConsoleAuth } from "./auth.mjs";
 import { ConsoleUsers } from "./users.mjs";
 import { readSecretValue } from "../cli/vault-cli.mjs";
-import { ConsoleServer, consoleStateDirectory, readServerRecord, resolveConsoleSettings } from "./server.mjs";
+import { isUnattended } from "../trust-engine/approvals.mjs";
+import { ConsoleServer, consoleStateDirectory, readServerRecord, resolveConsoleSettings, resolveRemoteSettings } from "./server.mjs";
 
 const out = (line) => console.log(line);
 
@@ -29,6 +30,10 @@ function openBrowser(url) {
  * `astack console open` — sign in from the browser with a one-time ticket
  * `astack console status`
  * `astack console user set|list|remove|totp <username> [--disable]`
+ *
+ * `token` and `user set|remove|totp` refuse to run in an unattended process
+ * (`ASTACK_UNATTENDED`, set for runner children and console conversations):
+ * sign-in material is managed by the owner only.
  */
 export async function runConsoleCommand({ runtime, i18n, tokens, stdin = process.stdin }) {
   const t = i18n.t.bind(i18n);
@@ -38,6 +43,7 @@ export async function runConsoleCommand({ runtime, i18n, tokens, stdin = process
   const auth = new ConsoleAuth(consoleStateDirectory(runtime.workspaceRoot), { sessionDays: config.session_days ?? 30 });
 
   if (action === "token") {
+    refuseUnattended(t);
     if (flags.rotate) {
       const value = auth.rotate();
       out(t("cli.console.tokenRotated"));
@@ -53,7 +59,7 @@ export async function runConsoleCommand({ runtime, i18n, tokens, stdin = process
   }
 
   if (action === "user") {
-    await runUserCommand({ runtime, t, rest, flags, stdin });
+    await runUserCommand({ runtime, t, rest, flags, stdin, auth });
     return;
   }
 
@@ -80,6 +86,11 @@ export async function runConsoleCommand({ runtime, i18n, tokens, stdin = process
       }
     } else {
       out(t("cli.console.stopped"));
+      // Not running: still say why the internet listener would not start.
+      const remote = resolveRemoteSettings(config.remote);
+      if (remote?.error) {
+        out(t("cli.console.remoteStopped", { reason: remote.error }));
+      }
     }
     out(t("cli.console.tokenState", { state: auth.hasToken() ? "present" : "missing", sessions: auth.count() }));
     const users = new ConsoleUsers(consoleStateDirectory(runtime.workspaceRoot)).list();
@@ -157,14 +168,31 @@ export async function runConsoleCommand({ runtime, i18n, tokens, stdin = process
   throw new Error(t("cli.console.unknownAction", { action }));
 }
 
+function refuseUnattended(t) {
+  if (isUnattended()) {
+    throw new Error(t("cli.console.unattendedRefused"));
+  }
+}
+
 /**
  * Console users for password sign-in. The password is read from a hidden
  * prompt (twice, on a terminal) or from stdin; only its scrypt hash is kept.
+ * Changing a password or TOTP, or removing a user, also ends that user's
+ * sessions (and the new credential version refuses any the server still holds).
  */
-async function runUserCommand({ runtime, t, rest, flags, stdin = process.stdin }) {
-  const users = new ConsoleUsers(consoleStateDirectory(runtime.workspaceRoot));
+async function runUserCommand({ runtime, t, rest, flags, stdin = process.stdin, auth }) {
+  const users = new ConsoleUsers(consoleStateDirectory(runtime.workspaceRoot), { workspaceRoot: runtime.workspaceRoot });
   const positionals = rest.filter((token) => !String(token).startsWith("--"));
   const [verb = "list", name] = positionals;
+  if (verb !== "list") {
+    refuseUnattended(t);
+  }
+  const revoke = (username) => {
+    const ended = auth.destroyUserSessions(username);
+    if (ended) {
+      out(t("cli.console.userSessionsEnded", { count: ended }));
+    }
+  };
   if (verb === "list") {
     const list = users.list();
     if (!list.length) {
@@ -172,7 +200,7 @@ async function runUserCommand({ runtime, t, rest, flags, stdin = process.stdin }
       return;
     }
     for (const user of list) {
-      out("- " + user.username + "  totp: " + (user.totp ? "on" : "off") + "  " + t("cli.console.userUpdated", { at: user.updatedAt ?? "-" }));
+      out("- " + user.username + "  totp: " + (user.totp ? "on (" + user.totpStore + ")" : "off") + "  " + t("cli.console.userUpdated", { at: user.updatedAt ?? "-" }));
     }
     return;
   }
@@ -189,6 +217,7 @@ async function runUserCommand({ runtime, t, rest, flags, stdin = process.stdin }
     }
     const result = await users.set(name, password);
     out(t(result.created ? "cli.console.userCreated" : "cli.console.userUpdatedNow", { username: result.username }));
+    revoke(result.username);
     runtime.audit?.record({ actor: "owner@cli", action: "console-user-set", target: result.username, riskLevel: "L2", result: result.created ? "created" : "password changed" });
     if (!users.hasTotp(result.username)) {
       out(t("cli.console.totpHint", { username: result.username }));
@@ -199,6 +228,7 @@ async function runUserCommand({ runtime, t, rest, flags, stdin = process.stdin }
     const removed = users.remove(name);
     out(t(removed ? "cli.console.userRemoved" : "cli.console.userUnknown", { username: name }));
     if (removed) {
+      revoke(String(name).toLowerCase());
       runtime.audit?.record({ actor: "owner@cli", action: "console-user-removed", target: String(name).toLowerCase(), riskLevel: "L2", result: "removed" });
     }
     return;
@@ -207,15 +237,19 @@ async function runUserCommand({ runtime, t, rest, flags, stdin = process.stdin }
     if (flags.disable) {
       users.disableTotp(name);
       out(t("cli.console.totpDisabled", { username: name }));
+      revoke(String(name).toLowerCase());
       runtime.audit?.record({ actor: "owner@cli", action: "console-user-totp", target: String(name).toLowerCase(), riskLevel: "L2", result: "disabled" });
       return;
     }
     const enabled = users.enableTotp(name);
     out(t("cli.console.totpEnabled", { username: enabled.username }));
+    // The only time the secret is ever printed: enrolment.
     out(t("cli.console.totpSecret", { secret: enabled.secret.replace(/(.{4})/g, "$1 ").trim() }));
     out(t("cli.console.totpUri"));
     out(enabled.uri);
     out(t("cli.console.totpWarning"));
+    out(t("cli.console.totpStored", { store: enabled.store }));
+    revoke(enabled.username);
     runtime.audit?.record({ actor: "owner@cli", action: "console-user-totp", target: enabled.username, riskLevel: "L2", result: "enabled" });
     return;
   }
