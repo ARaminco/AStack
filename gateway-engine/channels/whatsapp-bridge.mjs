@@ -1,4 +1,6 @@
-import { join } from "node:path";
+import { copyFileSync, mkdirSync, rmSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { basename, join } from "node:path";
 import { request } from "../http.mjs";
 import { expandWhatsAppAliases, normalizeWhatsAppId } from "../identity.mjs";
 import { readJson } from "../state.mjs";
@@ -90,6 +92,7 @@ export class WhatsAppBridgeChannel {
       timestamp: Number(raw.timestamp ?? 0),
       voice: raw.voice?.path ? { path: raw.voice.path, mime: raw.voice.mime ?? "audio/ogg" } : null,
       unsupported: raw.unsupported ?? null,
+      forwarded: Boolean(raw.forwarded),
       fromMe: false
     }));
     return { messages, cursor };
@@ -100,9 +103,22 @@ export class WhatsAppBridgeChannel {
     return { id: body.id ?? null };
   }
 
+  /**
+   * The bridge only sends files from its own outbox folder, so the file is
+   * copied there first and removed once the bridge has answered.
+   */
   async sendFile(target, path, { caption = null, filename = null } = {}) {
-    const body = await this.call("POST", "/send-media", { body: { chatId: String(target), filePath: path, caption, fileName: filename }, timeoutMs: 120000 });
-    return { id: body.id ?? null };
+    const outbox = join(this.directory, "outbox");
+    mkdirSync(outbox, { recursive: true });
+    const name = basename(String(path)).replace(/[^\w.\-]+/g, "_").slice(-120) || "file";
+    const staged = join(outbox, randomBytes(6).toString("hex") + "-" + name);
+    copyFileSync(path, staged);
+    try {
+      const body = await this.call("POST", "/send-media", { body: { chatId: String(target), filePath: staged, caption, fileName: filename ?? basename(String(path)) }, timeoutMs: 120000 });
+      return { id: body.id ?? null };
+    } finally {
+      rmSync(staged, { force: true });
+    }
   }
 
   async downloadVoice(message) {

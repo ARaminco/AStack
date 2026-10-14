@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { delimiter, join } from "node:path";
+import { delimiter, join, win32 } from "node:path";
 
 /**
  * OS keychain and password-manager backends for the secret broker.
@@ -119,6 +119,16 @@ export class VaultBackends {
     return PLATFORM_BACKEND[this.platform] ?? null;
   }
 
+  /**
+   * Windows PowerShell by absolute path under %SystemRoot%, so a
+   * `powershell.exe` planted earlier on PATH (or in the working directory)
+   * never receives a secret.
+   */
+  powershellPath() {
+    const systemRoot = this.env.SystemRoot ?? this.env.SYSTEMROOT ?? process.env.SystemRoot ?? process.env.SYSTEMROOT ?? "C:\\Windows";
+    return win32.join(systemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
+  }
+
   dpapiPath(record) {
     return join(this.directory, record.provider + "." + record.name + ".dpapi");
   }
@@ -212,7 +222,7 @@ export class VaultBackends {
         return null;
       }
       const ciphertext = readFileSync(path, "utf8").trim();
-      const result = this.invoke("powershell", ["-NoProfile", "-NonInteractive", "-EncodedCommand", encodedCommand(DPAPI_UNPROTECT)], { input: ciphertext });
+      const result = this.invoke(this.powershellPath(), ["-NoProfile", "-NonInteractive", "-EncodedCommand", encodedCommand(DPAPI_UNPROTECT)], { input: ciphertext });
       if (result.status !== 0) {
         throw new Error("DPAPI could not decrypt " + record.reference + " (it can only be read by the Windows user who stored it)");
       }
@@ -253,7 +263,7 @@ export class VaultBackends {
     }
     this.assertUsable(backend);
     if (backend === "windows") {
-      const result = this.invoke("powershell", ["-NoProfile", "-NonInteractive", "-EncodedCommand", encodedCommand(DPAPI_PROTECT)], {
+      const result = this.invoke(this.powershellPath(), ["-NoProfile", "-NonInteractive", "-EncodedCommand", encodedCommand(DPAPI_PROTECT)], {
         input: Buffer.from(secret, "utf8").toString("base64")
       });
       const ciphertext = result.stdout.trim();

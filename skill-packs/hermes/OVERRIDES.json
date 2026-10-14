@@ -1,0 +1,13 @@
+{
+  "note": "Local overrides for the Hermes pack, written by the AStack maintainers, not by the importer. The skill hub keeps this file across re-imports. An override can only block a skill: its files stay, but it is never listed, searched or offered to an agent.",
+  "skills": {
+    "godmode": {
+      "status": "blocked",
+      "reason": "LLM jailbreak toolkit (GODMODE / Parseltongue): its purpose is to bypass model safety rules. Blocked by the AStack 3.0 security review."
+    },
+    "obliteratus": {
+      "status": "blocked",
+      "reason": "Removes refusal behaviour from model weights (abliteration). Blocked by the AStack 3.0 security review."
+    }
+  }
+}

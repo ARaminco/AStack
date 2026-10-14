@@ -1,12 +1,28 @@
 /**
  * Exfiltration guard.
  *
- * Every value the secret broker resolves is remembered here, in process memory
- * only, for the life of the process. Anything about to be written somewhere a
- * human or another agent can read — an audit record, a log line, a runner
- * transcript, a sandbox's output, an A2A response — passes through
- * `redactResolvedSecrets` first, so a secret that leaks into a tool's output is
- * replaced by its reference before it reaches disk or the network.
+ * Every value the secret broker resolves *in this process* is remembered here,
+ * in process memory only, for the life of the process. Callers that opt in
+ * pass their output through `redactResolvedSecrets` before it is written, so a
+ * resolved secret that leaks into that output is replaced by its reference.
+ *
+ * What it covers (the callers, as of 3.0): audit records (trust-engine/
+ * audit.mjs), runner run records, prompts and transcripts (runner-engine),
+ * gateway messages (gateway-engine sendNow), sandbox output, board hand-offs
+ * and A2A responses. Anything else — console logs, ad hoc files, other
+ * engines — is NOT scrubbed unless it calls this module itself.
+ *
+ * Limits, stated plainly:
+ * - Only values resolved through `runtime.secrets` in the same process are
+ *   known. A value a child process (Claude Code, Codex, a script) reads on its
+ *   own, or one resolved by another AStack process, is never registered here.
+ * - Values shorter than 6 characters are not tracked (they would scrub
+ *   ordinary words and numbers).
+ * - Only the plain, base64, base64url, URL-encoded and JSON-escaped forms are
+ *   matched; any other transformation of a secret passes through.
+ * It is a last line of defence, not a substitute for never printing secrets.
+ * The pattern redactors (`redactSecrets` / `redactSecretsStrict` in
+ * lib/text.mjs) catch secrets by shape, independently of this registry.
  *
  * The registry never persists and never exposes the values it holds.
  */

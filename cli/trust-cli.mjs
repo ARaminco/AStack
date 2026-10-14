@@ -1,5 +1,6 @@
 import { parseArgs } from "../delivery-engine/cli.mjs";
 import { authorityLevels, authorityMeaning } from "../trust-engine/authority.mjs";
+import { assertAttended } from "../trust-engine/approvals.mjs";
 
 const out = (line) => console.log(line);
 
@@ -83,7 +84,9 @@ export function runApprovalCommand({ runtime, i18n, tokens }) {
     out(JSON.stringify(approvals.get(positionals[0]), null, 2));
     return;
   }
-  if (action === "approve" || action === "reject") {
+  if (action === "approve" || action === "reject" || action === "deny") {
+    // A run's child process inherits ASTACK_UNATTENDED=1 and may never decide.
+    assertAttended(action + " " + (positionals[0] ?? "an approval"));
     const record = action === "approve"
       ? approvals.approve(positionals[0], { by: String(flags.by ?? "owner"), note: flags.note ? String(flags.note) : null })
       : approvals.reject(positionals[0], { by: String(flags.by ?? "owner"), note: flags.note ? String(flags.note) : null });

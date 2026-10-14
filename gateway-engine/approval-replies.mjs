@@ -6,7 +6,7 @@ import { foldDigits } from "../lib/text.mjs";
  *
  * A message counts as a decision only when, once the short code is taken out,
  * nothing but a decision word is left. "بفرست" is an approval; "بفرست به
- * حسن" is a new request and must never approve anything. Which approval it
+ * سارا" is a new request and must never approve anything. Which approval it
  * answers is decided by the caller (quote, then code, then a single pending
  * prompt) — this module never guesses.
  */

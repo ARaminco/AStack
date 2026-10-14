@@ -68,7 +68,7 @@ export class ChiefOfStaff {
   /**
    * Read a request and produce the full plan without doing anything yet.
    */
-  brief(request, { domain = null, project = null, budgets = {}, includeRepoMap = true } = {}) {
+  brief(request, { domain = null, project = null, budgets = {}, includeRepoMap = true, auxiliaryLimit = 2 } = {}) {
     const intent = this.intentEngine.analyze(request, { domain });
     const contextPackage = this.contextRouter.route(request, {
       domain: intent.domain,
@@ -80,7 +80,7 @@ export class ChiefOfStaff {
     const skills = this.learning?.match(request, { domain: intent.domain, limit: 3 }) ?? [];
     // Catalog skills for the request: built-in and learned first, auxiliary
     // pack skills (skill-hub) below them. Set by the runtime when available.
-    const catalogSkills = this.skillCatalog?.select ? this.skillCatalog.select(request, { limit: 3, auxiliaryLimit: 2 }) : null;
+    const catalogSkills = this.skillCatalog?.select ? this.skillCatalog.select(request, { limit: 3, auxiliaryLimit }) : null;
     const experience = this.learning?.experience?.similar(request, { domain: intent.domain, limit: 3 }) ?? [];
     const toolMatches = (intent.needs ?? []).flatMap((need) => this.tools?.search(need, { limit: 2 }) ?? []);
     const uniqueTools = [...new Map(toolMatches.map((tool) => [tool.id, tool])).values()];

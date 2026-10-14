@@ -3,6 +3,7 @@ import { SchedulerDaemon } from "../scheduler-engine/daemon.mjs";
 import { SignalServer } from "../signal-engine/http-server.mjs";
 import { describeKind } from "../scheduler-engine/monitors.mjs";
 import { describeSchedule } from "../scheduler-engine/cron.mjs";
+import { assertAttended } from "../trust-engine/approvals.mjs";
 
 const out = (line) => console.log(line);
 
@@ -265,7 +266,9 @@ export async function runSignalCommand({ runtime, i18n, tokens }) {
       port: Number(flags.port ?? 8787),
       host: String(flags.host ?? "127.0.0.1"),
       log: out,
-      processImmediately: !flags.queueOnly
+      processImmediately: !flags.queueOnly,
+      // A non-loopback --host needs --allow-remote (or signals.server.allow_remote).
+      allowRemote: Boolean(flags.allowRemote || flags["allow-remote"]) || runtime.configuration?.get?.("signals.server.allow_remote", false) === true
     });
     await server.start();
     await new Promise(() => {});
@@ -354,6 +357,10 @@ export async function runBrowserCommand({ runtime, i18n, tokens }) {
     return;
   }
   if (action === "resume") {
+    // Resuming a browser flow past its commit step is an approval.
+    if (!flags.reject) {
+      assertAttended("resume browser flow " + (positionals[0] ?? "") + " past its approval checkpoint");
+    }
     const result = await browser.resume(positionals[0], { approve: !flags.reject });
     out(result.summary);
     return;

@@ -9,7 +9,7 @@
  *   GET  /status                 health plus the pairing QR while pairing
  *   GET  /messages?wait=<s>      long poll: drain accepted inbound messages
  *   POST /send                   { chatId, text, replyTo? }
- *   POST /send-media             { chatId, filePath, caption?, fileName? }
+ *   POST /send-media             { chatId, filePath, caption?, fileName? } (file inside outbox/ or media/ only)
  *   POST /shutdown               graceful exit
  *
  * Every request must come to a loopback Host and carry the shared token in
@@ -28,7 +28,7 @@ import { createServer } from "node:http";
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, writeFileSync, writeSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes, timingSafeEqual } from "node:crypto";
-import { allowedTarget, classifyInbound, createBackoff, createOutboundTracker, parseList, toJid } from "./lib/gate.mjs";
+import { allowedTarget, classifyInbound, createBackoff, createOutboundTracker, parseList, sendablePath, toJid } from "./lib/gate.mjs";
 
 const args = process.argv.slice(2);
 const arg = (name, fallback = null) => {
@@ -42,6 +42,9 @@ const PAIR_ONLY = args.includes("--pair-only");
 const SELF_TEST = args.includes("--self-test");
 const AUTH_DIR = join(DIR, "auth");
 const MEDIA_DIR = join(DIR, "media");
+// The only folders /send-media reads from: the gateway stages outgoing files
+// in outbox/, inbound voice notes land in media/.
+const OUTBOX_DIR = join(DIR, "outbox");
 const STATUS_PATH = join(DIR, "status.json");
 const LOCK_PATH = join(DIR, "bridge.lock");
 const TOKEN = process.env.ASTACK_BRIDGE_TOKEN ?? "";
@@ -77,6 +80,11 @@ if (!TOKEN && !PAIR_ONLY) {
 
 mkdirSync(AUTH_DIR, { recursive: true });
 mkdirSync(MEDIA_DIR, { recursive: true });
+mkdirSync(OUTBOX_DIR, { recursive: true });
+
+function sendableFile(filePath) {
+  return sendablePath(filePath, [OUTBOX_DIR, MEDIA_DIR]);
+}
 
 // --------------------------------------------------------------- one bridge
 // Two sockets on the same credentials fight over the session and WhatsApp
@@ -267,6 +275,8 @@ async function handleUpsert({ messages, type }) {
       isGroup: chatId.endsWith("@g.us"),
       text,
       quotedId: context.stanzaId ?? null,
+      // WhatsApp marks forwarded messages; they never count as a decision.
+      forwarded: Boolean(context.isForwarded || Number(context.forwardingScore ?? 0) > 0),
       timestamp: Number(msg.messageTimestamp?.low ?? msg.messageTimestamp ?? Math.floor(Date.now() / 1000)),
       voice,
       unsupported
@@ -456,7 +466,13 @@ const server = createServer(async (request, response) => {
           send(404, { error: "file not found" });
           return;
         }
-        payload = { document: readFileSync(body.filePath), fileName: body.fileName ?? String(body.filePath).split(/[\\/]/).pop(), mimetype: body.mime ?? "application/octet-stream", caption: body.caption ?? undefined };
+        const allowedPath = sendableFile(body.filePath);
+        if (!allowedPath) {
+          counters.refused += 1;
+          send(403, { error: "only files in the bridge outbox or media folder can be sent" });
+          return;
+        }
+        payload = { document: readFileSync(allowedPath), fileName: body.fileName ?? String(body.filePath).split(/[\\/]/).pop(), mimetype: body.mime ?? "application/octet-stream", caption: body.caption ?? undefined };
       }
       const quoted = body.replyTo ? inboundStore.get(body.replyTo) : null;
       const sent = await sendWithTimeout(jid, payload, quoted ? { quoted } : {});
@@ -472,7 +488,8 @@ const server = createServer(async (request, response) => {
     }
     send(404, { error: "unknown endpoint" });
   } catch (error) {
-    send(500, { error: error.message });
+    log("request failed: " + error.message);
+    send(500, { error: "internal error" });
   }
 });
 

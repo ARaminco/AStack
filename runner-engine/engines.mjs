@@ -18,6 +18,73 @@ import { redactSecrets } from "../lib/text.mjs";
 const OUTPUT_CAP = 4 * 1024 * 1024;
 
 /**
+ * The environment of every runner child process. `ASTACK_UNATTENDED=1` makes
+ * `astack approval approve|reject` (and the approval engine itself) refuse to
+ * decide anything, so an unattended model can never approve its own request.
+ */
+export function unattendedEnv(base = process.env) {
+  return { ...base, ASTACK_UNATTENDED: "1" };
+}
+
+/** The only tools an unattended run gets at ceiling L0-L2 or from a non-owner source. */
+export const READ_ONLY_CLAUDE_TOOLS = ["Read", "Grep", "Glob"];
+
+/**
+ * Always denied, whatever `runner.claude.disallowed_tools` says: writing to
+ * AStack's own state (approvals, audit, policy) or deciding an approval from
+ * inside a run would let a model forge the owner's consent.
+ */
+export const MANDATORY_CLAUDE_DENIED = [
+  "Write(.astack/**)",
+  "Edit(.astack/**)",
+  "MultiEdit(.astack/**)",
+  "NotebookEdit(.astack/**)",
+  "Write(**/.astack/**)",
+  "Edit(**/.astack/**)",
+  "MultiEdit(**/.astack/**)",
+  "Bash(astack approval:*)",
+  "Bash(node bin/astack.mjs approval:*)",
+  "Bash(npx astack approval:*)",
+  "Bash(*astack approval*)",
+  "Bash(*astack.mjs approval*)",
+  "Bash(*.astack*)"
+];
+
+/** Permission modes an unattended Claude run may use. */
+export const CLAUDE_PERMISSION_MODES = ["default", "dontAsk", "acceptEdits", "plan"];
+
+// Codex arguments that would switch its sandbox or approval policy off.
+const CODEX_FORBIDDEN_ARGS = [
+  /^--dangerously-bypass-approvals-and-sandbox$/i,
+  /^--yolo$/i,
+  /^--full-auto$/i,
+  /^(?:-s|--sandbox)(?:=.*)?$/i,
+  /^(?:-a|--ask-for-approval)(?:=.*)?$/i,
+  /sandbox_mode/i,
+  /approval_policy/i,
+  /sandbox_permissions/i,
+  /danger-full-access/i
+];
+
+/**
+ * Refuse codex `args` that disable its sandbox or approvals; `-c key=value`
+ * overrides of those keys are refused in the joined and the split form.
+ */
+export function checkCodexArgs(args) {
+  const list = (args ?? []).map(String);
+  for (let index = 0; index < list.length; index += 1) {
+    const argument = list[index];
+    if (CODEX_FORBIDDEN_ARGS.some((pattern) => pattern.test(argument))) {
+      throw new Error("runner.codex.args " + argument + " is refused for unattended runs");
+    }
+    if (/^(?:-c|--config)$/i.test(argument) && /sandbox|approval/i.test(list[index + 1] ?? "")) {
+      throw new Error("runner.codex.args " + argument + " " + list[index + 1] + " is refused for unattended runs");
+    }
+  }
+  return list;
+}
+
+/**
  * Resolve a command name to something `spawn` can start without a shell.
  * On Windows an npm shim (`claude.cmd`) is unwrapped to the binary or the
  * script it calls; a shell is used only as the last resort.
@@ -93,7 +160,7 @@ function unwrapShim(path) {
 /**
  * Spawn a resolved command, write the prompt to stdin and collect the output.
  */
-export function runProcess(resolved, args, { input = "", cwd, timeoutMs = 900000, env = process.env } = {}) {
+export function runProcess(resolved, args, { input = "", cwd, timeoutMs = 900000, env = unattendedEnv() } = {}) {
   return new Promise((resolvePromise) => {
     const started = Date.now();
     if (resolved.shell) {
@@ -239,11 +306,24 @@ export class ClaudeEngine extends BaseEngine {
     return this.cache;
   }
 
-  args({ budgetUsd = null, resumeSession = null, model = null } = {}) {
+  /**
+   * `readOnly` (the runner sets it at ceiling L0-L2 and for every run that is
+   * not the owner's own request) forces the read-only tool set and `dontAsk`,
+   * whatever the configuration says. Wider configured tools apply only at L3+
+   * for the owner's own requests (cli, console, gateway).
+   */
+  args({ budgetUsd = null, resumeSession = null, model = null, readOnly = false } = {}) {
     if (this.permissionMode === "bypassPermissions") {
       throw new Error("runner.claude.permission_mode bypassPermissions is refused: widen runner.claude.allowed_tools instead");
     }
-    const args = ["-p", "--output-format", "json", "--permission-mode", this.permissionMode];
+    if (!CLAUDE_PERMISSION_MODES.includes(String(this.permissionMode))) {
+      throw new Error("runner.claude.permission_mode " + this.permissionMode + " is refused: use one of " + CLAUDE_PERMISSION_MODES.join(", "));
+    }
+    const permissionMode = readOnly ? "dontAsk" : this.permissionMode;
+    const allowedTools = readOnly ? READ_ONLY_CLAUDE_TOOLS : this.allowedTools;
+    const tools = readOnly ? READ_ONLY_CLAUDE_TOOLS : this.tools;
+    const disallowedTools = [...new Set([...this.disallowedTools, ...MANDATORY_CLAUDE_DENIED])];
+    const args = ["-p", "--output-format", "json", "--permission-mode", permissionMode];
     if (model ?? this.model) {
       args.push("--model", String(model ?? this.model));
     }
@@ -256,17 +336,17 @@ export class ClaudeEngine extends BaseEngine {
     if (!this.skills) {
       args.push("--disable-slash-commands");
     }
-    if (this.tools.length) {
-      args.push("--tools", ...this.tools);
+    if (tools.length) {
+      args.push("--tools", ...tools);
     }
     if (resumeSession) {
       args.push("--resume", String(resumeSession));
     }
-    if (this.disallowedTools.length) {
-      args.push("--disallowedTools", ...this.disallowedTools);
+    if (disallowedTools.length) {
+      args.push("--disallowedTools", ...disallowedTools);
     }
-    if (this.allowedTools.length) {
-      args.push("--allowedTools", ...this.allowedTools);
+    if (allowedTools.length) {
+      args.push("--allowedTools", ...allowedTools);
     }
     if (budgetUsd !== null && budgetUsd !== undefined) {
       // Also terminates the variadic tool lists above.
@@ -275,18 +355,18 @@ export class ClaudeEngine extends BaseEngine {
     return args;
   }
 
-  async run({ prompt, cwd, timeoutMs, budgetUsd = null, resumeSession = null, model = null }) {
+  async run({ prompt, cwd, timeoutMs, budgetUsd = null, resumeSession = null, model = null, toolScope = "read-only" }) {
     const resolved = resolveCommand(this.command);
     if (!resolved) {
       return { ok: false, error: "claude was not found on PATH", text: "", costUsd: 0 };
     }
     let args = [];
     try {
-      args = this.args({ budgetUsd, resumeSession, model });
+      args = this.args({ budgetUsd, resumeSession, model, readOnly: toolScope !== "configured" });
     } catch (error) {
       return { ok: false, error: error.message, text: "", costUsd: 0 };
     }
-    const result = await runProcess(resolved, args, { input: prompt, cwd, timeoutMs });
+    const result = await runProcess(resolved, args, { input: prompt, cwd, timeoutMs, env: unattendedEnv() });
     const parsed = parseClaudeJson(result.stdout);
     if (parsed) {
       const isError = Boolean(parsed.is_error) || (parsed.subtype && parsed.subtype !== "success");
@@ -313,7 +393,7 @@ export class ClaudeEngine extends BaseEngine {
 
 /** Read-only by default: the runner itself turns approval requests into records. */
 export const DEFAULT_CLAUDE_TOOLS = ["Read", "Grep", "Glob"];
-export const DEFAULT_CLAUDE_DENIED = ["Bash(astack approval approve:*)", "Bash(node bin/astack.mjs approval approve:*)"];
+export const DEFAULT_CLAUDE_DENIED = ["Bash(astack approval approve:*)", "Bash(node bin/astack.mjs approval approve:*)", ...MANDATORY_CLAUDE_DENIED];
 
 export function parseClaudeJson(stdout) {
   const text = String(stdout ?? "").trim();
@@ -349,6 +429,7 @@ export class CodexEngine extends BaseEngine {
     super("codex", options);
     this.command = this.config.command ?? "codex";
     this.sandbox = this.config.sandbox ?? "read-only";
+    // Checked in args(): a refused argument fails the run, not the runtime.
     this.extraArgs = toList(this.config.args ?? []);
     this.model = this.config.model ?? null;
     this.costClass = "metered";
@@ -379,19 +460,24 @@ export class CodexEngine extends BaseEngine {
     return this.cache;
   }
 
-  args({ lastMessageFile, model = null }) {
+  /**
+   * `readOnly` (ceiling L0-L2, or not the owner's own request) forces the
+   * read-only sandbox whatever `runner.codex.sandbox` says.
+   */
+  args({ lastMessageFile, model = null, readOnly = false }) {
     if (this.sandbox === "danger-full-access") {
       throw new Error("runner.codex.sandbox danger-full-access is refused for unattended runs");
     }
-    const args = ["exec", "--skip-git-repo-check", "--sandbox", this.sandbox, "--output-last-message", lastMessageFile];
+    const extra = checkCodexArgs(this.extraArgs);
+    const args = ["exec", "--skip-git-repo-check", "--sandbox", readOnly ? "read-only" : this.sandbox, "--output-last-message", lastMessageFile];
     if (model ?? this.model) {
       args.push("--model", String(model ?? this.model));
     }
-    args.push(...this.extraArgs, "-");
+    args.push(...extra, "-");
     return args;
   }
 
-  async run({ prompt, cwd, timeoutMs, runId = "run", model = null }) {
+  async run({ prompt, cwd, timeoutMs, runId = "run", model = null, toolScope = "read-only" }) {
     const resolved = resolveCommand(this.command);
     if (!resolved) {
       return { ok: false, error: "codex was not found on PATH", text: "", costUsd: 0 };
@@ -401,11 +487,11 @@ export class CodexEngine extends BaseEngine {
     const lastMessageFile = join(directory, runId + ".codex.txt");
     let args = [];
     try {
-      args = this.args({ lastMessageFile, model });
+      args = this.args({ lastMessageFile, model, readOnly: toolScope !== "configured" });
     } catch (error) {
       return { ok: false, error: error.message, text: "", costUsd: 0 };
     }
-    const result = await runProcess(resolved, args, { input: prompt, cwd, timeoutMs });
+    const result = await runProcess(resolved, args, { input: prompt, cwd, timeoutMs, env: unattendedEnv() });
     let text = "";
     if (existsSync(lastMessageFile)) {
       text = readFileSync(lastMessageFile, "utf8");
@@ -558,8 +644,8 @@ export class MockEngine extends BaseEngine {
     return { id: this.id, kind: "mock", installed: true, allowedByPolicy: true, available: true, costClass: this.costClass, detail: "deterministic mock engine" };
   }
 
-  async run({ prompt, resumeSession = null, continuation = false }) {
-    this.calls.push({ prompt, resumeSession, continuation });
+  async run({ prompt, resumeSession = null, continuation = false, toolScope = "read-only" }) {
+    this.calls.push({ prompt, resumeSession, continuation, toolScope });
     const objective = /## Objective\r?\n([^\n]*)/.exec(prompt)?.[1] ?? "";
     if (objective.includes("[fail]")) {
       return { ok: false, error: "mock failure", text: "", costUsd: this.costUsd, sessionId: "mock-session" };

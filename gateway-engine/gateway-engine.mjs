@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { createLocalization } from "../localization-engine/service.mjs";
-import { redactSecrets, sanitizeExternalContent } from "../lib/text.mjs";
+import { redactSecrets, redactSecretsStrict, sanitizeExternalContent } from "../lib/text.mjs";
+import { redactResolvedSecrets } from "../trust-engine/redaction.mjs";
 import { newApprovalCode, parseDecision } from "./approval-replies.mjs";
 import { channelTypes } from "./channels/index.mjs";
 import { runCommand } from "./commands.mjs";
@@ -22,6 +23,9 @@ export const GATEWAY_DEFAULTS = {
   announce_window_h: 24,
   announce_per_tick: 5,
   single_pending_without_code: true,
+  // A bare «بفرست» in a private chat counts only for a prompt delivered to
+  // that same chat, before the reply, within this many minutes.
+  approval_window_minutes: 30,
   owners: {},
   groups: {},
   channels: {},
@@ -45,6 +49,25 @@ const CHANNEL_DEFAULTS = {
 
 const SEEN_LIMIT = 2000;
 const PROMPT_LIMIT = 300;
+
+/** Pattern and resolved-secret redaction for everything the gateway sends. */
+function scrub(text) {
+  return redactResolvedSecrets(redactSecretsStrict(String(text ?? "")));
+}
+
+/**
+ * Where the work behind an approval came from, as a short category the owner
+ * can judge it by: cli, gateway, a2a, signal, schedule, console, board,
+ * mission or other.
+ */
+export function approvalSource(approval) {
+  const raw = String(approval?.parameters?.source ?? approval?.source ?? "").trim();
+  const requester = String(approval?.requestedBy ?? "").trim();
+  const value = raw || requester;
+  const category = /^(cli|gateway|a2a|signal|schedule|console|board)\b/.exec(value)?.[1]
+    ?? (/^mission/.test(value) || approval?.mission ? "mission" : "other");
+  return { raw: value || "-", category };
+}
 
 /**
  * The owner's pocket gateway.
@@ -308,7 +331,9 @@ export class GatewayEngine {
       this.audit?.record({ actor: "gateway", tool: "gateway", action: "gateway-send-refused", target: channelId + ":" + maskId(target), riskLevel: "L2", result: permitted.reason });
       throw new Error("gateway send not permitted: " + permitted.reason);
     }
-    const body = formatForChat(text);
+    // Nothing secret leaves through a chat: pattern and resolved-secret
+    // redaction before formatting, so the outbox never stores it either.
+    const body = formatForChat(scrub(text));
     const parts = splitMessage(body, { maxChars: channel.maxChars ?? 1500, label: (index, total) => this.t("partLabel", { index, total }) });
     const state = this.state.read();
     if (!this.rateAllows(state, channelId)) {
@@ -378,7 +403,7 @@ export class GatewayEngine {
         } else {
           sent += 1;
           if (item.promptFor) {
-            this.linkPromptMessages(item.promptFor, result.ids.filter(Boolean).map((id) => ({ channel: item.channel, target: item.target, id })));
+            this.linkPromptMessages(item.promptFor, result.ids.filter(Boolean).map((id) => ({ channel: item.channel, target: item.target, id, at: this.now().toISOString() })));
           }
         }
       } catch (error) {
@@ -449,6 +474,8 @@ export class GatewayEngine {
       }
     }
     lines.push(this.t("approval.level", { level: approval.level }));
+    const source = approvalSource(approval);
+    lines.push(this.t("approval.source", { source: this.t("approval.sources." + source.category), detail: source.raw }));
     if (approval.mission) {
       lines.push(this.t("approval.mission", { mission: approval.mission }));
     }
@@ -515,7 +542,7 @@ export class GatewayEngine {
         const result = await this.sendTo(id, target, text, { promptFor: approvalId });
         queued += result.queued ? 1 : 0;
         for (const messageId of result.ids.filter(Boolean)) {
-          delivered.push({ channel: id, target, id: messageId });
+          delivered.push({ channel: id, target, id: messageId, at: this.now().toISOString() });
         }
       } catch (error) {
         this.log("[gateway] approval prompt to " + id + " failed: " + error.message);
@@ -570,8 +597,13 @@ export class GatewayEngine {
    * Which approval a reply answers: the quoted prompt, then the code, then
    * the only open prompt. Several open and nothing to tell them apart is
    * ambiguous — never guessed.
+   *
+   * A bare word (no quote, no code) is accepted only in a private chat, and
+   * only for a prompt that was delivered to that same chat before the reply
+   * and within `gateway.approval_window_minutes`. In a group a decision always
+   * needs the quote or the code.
    */
-  resolvePrompt(channelId, message, code) {
+  resolvePrompt(channelId, message, code, { chatTarget = null } = {}) {
     const prompts = this.state.read().prompts;
     if (message.quotedId) {
       const quoted = prompts.find((prompt) => (prompt.messages ?? []).some((entry) => entry.channel === channelId && String(entry.id) === String(message.quotedId)));
@@ -584,21 +616,52 @@ export class GatewayEngine {
       return byCode ? { prompt: byCode } : { error: "unknown-code" };
     }
     const open = this.openPrompts();
-    if (open.length === 1 && this.settings().single_pending_without_code) {
-      return { prompt: open[0] };
-    }
     if (!open.length) {
       return { error: "none" };
+    }
+    if (message.isGroup) {
+      return { error: "needs-code", open, reason: "group" };
+    }
+    if (open.length === 1 && this.settings().single_pending_without_code) {
+      if (this.deliveredHere(channelId, open[0], chatTarget ?? message.chatId, message)) {
+        return { prompt: open[0] };
+      }
+      return { error: "needs-code", open, reason: "not-delivered-here" };
     }
     return { error: "ambiguous", open };
   }
 
-  async handleDecision(channelId, message, reply, parsed, { voice = false } = {}) {
+  /**
+   * Was this prompt delivered to this chat, before the reply, recently enough
+   * for a bare «بفرست» to mean it?
+   */
+  deliveredHere(channelId, prompt, chatTarget, message) {
+    const channel = this.channel(channelId);
+    const here = channel.aliases(chatTarget ?? "");
+    const windowMs = Math.max(0, Number(this.settings().approval_window_minutes ?? 30)) * 60000;
+    const repliedAt = message.timestamp ? Number(message.timestamp) * 1000 + 999 : this.now().getTime();
+    return (prompt.messages ?? []).some((entry) => {
+      if (entry.channel !== channelId) {
+        return false;
+      }
+      const sameChat = [...channel.aliases(entry.target ?? "")].some((alias) => here.has(alias));
+      const deliveredAt = new Date(entry.at ?? prompt.promptedAt ?? 0).getTime();
+      return sameChat && Number.isFinite(deliveredAt) && deliveredAt <= repliedAt && repliedAt - deliveredAt <= windowMs;
+    });
+  }
+
+  async handleDecision(channelId, message, reply, parsed, { voice = false, chatTarget = null } = {}) {
     if (voice && !this.voiceSettings().allow_approvals) {
       await reply(this.t("approval.voiceNotAccepted"));
       return { action: "decision-refused-voice" };
     }
-    const resolved = this.resolvePrompt(channelId, message, parsed.code);
+    if (message.forwarded) {
+      // A forwarded «بفرست» is someone else's word, never the owner's decision.
+      this.audit?.record({ actor: "owner@" + channelId, tool: "gateway", action: "gateway-decision-forwarded", target: channelId + ":" + maskId(message.chatId), riskLevel: "L1", result: "forwarded message ignored as a decision" });
+      await reply(this.t("approval.forwardedIgnored"));
+      return { action: "decision-refused-forwarded" };
+    }
+    const resolved = this.resolvePrompt(channelId, message, parsed.code, { chatTarget });
     if (resolved.error === "unknown-code") {
       await reply(this.t("approval.unknownCode", { code: parsed.code }));
       return { action: "decision-unknown-code" };
@@ -606,6 +669,15 @@ export class GatewayEngine {
     if (resolved.error === "none") {
       await reply(this.t("approval.none"));
       return { action: "decision-none" };
+    }
+    if (resolved.error === "needs-code") {
+      const lines = [this.t(resolved.reason === "group" ? "approval.needsCodeGroup" : "approval.needsCode")];
+      for (const prompt of resolved.open) {
+        const approval = this.approvals.get(prompt.approvalId);
+        lines.push(this.t("approval.ambiguousItem", { code: prompt.code, action: approval.action }));
+      }
+      await reply(lines.join("\n"));
+      return { action: "decision-needs-code", reason: resolved.reason, codes: resolved.open.map((prompt) => prompt.code) };
     }
     if (resolved.error === "ambiguous") {
       const lines = [this.t("approval.ambiguous")];
@@ -777,7 +849,7 @@ export class GatewayEngine {
 
     const decision = parseDecision(text);
     if (decision) {
-      return this.handleDecision(channelId, message, reply, decision, { voice: fromVoice });
+      return this.handleDecision(channelId, message, reply, decision, { voice: fromVoice, chatTarget: target });
     }
     if (text.trim().startsWith("/")) {
       return runCommand(this, { channelId, message, text: text.trim(), reply, owner });

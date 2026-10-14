@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { isAbsolute, join, relative } from "node:path";
 
 /**
  * Pure safety logic of the linked-device bridge, kept free of Baileys so it is
@@ -177,4 +177,31 @@ export function createBackoff({ baseMs = 1000, maxMs = 60000 } = {}) {
       attempt = 0;
     }
   };
+}
+
+/**
+ * The real path of a file the bridge may send, or null: it must exist and,
+ * with symlinks resolved, lie strictly inside one of the given folders (the
+ * bridge's outbox and media folders). Anything else — the auth folder, the
+ * workspace, a path with "..", a link pointing out — is refused.
+ */
+export function sendablePath(filePath, folders) {
+  try {
+    const real = realpathSync(String(filePath));
+    for (const folder of folders ?? []) {
+      let base = null;
+      try {
+        base = realpathSync(String(folder));
+      } catch {
+        continue;
+      }
+      const rel = relative(base, real);
+      if (rel !== "" && !rel.startsWith("..") && !isAbsolute(rel)) {
+        return real;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }

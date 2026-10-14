@@ -726,6 +726,21 @@
       "resumed": "Continued: {summary}",
       "notResumable": "Decision recorded. This request is not tied to a mission that can resume on its own.",
       "voiceNotAccepted": "Approvals and denials are not accepted by voice; please type \"approve\" or \"deny\".",
+      "source": "Requested by: {source} ({detail})",
+      "sources": {
+        "cli": "command line",
+        "gateway": "your gateway message",
+        "a2a": "an external agent (A2A)",
+        "signal": "an inbound external message (signal)",
+        "schedule": "a scheduled job",
+        "console": "the Aramin console",
+        "board": "the board",
+        "mission": "a mission",
+        "other": "unknown"
+      },
+      "needsCode": "It is not clear which request this answers (none was sent to this chat recently). Reply to that request's message or include its code:",
+      "needsCodeGroup": "In a group, approvals and denials need a reply to the request's message or its code:",
+      "forwardedIgnored": "A forwarded message is not accepted as an approval or denial. Type \"approve\" or \"deny\" yourself.",
       "states": {
         "approved": "approved",
         "rejected": "denied",
