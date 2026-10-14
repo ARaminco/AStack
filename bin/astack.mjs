@@ -22,6 +22,8 @@ import { runSandboxCommand } from "../cli/sandbox-cli.mjs";
 import { runVaultCommand } from "../cli/vault-cli.mjs";
 import { runA2ACommand } from "../cli/a2a-cli.mjs";
 import { runGatewayCommand } from "../cli/gateway-cli.mjs";
+import { runConsoleCommand } from "../console/cli.mjs";
+import { readServerRecord } from "../console/server.mjs";
 
 const i18n = createLocalization();
 const runtime = createRuntime();
@@ -33,7 +35,8 @@ const COMMANDS = [
   "authority", "approval", "audit", "secret", "tool", "runtime", "interop", "mcp", "graphify",
   "domain", "team", "agent", "lead", "project", "workflow", "provider", "plugin", "knowledge", "backup",
   "search",
-  "board", "sandbox", "a2a"
+  "board", "sandbox", "a2a",
+  "console"
 ];
 COMMANDS.push("run", "runner", "daemon");
 COMMANDS.push("gateway");
@@ -103,6 +106,8 @@ function doctor({ verbose = false } = {}) {
   console.log("Authority default: " + runtime.authority.describe().defaultLevel);
   console.log("Search: " + searchDoctorLine());
   console.log("Gateway: " + runtime.gateway.describe());
+  const consoleRecord = readServerRecord(runtime.workspaceRoot);
+  console.log("Console (Aramin): " + (consoleRecord?.alive ? consoleRecord.url : "stopped (astack console start)"));
   console.log("Telemetry: disabled");
   // An install that upgraded from an older core ran the previous upgrade command,
   // which had no migration step. Report what is still waiting rather than letting
@@ -281,6 +286,8 @@ async function run() {
       return;
     case "gateway":
       await runGatewayCommand(context);
+    case "console":
+      await runConsoleCommand(context);
       return;
     case "backup":
       console.log(i18n.t("cli.backupCreated", { path: runtime.memory.backup() }));
