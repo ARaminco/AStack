@@ -539,6 +539,7 @@ secrets:
 #   port: 41241
 #   path: /a2a
 #   ceiling: L1                   # capped by authority.default_level, never above L3
+#   execute: false                # plan only; true lets the runner execute (read-only tools)
 #   allow_remote: false
 #   public_url: null              # URL advertised in the agent card
 #   # Bearer token: credential://a2a/token

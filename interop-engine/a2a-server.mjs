@@ -1,9 +1,9 @@
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
-import { isIP } from "node:net";
 import { join } from "node:path";
-import { sanitizeExternalContent } from "../lib/text.mjs";
+import { isLoopbackHost } from "../lib/net.mjs";
+import { redactSecretsStrict, sanitizeExternalContent } from "../lib/text.mjs";
 import { authorityLevels, levelValue } from "../trust-engine/authority.mjs";
 import { redactResolvedDeep, redactResolvedSecrets } from "../trust-engine/redaction.mjs";
 
@@ -18,10 +18,14 @@ import { redactResolvedDeep, redactResolvedSecrets } from "../trust-engine/redac
  * Not implemented: message/stream, tasks/resubscribe, push notification
  * configuration, authenticated extended card, file parts, batch requests.
  *
- * Every inbound message is untrusted data. Its text is quarantined for
- * instruction-shaped content, handed to the runner as a quoted request from an
- * external agent, and executed under an authority ceiling that is never higher
- * than the owner's own default (config `a2a.ceiling`, default L1: read only).
+ * Every inbound message is untrusted data. A request that carries
+ * instruction-shaped content is refused outright (task state `rejected`).
+ * By default a request is only planned (`a2a.execute: false`); with
+ * `a2a.execute: true` it is handed to the runner as a quoted request from an
+ * external agent and executed read-only, under an authority ceiling that is
+ * never higher than the owner's own default (config `a2a.ceiling`, default
+ * L1: read only), with no automatic pack skills and no past sessions.
+ * Artifacts pass the pattern and resolved-secret redactors.
  * A remote agent can never approve anything: a task that needs the owner's
  * approval stays `input-required` until the owner decides inside AStack.
  *
@@ -38,6 +42,8 @@ export const A2A_DEFAULTS = {
   port: 41241,
   path: "/a2a",
   ceiling: "L1",
+  // Plan only unless the owner opts in: a remote agent runs nothing by default.
+  execute: false,
   allow_remote: false,
   max_body_bytes: 1048576,
   public_url: null
@@ -84,17 +90,16 @@ function rpcError(id, kind, data = undefined) {
   return { jsonrpc: "2.0", id: id ?? null, error: { ...ERRORS[kind], ...(data === undefined ? {} : { data }) } };
 }
 
+/** Pattern and resolved-secret redaction for everything sent back to a remote agent. */
+function scrub(text) {
+  return redactResolvedSecrets(redactSecretsStrict(String(text ?? "")));
+}
+
 function digest(value) {
   return createHash("sha256").update(String(value), "utf8").digest();
 }
 
-export function isLoopbackHost(host) {
-  const value = String(host ?? "").replace(/^\[|\]$/g, "").toLowerCase();
-  if (value === "localhost" || value === "::1") {
-    return true;
-  }
-  return isIP(value) === 4 && value.startsWith("127.");
-}
+export { isLoopbackHost };
 
 function textPart(text) {
   return { kind: "text", text: String(text ?? "") };
@@ -129,6 +134,11 @@ export class A2AServer {
   get runner() {
     const runner = this.host?.runner;
     return runner && typeof runner.execute === "function" ? runner : null;
+  }
+
+  /** Execution needs both a runner and the owner's explicit `a2a.execute: true`. */
+  get executes() {
+    return Boolean(this.runner) && this.config.execute === true;
   }
 
   /**
@@ -178,7 +188,7 @@ export class A2AServer {
           inputModes: ["text/plain"],
           outputModes: ["text/plain"]
         },
-        {
+        ...(this.executes ? [{
           id: "execute",
           name: "Execute an objective",
           description: "Run an objective through AStack's runner within a read-mostly authority ceiling. Anything irreversible waits for the owner's approval (task state input-required).",
@@ -186,7 +196,7 @@ export class A2AServer {
           examples: ["Summarise the open risks of project X"],
           inputModes: ["text/plain", "application/json"],
           outputModes: ["text/plain"]
-        }
+        }] : [])
       ],
       metadata: { implemented: ["message/send", "tasks/get", "tasks/cancel"], ceiling: this.ceiling() }
     };
@@ -248,10 +258,10 @@ export class A2AServer {
   applyRun(task, run) {
     task.runId = run?.id ?? task.runId;
     const state = RUN_TO_STATE[run?.status] ?? "failed";
-    const summary = redactResolvedSecrets(String(run?.summary ?? ""));
+    const summary = scrub(run?.summary ?? "");
     const output = typeof run?.output === "string" ? run.output : run?.output ? JSON.stringify(run.output) : "";
     if (state === "completed") {
-      task.artifacts = [{ artifactId: randomUUID(), name: "result", parts: [textPart(redactResolvedSecrets([summary, output].filter(Boolean).join("\n\n")).slice(0, 20000))] }];
+      task.artifacts = [{ artifactId: randomUUID(), name: "result", parts: [textPart(scrub([summary, output].filter(Boolean).join("\n\n")).slice(0, 20000))] }];
       this.setState(task, "completed", summary || "completed");
     } else if (state === "input-required") {
       this.setState(task, "input-required", "Waiting for the AStack owner's approval. A remote agent cannot approve; poll tasks/get.");
@@ -308,7 +318,7 @@ export class A2AServer {
       contextId: typeof message.contextId === "string" ? message.contextId.slice(0, 100) : randomUUID(),
       createdAt: this.now(),
       requester,
-      mode: this.runner ? "execute" : "plan-only",
+      mode: clean.injectionSuspected ? "refused" : this.executes ? "execute" : "plan-only",
       ceiling: this.ceiling(),
       quarantined: clean.injectionSuspected,
       runId: null,
@@ -329,24 +339,29 @@ export class A2AServer {
       clean.text
     ].join("\n");
     try {
-      if (this.runner) {
+      if (clean.injectionSuspected) {
+        // Instruction-shaped content is not quoted, planned or run: refused.
+        this.setState(task, "rejected", "Refused: the request contains instruction-shaped content (an attempt to change the receiving agent's rules). Nothing was planned or executed.");
+      } else if (this.executes) {
         this.setState(task, "working");
         const run = await this.runner.execute({ objective, source: "a2a", ceiling: task.ceiling, engine: "auto", dryRun: false });
         this.applyRun(task, run);
       } else {
         const chief = this.host?.chief;
         if (!chief) {
-          this.setState(task, "failed", "No runner or planner is installed.");
+          this.setState(task, "failed", "No planner is available; execution over A2A is " + (this.runner ? "disabled (a2a.execute is not true)." : "not installed."));
         } else {
           const plan = chief.dryRun(clean.text);
           const lines = [...(plan.summary ?? []), "", ...(plan.plan?.steps ?? []).map((step, index) => index + 1 + ". " + step.title + " (" + step.authority + ")")];
-          task.artifacts = [{ artifactId: randomUUID(), name: "plan", parts: [textPart(redactResolvedSecrets(lines.join("\n")))] }];
-          this.setState(task, "completed", "Plan only: the AStack runner is not installed, so nothing was executed.");
+          task.artifacts = [{ artifactId: randomUUID(), name: "plan", parts: [textPart(scrub(lines.join("\n")))] }];
+          this.setState(task, "completed", this.runner
+            ? "Plan only: execution over A2A is disabled (a2a.execute is not true), so nothing was executed."
+            : "Plan only: the AStack runner is not installed, so nothing was executed.");
           task.history.push({ kind: "message", role: "agent", messageId: randomUUID(), taskId: task.id, contextId: task.contextId, parts: [textPart("Plan only: nothing was executed.")] });
         }
       }
     } catch (error) {
-      this.setState(task, "failed", "AStack could not process the task: " + redactResolvedSecrets(error.message).slice(0, 300));
+      this.setState(task, "failed", "AStack could not process the task: " + scrub(error.message).slice(0, 300));
     }
     this.saveTask(task);
     this.audit?.record({
@@ -565,7 +580,8 @@ export class A2AServer {
       ceiling: this.ceiling(),
       tokenReference: A2A_TOKEN_REFERENCE,
       tokenConfigured,
-      mode: this.runner ? "execute" : "plan-only",
+      mode: this.executes ? "execute" : "plan-only",
+      execute: this.config.execute === true,
       tasks: tasks.length,
       byState
     };
