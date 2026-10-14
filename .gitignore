@@ -25,6 +25,7 @@ dist/
 .astack/runtimes/
 .astack/tools/
 .astack/interop/
+.astack/gateway/
 graphify-out/
 .astack/runner/
 .astack/daemon/

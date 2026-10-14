@@ -542,3 +542,62 @@ secrets:
 #   allow_remote: false
 #   public_url: null              # URL advertised in the agent card
 #   # Bearer token: credential://a2a/token
+
+# Owner messaging gateway (AStack 3.0, gateway-engine/). Optional: everything
+# below is the default when the section is absent. Uncomment to enable.
+# Owner ids are placeholders; keep real numbers out of a committed file with
+# `astack gateway owner add <channel> <id>` (stored in .astack/gateway/owners.json).
+# gateway:
+#   enabled: false
+#   language: fa
+#   poll_interval_s: 5
+#   long_poll_s: 25
+#   max_inbound_age_s: 600
+#   rate_limit_per_minute: 20
+#   send_spacing_ms: 800
+#   send_level: L2
+#   ack: true
+#   single_pending_without_code: true
+#   owners:
+#     telegram:
+#       - "100000001"
+#       - "100000002"
+#     whatsapp-wapi:
+#       - "15550000001"
+#     whatsapp-bridge:
+#       - "15550000001"
+#     whatsapp-cloud:
+#       - "15550000001"
+#   groups:
+#     whatsapp-bridge:
+#       - "120000000000000000@g.us"
+#   listener:
+#     host: 127.0.0.1
+#     port: 8788
+#   channels:
+#     telegram:
+#       enabled: false
+#       token: credential://telegram/bot
+#     whatsapp-wapi:
+#       enabled: false
+#       base_url: http://127.0.0.1:3000
+#       token: credential://wapi/channel
+#     whatsapp-bridge:
+#       enabled: false
+#       port: 8790
+#     whatsapp-cloud:
+#       enabled: false
+#       phone_number_id: "000000000000000"
+#       waba_id: "000000000000000"
+#       api_version: v21.0
+#       access_token: credential://whatsapp-cloud/access-token
+#       app_secret: credential://whatsapp-cloud/app-secret
+#       verify_token: credential://whatsapp-cloud/verify-token
+#   voice:
+#     enabled: true
+#     model: large-v3-turbo
+#     language: fa
+#     device: auto
+#     python: python
+#     timeout_s: 300
+#     allow_approvals: false
