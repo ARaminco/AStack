@@ -1,0 +1,22 @@
+{
+  "name": "astack-whatsapp-bridge",
+  "version": "3.0.0",
+  "private": true,
+  "description": "AStack WhatsApp linked-device bridge (Baileys). Installed on demand into .astack/gateway/bridge/app by `astack gateway whatsapp setup`; not a dependency of the AStack core.",
+  "type": "module",
+  "main": "bridge.mjs",
+  "scripts": {
+    "start": "node bridge.mjs",
+    "self-test": "node bridge.mjs --self-test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "7.0.0-rc13",
+    "qrcode-terminal": "0.12.0"
+  },
+  "overrides": {
+    "protobufjs": "7.5.6"
+  }
+}

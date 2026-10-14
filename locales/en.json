@@ -60,7 +60,8 @@
       "interop": "Keep Claude Code and Codex on one contract, one memory and one journal: status, sync, handoff, journal, hook.",
       "mcp": "Serve the astack MCP server over stdio for Claude Code and Codex.",
       "graphify": "Code knowledge graph via Graphify with token budgets: status, setup, upgrade, build, query, explain, path, affected, benchmark.",
-      "setup": "Install or update AStack and set everything up for Claude Code and Codex: core, migrations, wiring, Graphify, index, global skill."
+      "setup": "Install or update AStack and set everything up for Claude Code and Codex: core, migrations, wiring, Graphify, index, global skill.",
+      "gateway": "Owner messaging gateway: commands from WhatsApp and Telegram, reports and approvals on the phone, local Persian voice notes."
     },
     "project": {
       "usage": "Project commands: init, demo, list, status, board, backlog, add, move, start, done, block, unblock, charter, milestone, sprint, risk, gate, advance, baseline, critical-path, forecast, next, digest, decision, scaffold, raci, report, templates",
@@ -422,6 +423,42 @@
       "historyTitle": "Update history ({count}, newest first):",
       "noBackup": "No backup to roll back to; pass --backup <dir>.",
       "unknownAction": "Unknown update action: {action} (run | history | rollback)"
+    },
+    "gateway": {
+      "statusTitle": "Owner messaging gateway: {state}",
+      "enabled": "enabled",
+      "disabled": "disabled (gateway.enabled)",
+      "runner": "Runner: {state}",
+      "channelLine": "{id}: {enabled} | configured: {configured} | owners: {owners} | groups: {groups} | ignored: {ignored}",
+      "missing": "  missing: {item}",
+      "voiceLine": "Voice: model {model} | language {language} | device {device}",
+      "testOk": "{channel}: healthy ({detail})",
+      "testFailed": "{channel}: error — {error}",
+      "sendDryRun": "Preview (nothing was sent; add --yes to send):",
+      "sendTarget": "- {channel} → {target}",
+      "sendText": "Text:",
+      "sendDone": "Sent to {sent} account(s)",
+      "sendFailed": "Not sent: {channel} → {target}: {error}",
+      "pollDone": "One poll: {channel} | received: {received} | outcomes: {outcomes}",
+      "pollError": "{channel}: {error}",
+      "pollSummary": "Approvals announced: {announced} | outbox flushed: {flushed}",
+      "ownersTitle": "Owner accounts (masked):",
+      "ownerLine": "- {channel}: {entries}",
+      "ownerSaved": "Saved to .astack/gateway/owners.json: {channel} = {count} entr(ies)",
+      "voiceCheck": "faster-whisper: {state}",
+      "voiceSetupHint": "Install: {command}",
+      "voicePolicyHint": "Running python is not allowed by the automation policy. Allow it once: astack schedule policy allow-command {python}",
+      "voiceResult": "Text: {text}",
+      "voiceMeta": "Duration: {duration}s | device: {device} | processing: {seconds}s",
+      "bridgeStatus": "WhatsApp bridge: installed {installed} | paired {paired} | ownership {ownership} | state {state} | port {port}",
+      "bridgeSetup": "Installing the WhatsApp bridge into {path}",
+      "bridgeSetupDone": "Bridge installed. Next: astack gateway whatsapp pair (with the bot number's phone, not your personal account)",
+      "bridgeSetupFailed": "Bridge install failed: {reason}",
+      "bridgeWarning": "Warning: pair a separate (bot) number with the bridge, not your personal WhatsApp.",
+      "bridgeStarted": "Bridge running (pid {pid})",
+      "bridgeStopped": "Bridge stopped",
+      "bridgeFailed": "Bridge: {reason}",
+      "unknownAction": "Unknown gateway action: {action}"
     }
   },
   "delivery": {
@@ -504,6 +541,80 @@
       "title": "Project event digest since {since}:",
       "quiet": "No events were recorded in this window.",
       "blockedLine": "Blocked: {id} ({title}) — {reason}"
+    }
+  },
+  "gateway": {
+    "partLabel": "Part {index} of {total}",
+    "reply": {
+      "ack": "Received; working on it.",
+      "completed": "Done.",
+      "failed": "Not done: {reason}",
+      "queued": "Queued. Id: {id}",
+      "waiting": "This needs your approval to continue. The approval request was sent separately.",
+      "planOnly": "No runner is installed on this system; this is the plan only and nothing was executed.",
+      "planSteps": "Planned steps:",
+      "noRunner": "Neither a runner nor a planner is available; nothing can be done from here.",
+      "quarantined": "This message looked like an attempt to get around the rules and was not run.",
+      "unsupported": "For now I understand text and voice notes only.",
+      "voiceHeard": "Your voice note:\n{text}",
+      "voiceUnavailable": "The voice note could not be transcribed: {reason}",
+      "voiceDisabled": "Voice transcription is switched off.",
+      "error": "Error: {reason}",
+      "refused": "Not run; nothing was done: {reason}",
+      "refusedReasons": {
+        "daily-budget": "the daily budget is used up",
+        "max-concurrent": "too many runs at once; send it again a little later",
+        "engine-unavailable": "the execution engine is not available"
+      },
+      "dryRun": "Preview only; nothing was executed."
+    },
+    "approval": {
+      "title": "Your approval is needed",
+      "code": "Code: {code}",
+      "action": "Action: {action}",
+      "summary": "Summary: {summary}",
+      "target": "Target: {target}",
+      "values": "Values:",
+      "level": "Authority level: {level}",
+      "mission": "Mission: {mission}",
+      "howTo": "To approve, reply to this message with \"approve\" (or «بفرست»), or write \"approve {code}\".\nTo deny, reply \"deny\" (or «نه»).",
+      "approved": "Approved. Receipt: {receipt}",
+      "denied": "Denied. Nothing will be done.",
+      "alreadyDecided": "Already decided: {state}\nBy: {by}\nAt: {at}\nNothing else was done.",
+      "unknownCode": "Code {code} was not found. Send /pending to see what is waiting.",
+      "none": "Nothing is waiting for approval.",
+      "ambiguous": "Several requests are waiting and it is not clear which one you mean. Reply to that request's message or include its code:",
+      "ambiguousItem": "- code {code}: {action}",
+      "resumed": "Continued: {summary}",
+      "notResumable": "Decision recorded. This request is not tied to a mission that can resume on its own.",
+      "voiceNotAccepted": "Approvals and denials are not accepted by voice; please type \"approve\" or \"deny\".",
+      "states": {
+        "approved": "approved",
+        "rejected": "denied",
+        "consumed": "approved and used",
+        "expired": "expired",
+        "pending": "pending",
+        "unknown": "unknown"
+      }
+    },
+    "command": {
+      "help": "Commands:\n/status overall status\n/pending requests waiting for approval\n/runs latest runs\n/stop id — stop a run or mission\n/help this help\nAny other message is a task request.\nApprove: \"approve\" or «بفرست» — deny: \"deny\" or «نه»",
+      "statusTitle": "Status",
+      "statusMissions": "Missions: {missions} | active: {active} | waiting for approval: {waiting}",
+      "statusPending": "Pending approvals: {count}",
+      "statusRunner": "Runner: {state}",
+      "runnerOn": "active",
+      "runnerOff": "not installed (plan only)",
+      "pendingTitle": "Waiting for approval: {count}",
+      "pendingItem": "- code {code} | {action} | {summary}",
+      "pendingHint": "To approve, write \"approve\" and the code, e.g. \"approve ABCD\".",
+      "runsTitle": "Latest runs:",
+      "runsEmpty": "No runs recorded.",
+      "stopUsage": "Add the id: /stop id",
+      "stopped": "Stopped: {id}",
+      "stopFailed": "Not stopped: {reason}",
+      "stopUnknown": "no run or mission with that id",
+      "unknown": "I do not know that command. Send /help."
     }
   }
 }

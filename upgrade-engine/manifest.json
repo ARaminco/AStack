@@ -15,6 +15,7 @@
     "documentation",
     "domains",
     "event-bus",
+    "gateway-engine",
     "installer",
     "interop-engine",
     "knowledge-graph",
