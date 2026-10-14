@@ -880,4 +880,9 @@ assert.match(vaultStatus.stdout, /vault:windows/);
 const cardCli = spawnSync(process.execPath, [join(repoRoot, "bin", "astack.mjs"), "a2a", "card"], { encoding: "utf8" });
 assert.equal(JSON.parse(cardCli.stdout).name, "AStack");
 
+// A value piped from Windows PowerShell arrives with a UTF-8 byte-order mark.
+const { readSecretValue } = await import("../cli/vault-cli.mjs");
+const { Readable } = await import("node:stream");
+assert.equal(await readSecretValue({ stdin: Readable.from([Buffer.from("﻿abc:123\r\n", "utf8")]) }), "abc:123", "BOM and newline are stripped from a piped secret");
+
 console.log("verify-board: all checks passed");

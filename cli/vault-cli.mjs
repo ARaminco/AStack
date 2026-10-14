@@ -14,7 +14,9 @@ export async function readSecretValue({ prompt = "Value: ", stdin = process.stdi
     for await (const chunk of stdin) {
       chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
     }
-    return Buffer.concat(chunks).toString("utf8").replace(/\r?\n$/, "");
+    // Windows PowerShell pipes a UTF-8 byte-order mark ahead of the value; it is
+    // never part of a secret.
+    return Buffer.concat(chunks).toString("utf8").replace(/^﻿/, "").replace(/\r?\n$/, "");
   }
   stderr.write(prompt);
   return new Promise((resolve, reject) => {
