@@ -380,7 +380,7 @@ export function runSkillCommand({ runtime, i18n, tokens }) {
     return;
   }
   if (action === "search") {
-    const hits = catalog.search(positionals.join(" "), { limit: Number(flags.limit ?? 5) });
+    const hits = catalog.search(positionals.join(" "), { limit: Number(flags.limit ?? 5), includePacks: Boolean(flags.packs) });
     table(hits.map((hit) => hit.id + " (" + hit.source + ", " + hit.status + ", score " + hit.score + ") " + hit.path));
     return;
   }

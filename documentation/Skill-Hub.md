@@ -95,7 +95,9 @@ inspectable with `show`).
 - `list()`, `catalog()`, `stats()` are unchanged by default; `includePacks: true`
   (CLI `--packs`) appends pack skills after every built-in and learned skill.
 - `search()` returns the same built-in/learned hits as before; when packs are
-  enabled, pack hits fill the remaining slots *below* them.
+  enabled, pack hits fill the remaining slots *below* them. The CLI
+  `astack skill search` stays builtin/learned only unless `--packs` is given.
+- `get()`/`show()` resolve `<pack>/<id>` only while packs are enabled.
 - `select(request)` returns `{ primary, auxiliary, all }`; the Chief of Staff
   attaches it to the brief as `catalogSkills`, and `astack ask` prints it while
   packs are enabled.

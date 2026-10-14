@@ -196,6 +196,31 @@ export const migrations = [
       }
       return changed.length ? "wired " + changed.map((entry) => entry.path).join(", ") : "runtime wiring already in place";
     }
+  },
+  {
+    id: "2026.8-ignore-v3-state",
+    description: "Teach an existing .gitignore about the state the 3.0 engines write (search index of past sessions, gateway sessions, vault, console tokens).",
+    appliesTo: (root) => {
+      if (!existsSync(join(root, ".gitignore"))) {
+        return false;
+      }
+      const current = readFileSync(join(root, ".gitignore"), "utf8");
+      return !/^\/?\.astack\/?\s*$/m.test(current) && !current.includes(".astack/vault/");
+    },
+    run: (root) => {
+      // The search index holds past conversations and the gateway holds a
+      // WhatsApp session; neither may ever reach a commit.
+      const path = join(root, ".gitignore");
+      const current = readFileSync(path, "utf8");
+      const rules = ["gateway", "runner", "daemon", "search", "board", "sandbox", "vault", "a2a", "skill-hub", "console"]
+        .map((name) => ".astack/" + name + "/")
+        .filter((rule) => !current.includes(rule));
+      if (!rules.length) {
+        return "nothing to add";
+      }
+      writeFileSync(path, current.replace(/\s*$/, "\n") + rules.join("\n") + "\n", "utf8");
+      return "added " + rules.length + " ignore rules for 3.0 state";
+    }
   }
 ];
 
