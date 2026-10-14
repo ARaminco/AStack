@@ -3,6 +3,9 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
+import { ApprovalEngine } from "../trust-engine/approvals.mjs";
+import { AuditEngine } from "../trust-engine/audit.mjs";
+import { READ_ONLY_TOOLS, toolInputPreview, toolTarget } from "../lib/tool-summary.mjs";
 
 /**
  * The astack MCP server: one tool surface for every runtime.
@@ -210,7 +213,111 @@ function runCli(args) {
   });
 }
 
-export function createMcpHandler({ version = "0.0.0", run = runCli } = {}) {
+// ------------------------------------------------- console chat permissions
+
+/**
+ * `mcp__astack__permission_prompt`: the `--permission-prompt-tool` of a
+ * conversation started from the Aramin console. Claude Code calls it with
+ * `{ tool_name, input, tool_use_id }` whenever a tool use needs permission;
+ * the tool turns it into an AStack approval (action `claude.tool`), waits
+ * until the owner decides in the console or on the gateway (or the request
+ * expires), and answers with the JSON Claude Code expects:
+ * `{ "behavior": "allow", "updatedInput": {...} }` or
+ * `{ "behavior": "deny", "message": "..." }`.
+ *
+ * It is listed only when the console launched this server for a chat
+ * (`ASTACK_CONSOLE_CHAT` is set), so ordinary sessions never see it. That
+ * server runs with `ASTACK_UNATTENDED=1`: it can ask, never decide.
+ */
+export const PERMISSION_TOOL_NAME = "permission_prompt";
+
+export const permissionTool = {
+  name: PERMISSION_TOOL_NAME,
+  description: "Permission prompt for Claude Code conversations started from the Aramin console. Not for direct use.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      tool_name: text("The tool Claude Code wants to use"),
+      input: { type: "object", description: "The tool input" },
+      tool_use_id: text("The tool use id")
+    },
+    required: ["tool_name"]
+  }
+};
+
+export function permissionSettingsFromEnv(env = process.env) {
+  const session = String(env.ASTACK_CONSOLE_CHAT ?? "").trim();
+  if (!session) {
+    return null;
+  }
+  return {
+    session,
+    workspaceRoot: env.ASTACK_WORKSPACE_ROOT || root,
+    timeoutMs: Math.max(5000, Number(env.ASTACK_PERMISSION_TIMEOUT_MS) || 10 * 60 * 1000)
+  };
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Create the approval and wait for the owner. Every outcome other than an
+ * approval — a denial, an expiry, an error — is a deny.
+ */
+export async function requestToolPermission({ approvals, toolName, input = {}, toolUseId = null, session, timeoutMs = 10 * 60 * 1000, pollMs = 750, wait = sleep, now = () => Date.now() }) {
+  const name = String(toolName ?? "unknown");
+  const target = toolTarget(name, input, 200);
+  const deny = (message) => ({ behavior: "deny", message });
+  let record;
+  try {
+    record = approvals.request({
+      action: "claude.tool",
+      summary: name + (target ? ": " + target : ""),
+      tool: name,
+      target: target || name,
+      parameters: { tool: name, input: toolInputPreview(input), toolUseId, session },
+      level: "L3",
+      risk: READ_ONLY_TOOLS.includes(name) ? "low" : name.startsWith("mcp__") || ["Bash", "PowerShell", "WebFetch"].includes(name) ? "high" : "medium",
+      requestedBy: "console-chat:" + session,
+      expiresInMs: timeoutMs
+    });
+  } catch (error) {
+    return { approvalId: null, result: deny("AStack could not record the permission request: " + error.message) };
+  }
+  const deadline = now() + timeoutMs + 2000;
+  while (now() < deadline) {
+    let current;
+    try {
+      current = approvals.get(record.id);
+    } catch {
+      return { approvalId: record.id, result: deny("The permission request disappeared.") };
+    }
+    if (current.state === "approved") {
+      try {
+        approvals.consume(record.id, { by: "console-chat:" + session });
+      } catch (error) {
+        return { approvalId: record.id, result: deny("The approval could not be used: " + error.message) };
+      }
+      return { approvalId: record.id, result: { behavior: "allow", updatedInput: input && typeof input === "object" ? input : {} } };
+    }
+    if (current.state === "rejected") {
+      return { approvalId: record.id, result: deny("The owner denied this tool use" + (current.note ? ": " + String(current.note).slice(0, 300) : ".") + " Do not retry it; ask the owner how to proceed.") };
+    }
+    if (current.state !== "pending") {
+      return { approvalId: record.id, result: deny("The permission request " + current.state + " without an answer from the owner. Do not retry it.") };
+    }
+    await wait(pollMs);
+  }
+  return { approvalId: record.id, result: deny("The permission request timed out without an answer from the owner. Do not retry it.") };
+}
+
+export function createMcpHandler({ version = "0.0.0", run = runCli, permission = permissionSettingsFromEnv(), approvals = null } = {}) {
+  let approvalEngine = approvals;
+  const permissionApprovals = () => {
+    if (!approvalEngine && permission) {
+      approvalEngine = new ApprovalEngine(permission.workspaceRoot, { audit: new AuditEngine(permission.workspaceRoot) });
+    }
+    return approvalEngine;
+  };
   let source = "mcp";
   return async function handle(message) {
     const { id, method, params = {} } = message;
@@ -233,8 +340,21 @@ export function createMcpHandler({ version = "0.0.0", run = runCli } = {}) {
       case "ping":
         return reply({});
       case "tools/list":
-        return reply({ tools: mcpTools.map(({ name, description, inputSchema }) => ({ name, description, inputSchema })) });
+        return reply({ tools: [...mcpTools, ...(permission ? [permissionTool] : [])].map(({ name, description, inputSchema }) => ({ name, description, inputSchema })) });
       case "tools/call": {
+        if (permission && params.name === PERMISSION_TOOL_NAME) {
+          const input = params.arguments ?? {};
+          const { result } = await requestToolPermission({
+            approvals: permissionApprovals(),
+            toolName: input.tool_name,
+            input: input.input ?? {},
+            toolUseId: input.tool_use_id ?? null,
+            session: permission.session,
+            timeoutMs: permission.timeoutMs,
+            ...(permission.pollMs ? { pollMs: permission.pollMs } : {})
+          });
+          return reply({ content: [{ type: "text", text: JSON.stringify(result) }] });
+        }
         const tool = mcpTools.find((entry) => entry.name === params.name);
         if (!tool) {
           return fail(-32602, "Unknown tool: " + params.name);
