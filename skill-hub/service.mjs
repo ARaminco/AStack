@@ -11,7 +11,7 @@ import { SkillHub, packSettings } from "./skill-hub.mjs";
  * a pack and never runs anything from a pack.
  */
 export function createService({ runtime, config = null, log = () => {} } = {}) {
-  const settings = packSettings(config ?? runtime?.configuration?.section?.("skills", {})?.packs ?? {});
+  const settings = packSettings({ ...(runtime?.configuration?.section?.("skills", {})?.packs ?? {}), ...(config ?? {}) });
   const hub = runtime?.skillHub ?? new SkillHub(runtime?.root ?? process.cwd(), {
     workspaceRoot: runtime?.workspaceRoot,
     policy: runtime?.automationPolicy ?? null,

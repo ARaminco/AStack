@@ -8,7 +8,9 @@ import { ConsoleServer, resolveConsoleSettings } from "./server.mjs";
  * says `console.allow_remote: true` — there is no command line to type `--host`.
  */
 export function createService({ runtime, config = null, log = console.log } = {}) {
-  const section = config ?? runtime.configuration?.section?.("console", {}) ?? {};
+  // The daemon passes its own `daemon.console` block (usually empty); the
+  // owner's `console:` section is the base and daemon keys only override it.
+  const section = { ...(runtime?.configuration?.section?.("console", {}) ?? {}), ...(config ?? {}) };
   let server = null;
   let lastError = null;
   return {

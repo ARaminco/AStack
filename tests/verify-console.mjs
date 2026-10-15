@@ -382,3 +382,15 @@ try {
 } finally {
   await cleanup();
 }
+
+// Under the daemon the service receives the (usually empty) `daemon.console`
+// block; the owner's `console:` section must still apply.
+{
+  const fakeRuntime = { configuration: { section: (name) => (name === "console" ? { enabled: false, remote: { enabled: true } } : {}) } };
+  const service = createService({ runtime: fakeRuntime, config: {}, log: () => {} });
+  await service.start();
+  assert.equal(service.status().enabled, false, "the console: section applies when the daemon passes an empty block");
+  const overridden = createService({ runtime: fakeRuntime, config: { enabled: true, port: 0 }, log: () => {} });
+  assert.equal(typeof overridden.status, "function");
+  console.log("AStack console service config merge verified");
+}
