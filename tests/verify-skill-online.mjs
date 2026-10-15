@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
+import { Worker } from "node:worker_threads";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
@@ -78,15 +81,29 @@ write(official, "LICENSE", "Apache License, Version 2.0\n");
 write(official, "skills/xlsx/SKILL.md", "---\nname: xlsx\ndescription: Work with spreadsheet files.\n---\nBody.\n");
 repos["anthropics/skills"] = official;
 
+// A glob-named folder: "[ab]" as a sparse pattern would match folders a and b.
+const globRepo = sandbox("repo-glob");
+write(globRepo, "skills/[ab]/SKILL.md", "---\nname: ab\ndescription: spreadsheet glob\n---\nBody.\n");
+write(globRepo, "skills/a/SKILL.md", "---\nname: a\n---\nA.\n");
+write(globRepo, "skills/b/SKILL.md", "---\nname: b\n---\nB.\n");
+repos["glob/skills"] = globRepo;
+
 const SHA = "0123456789abcdef0123456789abcdef01234567";
+const VETTED = "fedcba9876543210fedcba9876543210fedcba98";
 const gitCalls = [];
-function fakeGit(args) {
+const gitEnvs = [];
+const fakeRemotes = {};
+function repoOf(url) {
+  return /github\.com\/(.+?)\.git$/.exec(url)?.[1];
+}
+function fakeGit(args, options = {}) {
   gitCalls.push(args);
+  gitEnvs.push(options.env ?? null);
   const dash = args.indexOf("--");
   if (args.includes("clone")) {
     const url = args[dash + 1];
     const target = args[dash + 2];
-    const repo = /github\.com\/(.+?)\.git$/.exec(url)?.[1];
+    const repo = repoOf(url);
     if (!repos[repo]) {
       throw new Error("fatal: repository not found: " + url);
     }
@@ -95,9 +112,30 @@ function fakeGit(args) {
     write(target, ".git/config", "[remote \"origin\"]\n\turl = " + url + "\n");
     return "";
   }
+  if (args.includes("init")) {
+    mkdirSync(join(args[dash + 1], ".git"), { recursive: true });
+    return "";
+  }
   const target = args[args.indexOf("-C") + 1];
+  if (args.includes("remote")) {
+    fakeRemotes[target] = args[args.length - 1];
+    return "";
+  }
+  if (args.includes("fetch")) {
+    const repo = repoOf(fakeRemotes[target]);
+    if (!repos[repo]) {
+      throw new Error("fatal: repository not found");
+    }
+    cpSync(repos[repo], target, { recursive: true });
+    return "";
+  }
+  if (args.includes("checkout")) {
+    write(target, ".git/HEAD", args[args.length - 1] + "\n");
+    return "";
+  }
   if (args.includes("ls-tree")) {
-    return listFiles(target).join("\n") + "\n";
+    const separator = args.includes("-z") ? "\0" : "\n";
+    return listFiles(target).join(separator) + separator;
   }
   if (args.includes("sparse-checkout")) {
     return "";
@@ -314,6 +352,127 @@ function engine({ workspace = sandbox("ws"), settings = {}, policy = null, audit
   assert.throws(() => fetchGitFolder({ url: "https://github.com/acme/skills.git", skillId: "missing", target: join(work, "e"), runGit: fakeGit }), /No skill folder matching/);
   const denied = new AutomationPolicy(work, { policy: { commands: { mode: "allowlist", allow: ["node"], deny: [] }, network: { mode: "allow", allowHosts: [], denyHosts: [] }, actions: { allow: [], confirm: [] } } });
   assert.throws(() => fetchGitFolder({ url: "https://github.com/acme/skills.git", path: "skills/sheet-tools", target: join(work, "f"), runGit: fakeGit, policy: denied }), /git refused by the automation policy/);
+
+  // S1: every git process gets the hardened environment and options.
+  assert.ok(gitEnvs.length && gitEnvs.every((env) => env && env.GIT_CONFIG_NOSYSTEM === "1" && env.GIT_CONFIG_GLOBAL && env.GIT_LFS_SKIP_SMUDGE === "1" && env.GIT_TERMINAL_PROMPT === "0"), "hardened git environment");
+  for (const args of gitCalls) {
+    for (const option of ["protocol.file.allow=never", "core.symlinks=false", "core.fsmonitor=false", "filter.lfs.smudge=", "filter.lfs.process=", "filter.lfs.required=false", "core.attributesFile="]) {
+      assert.ok(args.includes(option), option + " on every git call: " + args.join(" "));
+    }
+    assert.ok(args.some((arg) => arg.startsWith("core.hooksPath=") && arg.length > "core.hooksPath=".length), "hooks come from an empty folder");
+  }
+  // S3: the tree listing is NUL-separated and every entry is checked; glob paths are refused.
+  assert.ok(gitCalls.some((args) => args.includes("ls-tree") && args.includes("-z")), "ls-tree -z");
+  assert.throws(() => fetchGitFolder({ url: "https://github.com/acme/skills.git", path: "skills/*", target: join(work, "g"), runGit: fakeGit }), /Unsafe skill path/);
+  assert.throws(() => fetchGitFolder({ url: "https://github.com/acme/skills.git", path: "skills/[st]heet-tools", target: join(work, "h"), runGit: fakeGit }), /Unsafe skill path/);
+  assert.throws(() => fetchGitFolder({ url: "https://github.com/acme/skills.git", path: "!skills", target: join(work, "i"), runGit: fakeGit }), /Unsafe skill path/);
+  assert.throws(() => fetchGitFolder({ url: "https://github.com/glob/skills.git", skillId: "ab", target: join(work, "j"), runGit: fakeGit }), /No skill folder matching/, "a glob-named folder from the listing is never used as a sparse pattern");
+  assert.ok(!gitCalls.some((args) => args.includes("sparse-checkout") && args.some((arg) => arg.includes("["))), "no glob pattern reached sparse-checkout");
+  assert.equal(parseGitHubUrl("https://github.com/acme/skills/tree/main/skills/*"), null, "a SkillsMP glob path is refused");
+  assert.equal(parseGitHubUrl("https://github.com/acme/skills/tree/main/skills/[ab]"), null);
+  // S3: a vetted commit is fetched by SHA, shallow, and verified.
+  gitCalls.length = 0;
+  const pinned = fetchGitFolder({ url: "https://github.com/acme/skills.git", path: "skills/sheet-tools", commit: VETTED, target: join(work, "k"), runGit: fakeGit });
+  assert.equal(pinned.commit, VETTED);
+  assert.ok(gitCalls.some((args) => args.includes("fetch") && args.includes("--depth") && args.at(-1) === VETTED), "the commit is fetched by SHA");
+  assert.ok(!gitCalls.some((args) => args.includes("clone")), "the branch head is never cloned");
+  assert.throws(() => fetchGitFolder({ url: "https://github.com/acme/skills.git", path: "skills/sheet-tools", commit: "main", target: join(work, "l"), runGit: fakeGit }), /full 40-character SHA/);
+}
+
+// ------------------------- S1: git filters never run during a fetch (real git)
+{
+  let hasGit = true;
+  try {
+    execFileSync("git", ["--version"], { stdio: "ignore" });
+  } catch {
+    hasGit = false;
+  }
+  if (!hasGit) {
+    console.log("verify-skill-online: git not installed, real-git filter test skipped");
+  } else {
+    // The listener runs in a worker: git runs synchronously on this thread.
+    const listener = new Worker("const { createServer } = require('node:http'); const { parentPort } = require('node:worker_threads'); const server = createServer((request, response) => { parentPort.postMessage(request.method + ' ' + request.url); response.writeHead(404); response.end(); }); server.listen(0, '127.0.0.1', () => parentPort.postMessage({ port: server.address().port }));", { eval: true });
+    const lfsPort = await new Promise((resolve) => listener.once("message", (message) => resolve(message.port)));
+    const lfsHits = [];
+    listener.on("message", (message) => lfsHits.push(message));
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 300));
+    const root = sandbox("lfs");
+    const quiet = { GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: write(root, "empty.gitconfig", "") };
+    const source = join(root, "source");
+    mkdirSync(source);
+    const gitIn = (cwd, args, extra = {}) => execFileSync("git", args, { cwd, env: { ...process.env, ...quiet, ...extra }, stdio: ["ignore", "pipe", "pipe"], encoding: "utf8", timeout: 60000 });
+    gitIn(source, ["init", "-q"]);
+    write(source, ".gitattributes", "*.bin filter=lfs diff=lfs merge=lfs -text\n");
+    write(source, ".lfsconfig", "[lfs]\n\turl = http://127.0.0.1:" + lfsPort + "/lfs\n");
+    write(source, "skills/lfs-skill/SKILL.md", "---\nname: lfs-skill\ndescription: An LFS trap.\n---\nBody.\n");
+    const pointer = "version https://git-lfs.github.com/spec/v1\noid sha256:" + "a".repeat(64) + "\nsize 12\n";
+    write(source, "skills/lfs-skill/data.bin", pointer);
+    gitIn(source, ["add", "-A"]);
+    gitIn(source, ["-c", "user.name=test", "-c", "user.email=test@example.com", "commit", "-qm", "lfs trap"]);
+    gitIn(source, ["config", "uploadpack.allowFilter", "true"]);
+    gitIn(source, ["config", "uploadpack.allowAnySHA1InWant", "true"]);
+    const head = gitIn(source, ["rev-parse", "HEAD"]).trim();
+    const url = pathToFileURL(source).href;
+    // What a globally installed git-lfs configures, injected through inherited variables.
+    const hostile = { GIT_CONFIG_COUNT: "3", GIT_CONFIG_KEY_0: "filter.lfs.smudge", GIT_CONFIG_VALUE_0: "git-lfs smudge -- %f", GIT_CONFIG_KEY_1: "filter.lfs.process", GIT_CONFIG_VALUE_1: "git-lfs filter-process", GIT_CONFIG_KEY_2: "filter.lfs.required", GIT_CONFIG_VALUE_2: "true" };
+    let hasLfs = true;
+    try {
+      execFileSync("git", ["lfs", "version"], { stdio: "ignore" });
+    } catch {
+      hasLfs = false;
+    }
+    if (hasLfs) {
+      // Control: without the sandbox the same clone makes git-lfs call the listener.
+      try {
+        gitIn(root, ["-c", "protocol.file.allow=always", "clone", "-q", "--", url, join(root, "control")], hostile);
+      } catch {
+        // git-lfs fails against the 404 listener; the request is what counts.
+      }
+      await settle();
+      assert.ok(lfsHits.length > 0, "control: an unhardened clone lets git-lfs contact the .lfsconfig endpoint");
+      lfsHits.length = 0;
+    }
+    // Test hook: file:// is allowed only here, by this test's own runGit
+    // rewriting the option. Production always passes protocol.file.allow=never.
+    const realCalls = [];
+    const testGit = (args, options = {}) => {
+      realCalls.push({ args, env: options.env });
+      return execFileSync("git", args.map((arg) => (arg === "protocol.file.allow=never" ? "protocol.file.allow=always" : arg)), { env: options.env, stdio: ["ignore", "pipe", "pipe"], encoding: "utf8", timeout: 60000 });
+    };
+    const inherited = { ...hostile, GIT_DIR: join(root, "elsewhere"), GIT_WORK_TREE: join(root, "elsewhere"), GIT_CONFIG_PARAMETERS: "'core.fsmonitor'='calc.exe'" };
+    const saved = Object.fromEntries(Object.keys(inherited).map((key) => [key, process.env[key]]));
+    Object.assign(process.env, inherited);
+    let fetched;
+    let pinnedReal;
+    try {
+      fetched = fetchGitFolder({ url, path: "skills/lfs-skill", target: join(root, "hardened"), runGit: testGit });
+      pinnedReal = fetchGitFolder({ url, path: "skills/lfs-skill", commit: head, target: join(root, "pinned"), runGit: testGit });
+    } finally {
+      for (const [key, value] of Object.entries(saved)) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
+    await settle();
+    assert.deepEqual(lfsHits, [], "the hardened fetch never contacts the LFS endpoint");
+    assert.equal(readFileSync(join(fetched.directory, "data.bin"), "utf8"), pointer, "the LFS pointer stays a pointer");
+    assert.equal(pinnedReal.commit, head, "a vetted commit is fetched with real git");
+    assert.ok(existsSync(join(pinnedReal.directory, "SKILL.md")));
+    assert.ok(realCalls.length >= 4);
+    for (const call of realCalls) {
+      for (const key of Object.keys(inherited)) {
+        assert.ok(!(key in call.env), key + " is not inherited by git");
+      }
+      assert.equal(call.env.GIT_CONFIG_NOSYSTEM, "1");
+      assert.equal(call.env.GIT_LFS_SKIP_SMUDGE, "1");
+      assert.ok(call.env.GIT_CONFIG_GLOBAL && call.env.GIT_CONFIG_GLOBAL.startsWith(tmpdir()), "an empty global config from the git sandbox");
+    }
+    assert.ok(!existsSync(realCalls[0].env.GIT_CONFIG_GLOBAL), "the git sandbox is removed after the fetch");
+    await listener.terminate();
+  }
 }
 
 // --------------------------------- search: normalisation, de-dup, ranking

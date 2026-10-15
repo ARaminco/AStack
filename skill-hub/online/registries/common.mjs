@@ -34,7 +34,9 @@ export function cleanRepoPath(value) {
     return "";
   }
   const parts = text.split("/");
-  if (parts.some((part) => !part || part === "." || part === ".." || /[\u0000-\u001F;&|`$<>]/.test(part))) {
+  // Glob characters and a leading ! or # would turn the path into a wider
+  // sparse-checkout pattern; they are refused like control characters.
+  if (parts.some((part) => !part || part === "." || part === ".." || /[\u0000-\u001F\u007F;&|`$<>*?[\]]/.test(part) || /^[!#]/.test(part))) {
     return null;
   }
   return parts.join("/");
