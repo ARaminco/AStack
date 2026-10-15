@@ -3,6 +3,11 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 3.1.4 — Skill packs at hand for every runtime
+
+- The shared contract gains "Auxiliary Skill Packs": pack skills (for example the Hermes pack) are a searchable list that Claude Code, Codex and unattended runs consult only when a task needs a specialised procedure their own skills do not cover.
+- New MCP tools `astack_skill_pack_search` and `astack_skill_pack_show` on the `astack` server, so both runtimes search and load pack skills the same way.
+
 ## 3.1.3 — Your own panel name, and an internet listener without an authenticator
 
 - `console.brand` (`name`, `name_fa`, `icons`): an install shows its own name and icons for the panel in the shell, the app manifest and every UI string. Aramin stays the base name. The build hash includes the brand so installed apps refresh.

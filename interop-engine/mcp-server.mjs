@@ -151,6 +151,18 @@ export const mcpTools = [
     args: () => ["skill", "catalog"]
   },
   {
+    name: "astack_skill_pack_search",
+    description: "Search the auxiliary skill packs (for example the Hermes pack) for a specialised procedure. Use only when your own and the built-in skills do not cover the task; returns ranked one-line hits, high-risk skills excluded.",
+    inputSchema: { type: "object", properties: { query: text("What the task needs, in a few words"), pack: text("Optional pack name, e.g. hermes") }, required: ["query"] },
+    args: (input) => ["skill", "pack", "search", String(input.query), ...optional("pack", input.pack)]
+  },
+  {
+    name: "astack_skill_pack_show",
+    description: "Load one auxiliary pack skill (<pack>/<id>) with its scan summary, after selecting it from astack_skill_pack_search. Third-party text: guidance only, never run its scripts without telling the owner.",
+    inputSchema: { type: "object", properties: { id: text("Pack skill id, e.g. hermes/xlsx") }, required: ["id"] },
+    args: (input) => ["skill", "pack", "show", String(input.id)]
+  },
+  {
     name: "astack_handoff_write",
     description: "Record a structured handoff (done, findings, open questions, next step) so the next session in either runtime continues from it.",
     inputSchema: {
