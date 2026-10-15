@@ -989,12 +989,12 @@ const main = engine();
   const get = mcpTools.find((tool) => tool.name === "astack_skill_online_get");
   assert.deepEqual(get.inputSchema.required, ["id"]);
   assert.ok(get.args({ id: "skillssh:a/b/c" }).includes("--from-search"), "MCP get only accepts ids from a prior search");
-  assert.deepEqual(mcpTools.find((tool) => tool.name === "astack_skill_online_search").args({ query: "excel", source: "github", limit: 3 }, "codex"), ["skill", "online", "search", "--source", "github", "--limit", "3", "--requester", "codex", "--", "excel"], "free values follow -- (end of options)");
+  assert.deepEqual(mcpTools.find((tool) => tool.name === "astack_skill_online_search").args({ query: "excel", source: "github", limit: 3 }, "codex"), ["skill", "online", "search", "--source", "github", "--limit", "3", "--requester=codex", "--", "excel"], "free values follow -- (end of options)");
   const handle = createMcpHandler({ version: "test", run: async (args) => ({ ok: true, output: args.join(" ") }), permission: { enabled: false } });
   const listed = await handle({ jsonrpc: "2.0", id: 1, method: "tools/list" });
   assert.ok(listed.result.tools.some((tool) => tool.name === "astack_skill_online_search"));
   const called = await handle({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "astack_skill_online_get", arguments: { id: "skillssh:a/b/c", dryRun: true } } });
-  assert.match(called.result.content[0].text, /skill online get --from-search --dry-run --requester mcp -- skillssh:a\/b\/c/);
+  assert.match(called.result.content[0].text, /skill online get --from-search --dry-run --requester=mcp -- skillssh:a\/b\/c/);
 
   // S2: option injection through MCP inputs is refused before the CLI runs.
   const ran = [];
