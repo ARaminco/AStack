@@ -144,6 +144,7 @@ defaults below apply, so an upgraded 2.5 configuration keeps working as is.
 | `gateway` | `gateway-engine/` | `gateway.enabled: true` and one channel `enabled: true` |
 | `search` | `search-engine/` | `astack search reindex` (enabled by default, nothing indexed before) |
 | `skills.packs` | `skill-hub/` | enabled by default; packs rank below built-in skills |
+| `skills.online` (3.2) | `skill-hub/online/` | enabled, but nothing happens until `astack skill online search` is run |
 | `console` | `console/` | `astack console start` or the daemon |
 | `board` | `board-engine/` | `astack board create` |
 | `sandbox` | `sandbox-engine/` | Docker running; routing needs `astack sandbox require` |
@@ -279,6 +280,19 @@ skills:
     auto_select_review: false   # high-risk pack skills are never picked automatically
     update_check: false
     update_check_hours: 24
+  online:                       # 3.2: on demand only, never automatic
+    enabled: true               # false: `skill online` refuses, nothing goes online
+    sources:                    # block style only; any of these four
+      - skillssh
+      - skillsmp
+      - clawhub
+      - github
+    limit: 10                   # results per search, max 50
+    cache_minutes: 60           # .astack/skill-hub/online-cache/; 0 = no cache
+    pack: online                # default pack for `get`
+    timeout_ms: 15000
+    skillsmp_key: null          # optional credential://skillsmp/api-key (higher SkillsMP quota)
+    endpoints: {}               # optional base URLs per source (mirrors, tests): skillssh, skillsmp, clawhub, github_api, github_raw, github_git
 
 console:
   enabled: true                 # false keeps the daemon from starting it

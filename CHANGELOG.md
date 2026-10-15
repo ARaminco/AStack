@@ -3,6 +3,16 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 3.2.0 — Online skill search
+
+- `astack skill online search "<query>"`: when no local skill fits, search the public skill registries — skills.sh, SkillsMP, ClawHub and GitHub (the official `anthropics/skills` index, plus `gh search code` for `SKILL.md` when `gh` is installed and allowlisted) — in parallel. Results are normalised, de-duplicated across registries (same GitHub repository and folder), ranked by text relevance plus log-popularity and cached for `cache_minutes`; a failing registry is reported on its own line, never fatal.
+- `astack skill online show <source>:<id>` previews a result: fetched into a temporary folder, scanned, printed and deleted.
+- `astack skill online get <source>:<id> [--pack online] [--dry-run]` imports a result through the existing importer and scanner into `skill-packs/online/`. Blocked skills are refused before anything is written (exit code 2); high-risk ones are imported flagged and never selected automatically. The origin (registry, URL pinned to the commit, commit or ClawHub version, licence, `sha256` of `SKILL.md`, fetch date) is kept in `ORIGINS.json`, on each catalog entry and in `PACK.md`.
+- GitHub folders are fetched with a shallow, sparse, blob-less clone (`fetchGitFolder` in `skill-hub/sources.mjs`); ClawHub archives with a defensive ZIP reader (no new dependency). Every URL passes `automationPolicy.allowHost` and git/gh pass `allowInvocation`; a refusal prints the exact `astack schedule policy …` command. Searches, imports and refusals are audited.
+- New MCP tools `astack_skill_online_search`, `astack_skill_online_show` and `astack_skill_online_get` (show and get accept only ids from a prior search).
+- The contract's "Auxiliary Skill Packs" section gains the search order: own and built-in skills → installed packs → only then online; preview with `show`, import with `get`, read the scan, and tell the owner in one line which external skill was fetched and from where.
+- Optional `skills.online` configuration section (enabled, sources, limit, cache_minutes, pack, timeout_ms, skillsmp_key, endpoints). New suite `tests/verify-skill-online.mjs`.
+
 ## 3.1.5
 
 The console service test now enables the console explicitly, so the update pipeline's `--test` run passes in installs whose owner turned the console off (`console.enabled: false`).
