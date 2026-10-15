@@ -481,11 +481,36 @@ All optional (see the commented `console:` block in `astack.config.yaml`):
 `poll_interval` (3s), `session_days` (30), `locale` (`fa`); 3.1 adds `auth`,
 `session_idle`, `lockout.attempts|minutes`, `remote.*` (enabled, host, port,
 hostname, session_hours, idle_minutes, chat, access.team, access.aud; 3.1.1:
-runner, access.emails) and
+runner, access.emails; 3.1.3: totp) and
 `chats.*` (enabled, projects, permission_mode, allowed_tools,
 disallowed_tools, tools, approval_timeout_minutes, daily_budget_usd,
 max_parallel, model, strict_mcp, partial_messages, command, claude_home).
 Write Windows project paths with forward slashes (`C:/Projects/shop`).
+
+### Your own name for the panel (3.1.3)
+
+Aramin is the console's base name. An install can show its own name and
+icons without touching the core:
+
+```yaml
+console:
+  brand:
+    name: Gisoo
+    name_fa: گیسو
+    icons: brand/icons     # optional, relative to the workspace
+```
+
+The shell, the installable-app manifest and every UI string use the brand;
+the build hash includes it, so an installed app refreshes its cached shell.
+
+### Internet listener without an authenticator (3.1.3)
+
+`console.remote.totp: false` is an owner decision for installs where
+Cloudflare Access (always required) is accepted as the first factor: the
+internet listener then starts without a TOTP user, signs in with the
+password, and asks for the password again (instead of a code) to approve an
+irreversible item or start a run. A user who still has TOTP enabled is asked
+for the code as before.
 
 ## Files
 

@@ -950,7 +950,10 @@
       "stepUp": "A fresh authenticator code (approving over the internet)",
       "stepUpFailed": "The authenticator code is wrong or was already used; enter the next one.",
       "remoteRunnerOff": "Runs and \"run now\" do not start over the internet. Turn on console.remote.runner on the computer to allow them.",
-      "stepUpRun": "A fresh authenticator code (running over the internet)"
+      "stepUpRun": "A fresh authenticator code (running over the internet)",
+      "stepUpPassword": "Your Aramin password (to approve over the internet)",
+      "stepUpRunPassword": "Your Aramin password (to run over the internet)",
+      "stepUpPasswordFailed": "Wrong password; try again."
     },
     "states": {
       "pending": "Pending",

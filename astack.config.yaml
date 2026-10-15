@@ -1,7 +1,7 @@
 project:
   name: AStack Enterprise
   product: AI Operating System for Any Practice
-  version: 3.1.2
+  version: 3.1.3
   philosophy: enterprise_modular_platform
   primary_runtime: claude-code
   compatibility:
@@ -627,6 +627,11 @@ secrets:
 #   lockout:                 # failed sign-ins per address and per username
 #     attempts: 5
 #     minutes: 15
+#   # 3.1.3: this install's own name for the panel (Aramin stays the base name).
+#   brand:
+#     name: null             # e.g. Gisoo
+#     name_fa: null          # e.g. گیسو
+#     icons: null            # folder with icon.svg, icon-192.png, icon-512.png, icon-maskable-512.png
 #   # 3.1: the internet listener a tunnel points at (see Aramin-Console.md).
 #   # 7717 never answers the public host name; this listener answers nothing else.
 #   remote:
@@ -638,6 +643,7 @@ secrets:
 #     idle_minutes: 60
 #     chat: false            # conversations stay closed over the internet
 #     runner: false          # 3.1.1: real runs and "run now" over the internet (then with a fresh TOTP code)
+#     totp: true             # 3.1.3: false = no authenticator code; Access + password, step-up by password
 #     access:                # 3.1.1: required — the listener refuses to start without team and aud
 #       team: null           # <team> of <team>.cloudflareaccess.com
 #       aud: null            # the application's AUD tag

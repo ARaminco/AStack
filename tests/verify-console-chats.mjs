@@ -548,7 +548,7 @@ try {
   const rcsrf = remoteLogin.json.csrf;
   const rme = (await rcall("/api/session", { cookie: rcookie })).json;
   assert.equal(rme.authenticated, true);
-  assert.equal(rme.stepUp, true);
+  assert.equal(rme.stepUp, "totp");
   assert.deepEqual(rme.features.chats, { enabled: false, reason: "remote" }, "conversations are off over the internet");
   // Sessions are bound to their listener.
   assert.equal((await call(base === remoteServer.origin ? base : remoteServer.origin, "/api/home", { cookie: rcookie.replace("__Host-aramin_sid", "aramin_sid") })).status, 401, "a remote session is not a local session");
@@ -680,6 +680,38 @@ try {
   assert.equal((await call(gremote.url, "/api/health", { host: HOST, headers: { "cf-access-jwt-assertion": jwt(claims()) } })).status, 200);
   assert.equal((await call(guarded.origin, "/api/health")).status, 200, "the local listener does not need Access");
   await guarded.stop();
+
+  // 3.1.3: console.remote.totp: false (owner decision). Cloudflare Access stays
+  // mandatory; the password signs in and is asked again for step-up.
+  {
+    const ws = workspace();
+    const rt = createRuntime({ workspaceRoot: ws });
+    await new ConsoleUsers(join(ws, ".astack", "console"), { clock }).set("plain", "a-long-plain-password");
+    const noTotp = resolveConsoleSettings({ remote: { enabled: true, hostname: HOST, port: 0, totp: false, access: { team: "testteam", aud: "AUD123" } } });
+    assert.equal(noTotp.remote.totp, false);
+    assert.equal(resolveConsoleSettings({ remote: { enabled: true, hostname: HOST, port: 0, access: { team: "testteam", aud: "AUD123" } } }).remote.totp, true, "TOTP stays the default");
+    const srv = await start({ runtime: rt, clock, ...noTotp, port: 0, accessCertsUrl: certsUrl });
+    const rem = srv.describe().remote;
+    assert.equal(rem.running, true, "the internet listener starts without a TOTP user when totp is off: " + (rem.error ?? ""));
+    const pcall = (path, options = {}) => call(rem.url, path, { host: HOST, ...options, headers: { "cf-access-jwt-assertion": jwt(claims()), ...(options.headers ?? {}) } });
+    assert.equal((await call(rem.url, "/api/health", { host: HOST })).status, 403, "Access is still required");
+    assert.equal((await pcall("/api/session")).json.login.totp, "off");
+    assert.equal((await pcall("/api/login", { method: "POST", body: { username: "plain", password: "wrong-password-x" }, origin: ORIGIN })).status, 401);
+    const ok = await pcall("/api/login", { method: "POST", body: { username: "plain", password: "a-long-plain-password" }, origin: ORIGIN, headers: { "cf-connecting-ip": "198.51.100.77" } });
+    assert.equal(ok.status, 200, ok.text);
+    const pcookie = cookieOf(ok);
+    const pcsrf = ok.json.csrf;
+    assert.equal((await pcall("/api/session", { cookie: pcookie })).json.stepUp, "password", "step-up asks for the password");
+    const item = rt.approvals.request({ action: "email.send", summary: "Send", level: "L4", requestedBy: "test" });
+    const code = (await pcall("/api/approvals/" + item.id, { cookie: pcookie })).json.data.confirmCode;
+    const decide = (body) => pcall("/api/approvals/" + item.id + "/decide", { method: "POST", body, cookie: pcookie, csrf: pcsrf, origin: ORIGIN, headers: { "cf-connecting-ip": "198.51.100.77" } });
+    assert.equal((await decide({ decision: "approve", confirm: code })).status, 422, "an irreversible approval still needs a step-up");
+    assert.equal((await decide({ decision: "approve", confirm: code, totp: "wrong-password-x" })).status, 422, "a wrong password is no step-up");
+    const approved = await decide({ decision: "approve", confirm: code, totp: "a-long-plain-password" });
+    assert.equal(approved.status, 200, approved.text);
+    assert.equal(rt.approvals.get(item.id).state, "approved");
+    await srv.stop();
+  }
 
   // ================================================= transcripts and parsing
   const claudeHome = sandbox("astack-claude-home-");

@@ -950,7 +950,10 @@
       "stepUp": "کد تازه‌ی برنامه‌ی Authenticator (برای تأیید از راه اینترنت)",
       "stepUpFailed": "کد Authenticator درست نیست یا قبلاً به کار رفته است؛ کد بعدی را بزنید.",
       "remoteRunnerOff": "اجراها و «اجرای فوری» از راه اینترنت شروع نمی‌شوند. برای اجازه، console.remote.runner را روی خود کامپیوتر روشن کنید.",
-      "stepUpRun": "کد تازه‌ی برنامه‌ی Authenticator (برای اجرا از راه اینترنت)"
+      "stepUpRun": "کد تازه‌ی برنامه‌ی Authenticator (برای اجرا از راه اینترنت)",
+      "stepUpPassword": "رمز ورود آرامین (برای تأیید از راه اینترنت)",
+      "stepUpRunPassword": "رمز ورود آرامین (برای اجرا از راه اینترنت)",
+      "stepUpPasswordFailed": "رمز درست نیست؛ دوباره بزنید."
     },
     "states": {
       "pending": "در انتظار",

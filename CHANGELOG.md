@@ -3,6 +3,12 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 3.1.3 — Your own panel name, and an internet listener without an authenticator
+
+- `console.brand` (`name`, `name_fa`, `icons`): an install shows its own name and icons for the panel in the shell, the app manifest and every UI string. Aramin stays the base name. The build hash includes the brand so installed apps refresh.
+- `console.remote.totp: false`: an owner decision to drop the authenticator code on the internet listener. Cloudflare Access stays required; sign-in is by password and step-up (irreversible approvals, runs) asks for the password again. Default stays `true`.
+- Session `stepUp` is now `"totp"`, `"password"` or `false` (was a boolean); the app switches the step-up field accordingly.
+
 ## 3.1.2
 
 Under the daemon, the console and skill-hub services received only their (usually empty) `daemon.<service>` block and ignored the owner's `console:` and `skills.packs` sections, so the internet listener (`console.remote`) never started. The owner's section is now the base and daemon keys override it.
