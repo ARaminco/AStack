@@ -10,6 +10,13 @@ import { inflateRawSync } from "node:zlib";
  * entry whose path is absolute or climbs out of the target folder, and caps
  * the entry count and the total unpacked size. It only writes bytes: nothing
  * extracted is executed or loaded.
+ *
+ * Entries are also skipped when a segment is git metadata in any case
+ * (`.git`, `.GIT.`, `git~1`, `.gitmodules`, `.gitattributes`, `.lfsconfig`),
+ * holds `:` (NTFS alternate streams) or another reserved character, ends in a
+ * dot or a space, or is a Windows device name (CON, PRN, AUX, NUL, COM1-9,
+ * LPT1-9, with any extension), and when a second entry has the same path
+ * without regard to case.
  */
 export const ZIP_LIMITS = { maxEntries: 500, maxTotalBytes: 20 * 1024 * 1024, maxEntryBytes: 8 * 1024 * 1024 };
 
@@ -27,6 +34,45 @@ function findEndOfCentralDirectory(buffer) {
   throw new Error("Not a ZIP archive (no end of central directory).");
 }
 
+/**
+ * A path segment as Windows and git compare it: lower case, trailing dots and
+ * spaces removed (NTFS drops them, so `.GIT.` is `.git`).
+ */
+export function normalisedSegment(segment) {
+  return String(segment ?? "").toLowerCase().replace(/[. ]+$/, "");
+}
+
+// Git metadata must never be planted by an archive: a `.git` folder in any
+// case (`.GIT`, `.Git.`) or its 8.3 short name `git~1` is a repository whose
+// config (core.fsmonitor, hooks) git executes, and these files change how git
+// reads a checkout (submodules, filters, LFS endpoints).
+const GIT_SEGMENTS = new Set([".git", "git~1"]);
+const GIT_FILES = new Set([".gitmodules", ".gitattributes", ".lfsconfig"]);
+// Windows reserved device names, with or without an extension.
+const RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
+
+/** Why a single path segment is refused, or null when it is safe. */
+export function unsafeSegment(segment) {
+  const part = String(segment ?? "");
+  if (part === "..") {
+    return "parent folder";
+  }
+  if (/[\u0000-\u001f\u007f:<>"|?*]/.test(part)) {
+    return "reserved character";
+  }
+  if (/[. ]$/.test(part)) {
+    return "trailing dot or space";
+  }
+  const normal = normalisedSegment(part);
+  if (GIT_SEGMENTS.has(normal) || GIT_FILES.has(normal)) {
+    return "git metadata";
+  }
+  if (RESERVED.test(part.split(".")[0].trim()) || RESERVED.test(part.trim())) {
+    return "reserved device name";
+  }
+  return null;
+}
+
 /** A safe relative path for an entry name, or null when it must be refused. */
 export function safeEntryPath(name) {
   const value = String(name ?? "").replace(/\\/g, "/");
@@ -34,7 +80,7 @@ export function safeEntryPath(name) {
     return null;
   }
   const parts = value.split("/").filter((part) => part !== "" && part !== ".");
-  if (!parts.length || parts.some((part) => part === "..")) {
+  if (!parts.length || parts.some((part) => unsafeSegment(part))) {
     return null;
   }
   return parts.join("/");
@@ -100,6 +146,11 @@ export function extractZip(buffer, target, { limits = ZIP_LIMITS } = {}) {
   const files = [];
   const skipped = [];
   let total = 0;
+  // Case-insensitive bookkeeping: on Windows and macOS `A.md` and `a.md` are
+  // one file, so a second spelling would silently overwrite the first.
+  const seenFiles = new Set();
+  const seenDirectories = new Set();
+  const keyOf = (path) => path.split("/").map(normalisedSegment).join("/");
   for (const entry of entries) {
     if (entry.encrypted) {
       throw new Error("Encrypted ZIP entries are not supported: " + entry.name);
@@ -117,10 +168,24 @@ export function extractZip(buffer, target, { limits = ZIP_LIMITS } = {}) {
       skipped.push({ name: entry.name, reason: "unsafe path" });
       continue;
     }
+    const key = keyOf(entry.path);
+    const parents = key.split("/").slice(0, -1).map((_, index, all) => all.slice(0, index + 1).join("/"));
     if (entry.directory) {
+      if (seenFiles.has(key) || parents.some((parent) => seenFiles.has(parent))) {
+        skipped.push({ name: entry.name, reason: "duplicate or case-colliding entry" });
+        continue;
+      }
+      seenDirectories.add(key);
+      parents.forEach((parent) => seenDirectories.add(parent));
       mkdirSync(destination, { recursive: true });
       continue;
     }
+    if (seenFiles.has(key) || seenDirectories.has(key) || parents.some((parent) => seenFiles.has(parent))) {
+      skipped.push({ name: entry.name, reason: "duplicate or case-colliding entry" });
+      continue;
+    }
+    seenFiles.add(key);
+    parents.forEach((parent) => seenDirectories.add(parent));
     if (entry.size > limits.maxEntryBytes) {
       skipped.push({ name: entry.name, reason: "larger than " + limits.maxEntryBytes + " bytes" });
       continue;

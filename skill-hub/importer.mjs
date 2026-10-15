@@ -2,9 +2,16 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSyn
 import { dirname, join, relative, sep } from "node:path";
 import { sanitizeExternalContent, slugify, uniqueTokens } from "../lib/text.mjs";
 import { parseFrontMatter } from "./frontmatter.mjs";
-import { MAX_FILE_BYTES, listSkillFiles, sniff } from "./scanner.mjs";
+import { MAX_FILE_BYTES, isGitMetadataName, listSkillFiles, sniff } from "./scanner.mjs";
 
 const SKIP_DIRECTORIES = new Set([".git", "node_modules", ".venv", "venv", "__pycache__", ".astack", "dist", "build"]);
+
+// `.git` in any case, with trailing dots or spaces, or as its 8.3 short name.
+// (`.github` stays: some repositories keep their skills in `.github/skills/`.)
+function isRepositoryFolder(name) {
+  const normal = String(name ?? "").toLowerCase().replace(/[. ]+$/, "");
+  return normal === ".git" || normal === "git~1";
+}
 
 export const DEFAULT_TIERS = { skills: "core", "optional-skills": "optional" };
 
@@ -65,7 +72,7 @@ export function discoverSkills(directory, { paths = null } = {}) {
       return;
     }
     for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-      if (entry.isDirectory() && !entry.isSymbolicLink() && !SKIP_DIRECTORIES.has(entry.name)) {
+      if (entry.isDirectory() && !entry.isSymbolicLink() && !SKIP_DIRECTORIES.has(entry.name) && !isRepositoryFolder(entry.name)) {
         walk(join(current, entry.name));
       }
     }
@@ -186,6 +193,12 @@ export function copySkill(sourceDirectory, targetDirectory, { maxBytes = MAX_FIL
   const copied = [];
   const excluded = [];
   for (const file of listSkillFiles(sourceDirectory)) {
+    // listSkillFiles already leaves git metadata out; check every segment
+    // again so no spelling of `.git` can reach a pack.
+    if (file.rel.split("/").some((segment) => isGitMetadataName(segment))) {
+      excluded.push({ file: file.rel, reason: "git metadata" });
+      continue;
+    }
     if (file.symlink) {
       excluded.push({ file: file.rel, reason: "symbolic link" });
       continue;
