@@ -209,7 +209,7 @@ async function run() {
       runLearningCommand(context);
       return;
     case "skill":
-      runSkillCommand(context);
+      await runSkillCommand(context);
       return;
     case "mission":
       await runMissionCommand(context);
