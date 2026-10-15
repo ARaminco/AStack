@@ -13,7 +13,11 @@ import { baseOf, cleanRepoPath, cleanText, gitFetch, isRepo, repoUrl } from "./c
  * 2. Code search for SKILL.md files through the GitHub CLI, when `gh` is
  *    installed, authenticated and allowlisted by the automation policy
  *    (`astack schedule policy allow-command gh`):
- *      gh search code <q> --filename SKILL.md --limit <n> --json path,repository,url,textMatches
+ *      gh search code --filename SKILL.md --limit <n> --json path,repository,url,textMatches -- <q>
+ *    The automation policy allowlists a command, not a subcommand: allow-command
+ *    gh lets every gh subcommand pass the policy, so enable it only for
+ *    attended use, not for a workspace whose scheduled jobs or signal rules
+ *    run commands.
  *    GitHub's REST code search needs a token, so without `gh` this half is
  *    skipped and reported.
  */
@@ -122,7 +126,8 @@ function defaultRunGh(args) {
 
 function codeSearch(query, { limit, policy, runGh = defaultRunGh }) {
   const terms = String(query).replace(/[;&|`$<>\r\n"']/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
-  const args = ["search", "code", terms, "--filename", "SKILL.md", "--limit", String(Math.min(30, Math.max(1, limit))), "--json", "path,repository,url,textMatches"];
+  // The terms follow "--" (end of options), so a query can never become a gh flag.
+  const args = ["search", "code", "--filename", "SKILL.md", "--limit", String(Math.min(30, Math.max(1, limit))), "--json", "path,repository,url,textMatches", "--", terms];
   if (policy) {
     const verdict = policy.allowInvocation("gh", args);
     if (!verdict.allowed) {

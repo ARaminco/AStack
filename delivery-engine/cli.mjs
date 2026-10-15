@@ -17,6 +17,12 @@ export function parseArgs(tokens) {
   };
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index];
+    // "--" ends the options: everything after it is a positional, even when
+    // it starts with "--" (a query or an id that came from an agent).
+    if (token === "--") {
+      positionals.push(...tokens.slice(index + 1));
+      break;
+    }
     if (token.startsWith("--")) {
       const equals = token.indexOf("=");
       if (equals !== -1) {

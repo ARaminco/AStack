@@ -15,6 +15,7 @@ import { parseGitHubUrl } from "../skill-hub/online/registries/common.mjs";
 import { AutomationPolicy } from "../permission-system/automation-policy.mjs";
 import { createMcpHandler, mcpTools } from "../interop-engine/mcp-server.mjs";
 import { runSkillOnlineCommand } from "../cli/skill-online-cli.mjs";
+import { parseArgs } from "../delivery-engine/cli.mjs";
 
 // ------------------------------------------------------------- sandboxes
 const sandboxes = [];
@@ -511,6 +512,7 @@ const main = engine();
   }
   assert.equal(main.records.filter((entry) => entry.action === "skill-online.search").length, 1, "a search is audited");
   assert.ok(ghCalls[0].includes("--filename") && ghCalls[0].includes("SKILL.md"));
+  assert.deepEqual(ghCalls[0].slice(-2), ["--", "spreadsheet"], "gh search terms follow --");
 }
 
 // ranking: name beats description, popularity breaks ties, irrelevant hits go
@@ -719,12 +721,55 @@ const main = engine();
   const get = mcpTools.find((tool) => tool.name === "astack_skill_online_get");
   assert.deepEqual(get.inputSchema.required, ["id"]);
   assert.ok(get.args({ id: "skillssh:a/b/c" }).includes("--from-search"), "MCP get only accepts ids from a prior search");
-  assert.deepEqual(mcpTools.find((tool) => tool.name === "astack_skill_online_search").args({ query: "excel", source: "github", limit: 3 }), ["skill", "online", "search", "excel", "--source", "github", "--limit", "3"]);
+  assert.deepEqual(mcpTools.find((tool) => tool.name === "astack_skill_online_search").args({ query: "excel", source: "github", limit: 3 }, "codex"), ["skill", "online", "search", "--source", "github", "--limit", "3", "--requester", "codex", "--", "excel"], "free values follow -- (end of options)");
   const handle = createMcpHandler({ version: "test", run: async (args) => ({ ok: true, output: args.join(" ") }), permission: { enabled: false } });
   const listed = await handle({ jsonrpc: "2.0", id: 1, method: "tools/list" });
   assert.ok(listed.result.tools.some((tool) => tool.name === "astack_skill_online_search"));
   const called = await handle({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "astack_skill_online_get", arguments: { id: "skillssh:a/b/c", dryRun: true } } });
-  assert.match(called.result.content[0].text, /skill online get skillssh:a\/b\/c --from-search --dry-run/);
+  assert.match(called.result.content[0].text, /skill online get --from-search --dry-run --requester mcp -- skillssh:a\/b\/c/);
+
+  // S2: option injection through MCP inputs is refused before the CLI runs.
+  const ran = [];
+  const guarded = createMcpHandler({ version: "test", run: async (args) => { ran.push(args); return { ok: true, output: "ran" }; }, permission: null });
+  const call = (name, args) => guarded({ jsonrpc: "2.0", id: 9, method: "tools/call", params: { name, arguments: args } });
+  for (const [name, args] of [
+    ["astack_skill_online_get", { id: "skillssh:a/b/c", pack: "--fromSearch=false" }],
+    ["astack_skill_online_get", { id: "skillssh:a/b/c", pack: "-x" }],
+    ["astack_skill_online_get", { id: "skillssh:a/b/c", pack: "Bad Pack" }],
+    ["astack_skill_online_get", { id: "--x" }],
+    ["astack_skill_online_get", { id: "--from-search=false" }],
+    ["astack_skill_online_get", { id: "skillssh:-evil" }],
+    ["astack_skill_online_get", { id: "skillssh:a b" }],
+    ["astack_skill_online_show", { id: "--x" }],
+    ["astack_skill_online_search", { query: "--source=github" }],
+    ["astack_skill_online_search", { query: " -x" }],
+    ["astack_skill_online_search", { query: "excel", source: "--refresh" }],
+    ["astack_skill_online_search", { query: "excel", limit: "-1" }]
+  ]) {
+    const answer = await call(name, args);
+    assert.equal(answer.result.isError, true, name + " refuses " + JSON.stringify(args));
+  }
+  assert.equal(ran.length, 0, "a refused input never reaches the CLI");
+  const ok = await call("astack_skill_online_get", { id: "clawhub:skills-sh:acme/skills/sheet-tools", pack: "online" });
+  assert.equal(ok.result.isError, false);
+  assert.deepEqual(ran[0].slice(-2), ["--", "clawhub:skills-sh:acme/skills/sheet-tools"]);
+  assert.ok(!mcpTools.some((tool) => /approve/.test(tool.name)), "approving an online skill is never exposed over MCP");
+
+  // parseArgs honours "--"; without it nothing changes.
+  assert.deepEqual(parseArgs(["a", "--x", "1", "--", "--y", "b"]), { positionals: ["a", "--y", "b"], flags: { x: "1" } });
+  assert.deepEqual(parseArgs(["a", "--dry-run", "--x=2", "b"]), { positionals: ["a", "b"], flags: { "dry-run": true, dryRun: true, x: "2" } });
+  // The CLI reads a query after "--" as text, never as an option.
+  const seen = [];
+  const fakeEngine = { search: async (query, options) => { seen.push({ query, options }); return { query, results: [], sources: [] }; } };
+  const original = console.log;
+  console.log = () => {};
+  try {
+    await runSkillOnlineCommand({ runtime: { skillOnline: fakeEngine }, i18n: { t: (key) => key }, tokens: ["search", "--requester", "codex", "--", "--source=github"] });
+  } finally {
+    console.log = original;
+  }
+  assert.equal(seen[0].query, "--source=github");
+  assert.equal(seen[0].options.sources, null, "the query did not set --source");
 }
 
 server.close();
