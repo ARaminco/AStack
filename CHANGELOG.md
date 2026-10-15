@@ -3,6 +3,10 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 3.1.5
+
+The console service test now enables the console explicitly, so the update pipeline's `--test` run passes in installs whose owner turned the console off (`console.enabled: false`).
+
 ## 3.1.4 — Skill packs at hand for every runtime
 
 - The shared contract gains "Auxiliary Skill Packs": pack skills (for example the Hermes pack) are a searchable list that Claude Code, Codex and unattended runs consult only when a task needs a specialised procedure their own skills do not cover.
