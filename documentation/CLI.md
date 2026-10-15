@@ -258,6 +258,10 @@ astack skill pack scan <pack> | remove <pack> | updates
 astack skill catalog --packs
 astack skill search "<query>" --packs
 astack skill curate [--apply] [--source builtin|learned|pack] [--all] [--limit 60]
+astack skill online search "<query>" [--source all|skillssh|skillsmp|clawhub|github] [--limit 10] [--refresh] [--json]
+astack skill online show <source>:<id> [--json]
+astack skill online get <source>:<id> [--pack online] [--dry-run] [--json]
+astack skill online status
 ```
 
 | Command | Purpose |
@@ -267,6 +271,9 @@ astack skill curate [--apply] [--source builtin|learned|pack] [--all] [--limit 6
 | `skill pack scan`, `remove`, `updates` | Re-scan, move a pack to the trash, compare git-sourced packs with upstream |
 | `skill catalog --packs`, `skill search --packs` | Include pack skills below built-in and learned ones; without `--packs` the output is unchanged |
 | `skill curate` | Keep / refine / retire report; changes only with `--apply`, never deletes a file |
+| `skill online search` (3.2) | Search skills.sh, SkillsMP, ClawHub and GitHub when no local skill fits; de-duplicated, ranked, cached; a failing registry is reported, not fatal |
+| `skill online show` (3.2) | Fetch one result to a temporary folder, print its `SKILL.md` and scan, delete it |
+| `skill online get` (3.2) | Import one result into `skill-packs/<pack>/` (default `online`) through the importer and scanner; blocked → refused, high risk → flagged; exit code 2 when refused |
 
 ## Board, sandbox, vault and A2A (3.0)
 

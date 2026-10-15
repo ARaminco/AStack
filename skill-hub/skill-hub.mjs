@@ -235,7 +235,11 @@ export class SkillHub {
         const id = summary.name + "/" + skill.id;
         const override = blockingOverride(overrides, skill.id);
         const risk = override ? "blocked" : skill.risk;
-        const status = retired[id] ? "retired" : STATUS_BY_RISK[risk] ?? "review";
+        // 3.2: a skill fetched by online search (often by an agent) waits for
+        // the owner's `astack skill online approve`. Until then it is "review":
+        // found by an explicit search or show, never selected automatically.
+        const pendingApproval = catalog.online === true && !skill.origin?.approved;
+        const status = retired[id] ? "retired" : pendingApproval && risk !== "blocked" ? "review" : STATUS_BY_RISK[risk] ?? "review";
         if (!includeBlocked && risk === "blocked") {
           continue;
         }
@@ -262,6 +266,7 @@ export class SkillHub {
           findings: skill.findings ?? 0,
           hasScripts: Boolean(skill.hasScripts),
           requiresReview: Boolean(skill.requiresReview),
+          ...(catalog.online === true ? { online: true, pendingApproval } : {}),
           auxiliary: true,
           path: (relativeBase.split("\\").join("/")) + "/" + skill.id + "/SKILL.md",
           absolutePath: join(summary.directory, skill.id, "SKILL.md"),
@@ -291,7 +296,9 @@ export class SkillHub {
     ];
     const hit = (token, entry) => entry === token || (token.length >= 4 && entry.length >= 4 && (entry.startsWith(token) || token.startsWith(entry)));
     return this.entries({ pack })
-      .filter((skill) => !(weighted && skill.status === "review" && !this.settings.autoSelectReview))
+      // An online skill waiting for the owner's approval is never auto-selected,
+      // whatever auto_select_review says.
+      .filter((skill) => !(weighted && (skill.pendingApproval === true || (skill.status === "review" && !this.settings.autoSelectReview))))
       .map((skill) => {
         const scored = fields(skill);
         let total = 0;

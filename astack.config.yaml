@@ -1,7 +1,7 @@
 project:
   name: AStack Enterprise
   product: AI Operating System for Any Practice
-  version: 3.1.5
+  version: 3.2.0
   philosophy: enterprise_modular_platform
   primary_runtime: claude-code
   compatibility:
@@ -326,6 +326,18 @@ learning:
 #     review_penalty: 0.8      # extra factor for skills whose scan risk is high
 #     update_check: false      # daemon service: periodically compare git-sourced packs with upstream (check only)
 #     update_check_hours: 24
+#   online:                    # 3.2: `astack skill online search|show|get` (on demand only, never automatic)
+#     enabled: true
+#     sources:                 # block style; any of skillssh, skillsmp, clawhub, github
+#       - skillssh
+#       - skillsmp
+#       - clawhub
+#       - github
+#     limit: 10                # results per search (max 50)
+#     cache_minutes: 60        # registry answers cached in .astack/skill-hub/online-cache/; 0 turns it off
+#     pack: online             # default pack for `get` (skill-packs/online/)
+#     timeout_ms: 15000
+#     skillsmp_key: null       # optional credential://skillsmp/api-key for a higher SkillsMP quota
 
 runtime:
   default: claude-code

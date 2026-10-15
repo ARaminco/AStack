@@ -280,3 +280,7 @@ export class AutomationPolicy {
 }
 
 export { DEFAULT_POLICY };
+
+// Shared with the online skill client, which checks the resolved addresses of
+// redirect targets (3.2).
+export { isInternalHost };
