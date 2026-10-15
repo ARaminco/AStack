@@ -46,22 +46,31 @@ export const clawhub = {
   async download({ owner, slug }, { http, endpoints }) {
     const base = baseOf(endpoints, "clawhub", "https://clawhub.ai");
     const query = "slug=" + encodeURIComponent(slug) + "&ownerHandle=" + encodeURIComponent(owner);
-    let moderation = null;
-    let version = null;
+    // The registry's moderation verdict is required (fail closed): a failed
+    // lookup, a missing verdict, "suspicious" and "malicious" are all refused.
+    let detail;
     try {
-      const detail = await http.json(base + "/api/v1/skills/" + encodeURIComponent(slug) + "?ownerHandle=" + encodeURIComponent(owner));
-      moderation = detail?.moderation ?? null;
-      version = detail?.latestVersion?.version ? cleanText(detail.latestVersion.version, 40) : null;
-    } catch {
-      // Detail is advisory; the scan decides.
+      detail = await http.json(base + "/api/v1/skills/" + encodeURIComponent(slug) + "?ownerHandle=" + encodeURIComponent(owner));
+    } catch (failure) {
+      const error = new Error("ClawHub moderation lookup failed for " + owner + "/" + slug + " (" + String(failure?.message ?? failure).slice(0, 160) + "); refused.");
+      error.code = "registry-unverified";
+      error.hint = failure?.hint ?? null;
+      throw error;
     }
-    if (moderation?.isMalwareBlocked || moderation?.verdict === "malicious") {
-      const error = new Error("ClawHub marks " + owner + "/" + slug + " as malicious; refused.");
+    const moderation = detail?.moderation ?? null;
+    const version = detail?.latestVersion?.version ? cleanText(detail.latestVersion.version, 40) : null;
+    const verdict = typeof moderation?.verdict === "string" ? cleanText(moderation.verdict, 40).toLowerCase() : null;
+    if (moderation?.isMalwareBlocked || verdict === "malicious" || verdict === "suspicious") {
+      const error = new Error("ClawHub marks " + owner + "/" + slug + " as " + (verdict ?? "malware-blocked") + "; refused.");
       error.code = "registry-blocked";
       throw error;
     }
+    if (verdict !== "clean") {
+      const error = new Error("ClawHub gave no clean moderation verdict for " + owner + "/" + slug + " (" + (verdict ?? "none") + "); refused.");
+      error.code = "registry-unverified";
+      throw error;
+    }
     const response = await http.get(base + "/api/v1/download?" + query, { maxBytes: 25 * 1024 * 1024 });
-    const verdict = moderation?.verdict ?? null;
     if (/json/i.test(response.contentType)) {
       const handoff = JSON.parse(response.body.toString("utf8"));
       const github = parseGitHubUrl(handoff?.repo) ?? (isRepo(handoff?.repo) ? { repo: handoff.repo } : null);
@@ -69,7 +78,14 @@ export const clawhub = {
       if (!github || path === null) {
         throw new Error("ClawHub returned a download handoff AStack cannot use for " + owner + "/" + slug);
       }
-      return { type: "git", repo: github.repo, path, commit: /^[0-9a-f]{40}$/.test(String(handoff.commit ?? "")) ? handoff.commit : null, version, verdict, contentHash: cleanText(handoff.contentHash ?? "", 80) || null };
+      // Only the commit ClawHub vetted is fetched; a handoff without one is refused.
+      const commit = String(handoff?.commit ?? "").toLowerCase();
+      if (!/^[0-9a-f]{40}$/.test(commit)) {
+        const error = new Error("ClawHub's GitHub handoff for " + owner + "/" + slug + " names no vetted commit; refused.");
+        error.code = "registry-unverified";
+        throw error;
+      }
+      return { type: "git", repo: github.repo, path, commit, version, verdict, contentHash: cleanText(handoff.contentHash ?? "", 80) || null };
     }
     return { type: "zip", buffer: response.body, version, verdict, file: /filename="?([^";]+)/.exec(response.headers.get("content-disposition") ?? "")?.[1] ?? null };
   }

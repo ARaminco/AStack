@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { closeSync, cpSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, renameSync, rmSync, statSync, writeFileSync, writeSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { estimateTokens, redactSecretsStrict, shortHash, slugify, uniqueTokens } from "../../lib/text.mjs";
@@ -50,6 +51,9 @@ const VERSION = (() => {
 export const REGISTRIES = { skillssh, skillsmp, clawhub, github };
 export const SOURCE_ORDER = ["skillssh", "skillsmp", "clawhub", "github"];
 export const ORIGINS_FILE = "ORIGINS.json";
+// Per skill: more files or bytes than this is not a skill; the fetch is refused.
+export const ONLINE_IMPORT_LIMITS = { maxFiles: 400, maxBytes: 20 * 1024 * 1024 };
+const PACK_LOCKS = new Map();
 const HIT_INDEX_LIMIT = 1000;
 
 export const DEFAULT_ONLINE_SETTINGS = {
@@ -229,6 +233,39 @@ class OnlineCache {
   }
 }
 
+/** An exclusive lock file; a lock older than staleMs is taken over. */
+async function acquireFileLock(path, timeoutMs = 60000, staleMs = 10 * 60 * 1000) {
+  mkdirSync(dirname(path), { recursive: true });
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    try {
+      const descriptor = openSync(path, "wx");
+      try {
+        writeSync(descriptor, JSON.stringify({ pid: process.pid, at: new Date().toISOString() }) + "\n");
+      } finally {
+        closeSync(descriptor);
+      }
+      return { release: () => rmSync(path, { force: true }) };
+    } catch (error) {
+      if (error?.code !== "EEXIST") {
+        throw error;
+      }
+      try {
+        if (Date.now() - statSync(path).mtimeMs > staleMs) {
+          rmSync(path, { force: true });
+          continue;
+        }
+      } catch {
+        continue;
+      }
+      if (Date.now() > deadline) {
+        throw new OnlineError("The pack is busy: another online get or approve holds " + path + ". Try again, or remove the file if no astack process is running.", { code: "locked" });
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+}
+
 function readJson(path, fallback) {
   try {
     return JSON.parse(readFileSync(path, "utf8"));
@@ -359,7 +396,7 @@ export function requesterOf(value = null, env = process.env) {
 // ----------------------------------------------------------------- engine
 
 export class OnlineSkills {
-  constructor({ hub, policy = null, audit = null, eventBus = null, secrets = null, settings = {}, clock = null, runGit = undefined, runGh = undefined, fetchImpl = undefined, lookupImpl = undefined } = {}) {
+  constructor({ hub, policy = null, audit = null, eventBus = null, secrets = null, settings = {}, clock = null, runGit = undefined, runGh = undefined, fetchImpl = undefined, lookupImpl = undefined, limits = null, lockTimeoutMs = 60000 } = {}) {
     if (!hub) {
       throw new Error("OnlineSkills needs the skill hub");
     }
@@ -374,6 +411,8 @@ export class OnlineSkills {
     this.runGh = runGh;
     this.fetchImpl = fetchImpl;
     this.lookupImpl = lookupImpl;
+    this.limits = { ...ONLINE_IMPORT_LIMITS, ...(limits ?? {}) };
+    this.lockTimeoutMs = lockTimeoutMs;
     this.userAgent = "astack-skill-hub/" + VERSION;
   }
 
@@ -385,8 +424,9 @@ export class OnlineSkills {
     return join(this.hub.stateDirectory, "online-cache");
   }
 
+  /** Fetches and extracts happen outside the workspace, under the OS temporary folder. */
   get temporaryRoot() {
-    return join(this.hub.stateDirectory, "online-tmp");
+    return tmpdir();
   }
 
   get indexPath() {
@@ -548,12 +588,13 @@ export class OnlineSkills {
     return String(this.settings.endpoints?.github_git ?? "https://github.com").replace(/\/+$/, "") + "/" + repo + ".git";
   }
 
-  fetchGit({ repo, path, skillId, ref }, work) {
+  fetchGit({ repo, path, skillId, ref, commit = null }, work) {
     const result = fetchGitFolder({
       url: this.gitUrl(repo),
       path,
       skillId,
       ref,
+      commit,
       target: join(work, "repo"),
       policy: this.policy ?? this.hub.policy,
       ...(this.runGit ? { runGit: this.runGit } : {})
@@ -570,6 +611,12 @@ export class OnlineSkills {
   }
 
   async fetchHit(hit, work) {
+    const fetched = await this.fetchHitFiles(hit, work);
+    this.assertImportCaps(fetched.directory, hit.id);
+    return fetched;
+  }
+
+  async fetchHitFiles(hit, work) {
     const spec = hit.fetch;
     if (!spec) {
       throw new OnlineError("This result cannot be fetched (no GitHub source or download is known for " + hit.id + ").", { code: "not-fetchable" });
@@ -580,7 +627,8 @@ export class OnlineSkills {
     if (spec.type === "clawhub") {
       const download = await clawhub.download(spec, this.context(1));
       if (download.type === "git") {
-        const fetched = this.fetchGit({ repo: download.repo, path: download.path, skillId: spec.slug, ref: null }, work);
+        // Fetch exactly the commit ClawHub vetted, never the branch head.
+        const fetched = this.fetchGit({ repo: download.repo, path: download.path, skillId: spec.slug, ref: null, commit: download.commit }, work);
         return { ...fetched, version: download.version, registryVerdict: download.verdict, registryCommit: download.commit, contentHash: download.contentHash };
       }
       const target = join(work, "zip", safeId(spec.slug));
@@ -610,18 +658,53 @@ export class OnlineSkills {
   }
 
   workDirectory(prefix) {
-    mkdirSync(this.temporaryRoot, { recursive: true });
-    return mkdtempSync(join(this.temporaryRoot, prefix + "-"));
+    return mkdtempSync(join(this.temporaryRoot, "astack-skill-online-" + prefix + "-"));
   }
 
   cleanup(work) {
     rmSync(work, { recursive: true, force: true });
+  }
+
+  /**
+   * Refuse a skill folder that is too big to be a skill: more than
+   * ONLINE_IMPORT_LIMITS.maxFiles files or maxBytes bytes in total.
+   */
+  assertImportCaps(directory, id) {
+    const files = listSkillFiles(directory).filter((file) => !file.symlink);
+    const bytes = files.reduce((sum, file) => sum + file.size, 0);
+    if (files.length > this.limits.maxFiles) {
+      throw new OnlineError(id + " has " + files.length + " files (limit " + this.limits.maxFiles + "); refused.", { code: "too-large" });
+    }
+    if (bytes > this.limits.maxBytes) {
+      throw new OnlineError(id + " holds " + bytes + " bytes (limit " + this.limits.maxBytes + "); refused.", { code: "too-large" });
+    }
+  }
+
+  /**
+   * Serialise writers of one pack: in this process (a promise chain) and
+   * across processes (an exclusive lock file under
+   * .astack/skill-hub/locks/, broken when older than ten minutes).
+   */
+  async withPackLock(packName, work) {
+    const path = join(this.hub.stateDirectory, "locks", packName + ".lock");
+    const previous = PACK_LOCKS.get(path) ?? Promise.resolve();
+    let release;
+    const mine = new Promise((resolve) => {
+      release = resolve;
+    });
+    const tail = previous.then(() => mine);
+    PACK_LOCKS.set(path, tail);
+    await previous;
+    let file = null;
     try {
-      if (!readdirSync(this.temporaryRoot).length) {
-        rmSync(this.temporaryRoot, { recursive: true, force: true });
+      file = await acquireFileLock(path, this.lockTimeoutMs);
+      return await work();
+    } finally {
+      file?.release();
+      release();
+      if (PACK_LOCKS.get(path) === tail) {
+        PACK_LOCKS.delete(path);
       }
-    } catch {
-      // already gone
     }
   }
 
@@ -736,7 +819,9 @@ export class OnlineSkills {
         this.eventBus?.emit?.("skill-online.refused", { id: hit.id, risk: scan.risk });
         return { status: "refused", pack: packName, hit: publicHit(hit), origin, scan, reason: "blocked by the security scan (critical finding)" };
       }
-      return await this.importFetched({ hit, fetched, origin, scan, packName, destination, dryRun, work, asker });
+      const run = () => this.importFetched({ hit, fetched, origin, scan, packName, destination, dryRun, work, asker });
+      // The pack is read again inside the lock: a concurrent get never loses a skill.
+      return dryRun ? await run() : await this.withPackLock(packName, run);
     } finally {
       this.cleanup(work);
     }
@@ -858,6 +943,10 @@ export class OnlineSkills {
     if (rest.length || !PACK_NAME.test(packName) || !/^[a-z0-9][a-z0-9._-]*$/.test(skillId)) {
       throw new OnlineError("Use <pack>/<skill-id>, e.g. astack skill online approve online/sheet-tools.", { code: "usage" });
     }
+    return this.withPackLock(packName, () => this.approveLocked(value, packName, skillId, by));
+  }
+
+  approveLocked(value, packName, skillId, by) {
     const destination = join(this.hub.packsDirectory, packName);
     const catalog = readJson(join(destination, "catalog.json"), null);
     if (!catalog || catalog.online !== true) {
