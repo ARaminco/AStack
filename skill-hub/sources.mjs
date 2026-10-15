@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 import { shortHash, slugify } from "../lib/text.mjs";
 
@@ -135,6 +135,114 @@ export function remoteHead(url, { ref = null, policy = null, runGit = defaultRun
   checkRemote(policy, clean, args);
   const output = runGit(args);
   return /^([0-9a-f]{40})\s/m.exec(String(output ?? ""))?.[1] ?? null;
+}
+
+/**
+ * Fetch one skill folder of a GitHub repository with a shallow, sparse,
+ * blob-less clone (online skill search). Only the trees, the root licence
+ * files and the requested folder are downloaded. When `path` is unknown, the
+ * folder is located by `skillId`: first by folder name in the tree listing,
+ * then by the `name:` of every SKILL.md in the repository.
+ *
+ * git runs only for `clone`, `ls-tree` and `sparse-checkout` on a clone this
+ * function just created (a fresh clone carries no repository config or hooks),
+ * every invocation passes the automation policy, and nothing inside the
+ * checkout is executed. A git without partial-clone support falls back to a
+ * plain shallow clone.
+ */
+export function fetchGitFolder({ url, path = null, skillId = null, ref = null, target, policy = null, runGit = defaultRunGit, readName = null } = {}) {
+  const clean = stripCredentials(url);
+  const safety = ["-c", "protocol.file.allow=never", "-c", "core.symlinks=false"];
+  const branch = ref ? ["--branch", ref] : [];
+  const sparseArgs = [...safety, "clone", "--depth", "1", "--no-tags", "--single-branch", "--filter=blob:none", "--sparse", ...branch, "--", clean, target];
+  checkRemote(policy, clean, sparseArgs);
+  rmSync(target, { recursive: true, force: true });
+  mkdirSync(join(target, ".."), { recursive: true });
+  let sparse = true;
+  try {
+    runGit(sparseArgs);
+  } catch {
+    sparse = false;
+    rmSync(target, { recursive: true, force: true });
+    const plainArgs = [...safety, "clone", "--depth", "1", "--no-tags", "--single-branch", ...branch, "--", clean, target];
+    checkRemote(policy, clean, plainArgs);
+    runGit(plainArgs);
+  }
+  const inside = (args) => {
+    const full = ["-C", target, ...safety, ...args];
+    if (policy) {
+      const invocation = policy.allowInvocation("git", full);
+      if (!invocation.allowed) {
+        throw new Error("git refused by the automation policy: " + invocation.reason);
+      }
+    }
+    return String(runGit(full) ?? "");
+  };
+  const checkout = (folder) => {
+    if (sparse) {
+      inside(["sparse-checkout", "set", "--no-cone", ...(folder ? ["/" + folder + "/"] : ["/*"]), "/LICENSE*", "/LICENCE*", "/COPYING*"]);
+    }
+  };
+  const cleanPath = path ? String(path).replace(/^\/+|\/+$/g, "") : null;
+  let folder = cleanPath;
+  if (folder !== null) {
+    checkout(folder);
+  }
+  const located = () => folder !== null && existsSync(join(target, ...folder.split("/").filter(Boolean), "SKILL.md"));
+  if (!located()) {
+    // Unknown or stale path: locate the folder by the skill id.
+    const wanted = slugify(String(skillId ?? (cleanPath ? cleanPath.split("/").pop() : "") ?? ""), { maxLength: 80 });
+    const listing = sparse ? inside(["ls-tree", "-r", "--name-only", "HEAD"]).split(/\r?\n/) : listFilesDeep(target);
+    const skillFiles = listing.map((line) => line.trim()).filter((line) => line === "SKILL.md" || line.endsWith("/SKILL.md"));
+    const dirs = skillFiles.map((line) => (line === "SKILL.md" ? "" : line.slice(0, -"/SKILL.md".length)));
+    const byFolder = dirs.filter((dir) => slugify(dir.split("/").pop() || "", { maxLength: 80 }) === wanted).sort((a, b) => a.length - b.length);
+    folder = byFolder[0] ?? null;
+    if (folder === null && wanted && dirs.length) {
+      if (sparse) {
+        inside(["sparse-checkout", "set", "--no-cone", "SKILL.md"]);
+      }
+      const nameOf = readName ?? ((file) => /^name:\s*["']?([^"'\r\n]+)/m.exec(readFileSync(file, "utf8"))?.[1]?.trim() ?? "");
+      folder = dirs.find((dir) => {
+        const file = join(target, ...dir.split("/").filter(Boolean), "SKILL.md");
+        return existsSync(file) && slugify(nameOf(file), { maxLength: 80 }) === wanted;
+      }) ?? null;
+    }
+    if (folder === null && dirs.length === 1) {
+      folder = dirs[0];
+    }
+    if (folder === null) {
+      throw new Error("No skill folder matching \"" + (skillId ?? cleanPath ?? "?") + "\" in " + clean);
+    }
+    checkout(folder);
+  }
+  const directory = folder ? join(target, ...folder.split("/").filter(Boolean)) : target;
+  if (!existsSync(join(directory, "SKILL.md"))) {
+    throw new Error("SKILL.md not found at " + (folder || "/") + " in " + clean);
+  }
+  const git = readGitInfo(target);
+  return { url: clean, root: target, directory, path: folder, commit: git.commit, sparse };
+}
+
+function listFilesDeep(directory, prefix = "") {
+  const found = [];
+  let entries = [];
+  try {
+    entries = readdirSync(join(directory, ...prefix.split("/").filter(Boolean)), { withFileTypes: true });
+  } catch {
+    return found;
+  }
+  for (const entry of entries) {
+    if (entry.name === ".git" || entry.isSymbolicLink()) {
+      continue;
+    }
+    const rel = prefix ? prefix + "/" + entry.name : entry.name;
+    if (entry.isDirectory()) {
+      found.push(...listFilesDeep(directory, rel));
+    } else {
+      found.push(rel);
+    }
+  }
+  return found;
 }
 
 function defaultRunGit(args) {
