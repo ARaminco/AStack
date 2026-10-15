@@ -19,6 +19,7 @@ import { ContextEngine } from "../context-engine/context-engine.mjs";
 import { LearningEngine } from "../learning-engine/learning-engine.mjs";
 import { SkillCatalog } from "../learning-engine/skill-catalog.mjs";
 import { SkillHub, packSettings } from "../skill-hub/skill-hub.mjs";
+import { OnlineSkills, onlineSettings } from "../skill-hub/online/online.mjs";
 import { AutomationPolicy } from "../permission-system/automation-policy.mjs";
 import { AuthorityEngine } from "../trust-engine/authority.mjs";
 import { AuditEngine } from "../trust-engine/audit.mjs";
@@ -112,6 +113,16 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
   // other external read.
   skillHub.policy = automationPolicy;
   skillHub.audit = audit;
+  // Online skill search (3.2): on demand only, through the same policy and audit.
+  const skillOnline = new OnlineSkills({
+    hub: skillHub,
+    policy: automationPolicy,
+    audit,
+    eventBus,
+    secrets,
+    clock,
+    settings: onlineSettings(configuration.section("skills", {})?.online ?? {})
+  });
 
   const browser = new BrowserEngine(workspaceRoot, { clock, eventBus, policy: automationPolicy, audit, authority, memory });
 
@@ -268,6 +279,7 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
     learning,
     skills,
     skillHub,
+    skillOnline,
     automationPolicy,
     authority,
     audit,

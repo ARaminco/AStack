@@ -1,6 +1,7 @@
 import { parseArgs } from "../delivery-engine/cli.mjs";
 import { appendSessionMatches } from "../search-engine/hooks.mjs";
 import { runSkillCurateCommand, runSkillPackCommand } from "./skill-hub-cli.mjs";
+import { runSkillOnlineCommand } from "./skill-online-cli.mjs";
 
 const out = (line) => console.log(line);
 
@@ -426,6 +427,9 @@ export function runSkillCommand({ runtime, i18n, tokens }) {
   if (action === "curate") {
     runSkillCurateCommand({ runtime, i18n, tokens: rest });
     return;
+  }
+  if (action === "online") {
+    return runSkillOnlineCommand({ runtime, i18n, tokens: rest });
   }
   throw new Error(t("cli.skill.unknownAction", { action }));
 }

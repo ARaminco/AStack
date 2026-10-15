@@ -246,7 +246,21 @@ export function scanText(text, rel) {
 }
 
 /**
- * List files of a skill folder without following symbolic links.
+ * Git metadata in any spelling Windows or git treats as the same name:
+ * `.git`, `.GIT`, `.Git.` (NTFS drops trailing dots and spaces), the 8.3
+ * short name `git~1`, every `.git*` file (`.gitattributes`, `.gitmodules`,
+ * `.gitignore`, …) and `.lfsconfig`. None of it belongs in a skill, and a
+ * planted `.git` folder or filter file makes git run attacker config.
+ */
+export function isGitMetadataName(name) {
+  const normal = String(name ?? "").toLowerCase().replace(/[. ]+$/, "");
+  return normal.startsWith(".git") || normal === "git~1" || normal === ".lfsconfig";
+}
+
+/**
+ * List files of a skill folder without following symbolic links. Git
+ * metadata (see isGitMetadataName) is never listed, so it is never scanned
+ * as part of the skill nor copied by an import.
  */
 export function listSkillFiles(directory) {
   const files = [];
@@ -260,7 +274,7 @@ export function listSkillFiles(directory) {
     for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
       const absolute = join(current, entry.name);
       const rel = relative(directory, absolute).split(sep).join("/");
-      if (entry.name === ".git") {
+      if (entry.name === ".git" || isGitMetadataName(entry.name)) {
         continue;
       }
       const stat = lstatSync(absolute);
