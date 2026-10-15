@@ -394,3 +394,17 @@ try {
   assert.equal(typeof overridden.status, "function");
   console.log("AStack console service config merge verified");
 }
+
+// 3.1.3: console.brand renames this install's panel; Aramin stays the base name.
+{
+  const { resolveBrand, applyBrand } = await import("../console/server.mjs");
+  assert.equal(resolveBrand(null), null);
+  assert.equal(resolveBrand({}), null);
+  const brand = resolveBrand({ name: "Gisoo<script>", name_fa: "گیسو" });
+  assert.equal(brand.name, "Gisooscript", "markup characters are dropped from the brand");
+  assert.equal(brand.nameFa, "گیسو");
+  assert.equal(applyBrand("آرامین — Aramin console", brand), "گیسو — Gisooscript console");
+  assert.deepEqual(applyBrand({ a: ["آرامین"], b: 1, c: "aramin-theme" }, brand), { a: ["گیسو"], b: 1, c: "aramin-theme" }, "storage keys and non-strings are untouched");
+  assert.equal(applyBrand("آرامین", null), "آرامین");
+  console.log("AStack console brand verified");
+}

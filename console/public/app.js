@@ -17,6 +17,14 @@
   }
   function Raw(text) { this.text = text; }
   function raw(text) { return new Raw(text); }
+  // Step-up secret: the authenticator code, or the password when the internet
+  // listener runs without an authenticator (console.remote.totp: false).
+  function stepUpByPassword() { return Boolean(state && state.session && state.session.stepUp === "password"); }
+  function stepUpAttrs() {
+    return stepUpByPassword()
+      ? raw('type="password" autocomplete="current-password"')
+      : raw('inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6"');
+  }
   function out(value) {
     if (value instanceof Raw) return value.text;
     if (Array.isArray(value)) return value.map(out).join("");
@@ -773,8 +781,8 @@
         <input class="input input-lg ltr code-input" dir="ltr" name="confirm" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="${item.confirmCode}" autofocus>
       </label>` : ""}
       ${needsTotp ? html`<label class="field">
-        <span class="field-label">${icon("shield")}${t("approvals.stepUp")}</span>
-        <input class="input input-lg ltr otp-input" dir="ltr" name="totp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="••••••" required ${needsCode ? "" : raw("autofocus")}>
+        <span class="field-label">${icon("shield")}${t(stepUpByPassword() ? "approvals.stepUpPassword" : "approvals.stepUp")}</span>
+        <input class="input input-lg ltr otp-input" dir="ltr" name="totp" ${stepUpAttrs()} placeholder="••••••" required ${needsCode ? "" : raw("autofocus")}>
       </label>` : ""}
       <label class="field">
         <span class="field-label">${approve ? t("approvals.note") : t("approvals.denyReason")}</span>
@@ -1010,8 +1018,8 @@
           ${state.session.stepUp && !state.session.runner ? html`<p class="warn">${icon("alert")}${t("approvals.remoteRunnerOff")}</p>` : ""}
           <div class="run-preview" data-run-preview hidden></div>
           ${state.session.stepUp && state.session.runner ? html`<label class="field" data-run-totp hidden>
-            <span class="field-label">${icon("shield")}${t("approvals.stepUpRun")}</span>
-            <input class="input input-lg ltr otp-input" dir="ltr" name="totp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="••••••">
+            <span class="field-label">${icon("shield")}${t(stepUpByPassword() ? "approvals.stepUpRunPassword" : "approvals.stepUpRun")}</span>
+            <input class="input input-lg ltr otp-input" dir="ltr" name="totp" ${stepUpAttrs()} placeholder="••••••">
           </label>` : ""}
           <p class="form-error" data-form-error hidden></p>
           <div class="row-actions">
@@ -1577,7 +1585,7 @@
       ${input && typeof input === "object" && Object.keys(input).length ? html`<details class="perm-more"><summary>${t("chats.permDetails")}</summary><pre class="code" dir="ltr">${JSON.stringify(input, null, 2)}</pre></details>` : ""}
       ${pending ? html`<form class="perm-form" data-form="perm" data-id="${approval.id}">
         ${needsCode ? html`<label class="perm-field"><span>${t("approvals.typeCode")}: <b class="code-chip" dir="ltr">${approval.confirmCode}</b></span><input class="input ltr" dir="ltr" name="confirm" autocomplete="off" maxlength="8" required></label>` : ""}
-        ${needsTotp ? html`<label class="perm-field"><span>${t("login.codeLabel")}</span><input class="input ltr otp-input" dir="ltr" name="totp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label>` : ""}
+        ${needsTotp ? html`<label class="perm-field"><span>${t(stepUpByPassword() ? "approvals.stepUpPassword" : "login.codeLabel")}</span><input class="input ltr otp-input" dir="ltr" name="totp" ${stepUpAttrs()} required></label>` : ""}
         <div class="perm-actions">
           <button type="button" class="btn btn-deny" data-action="perm-deny" data-id="${approval.id}">${icon("x")}${t("approvals.deny")}</button>
           <button type="submit" class="btn btn-approve">${icon("check")}${t("chats.allow")}</button>
@@ -2131,7 +2139,7 @@
   /** The text for a refused run or "run now": remote runner off, a wrong step-up code, or the server's message. */
   function runErrorText(err) {
     if (err && err.body && err.body.remoteRunner === false) return t("approvals.remoteRunnerOff");
-    if (err && err.status === 422 && err.body && err.body.stepUpRequired) return t("approvals.stepUpFailed");
+    if (err && err.status === 422 && err.body && err.body.stepUpRequired) return t(stepUpByPassword() ? "approvals.stepUpPasswordFailed" : "approvals.stepUpFailed");
     return err && err.message ? err.message : t("common.error");
   }
 
@@ -2212,8 +2220,8 @@
           openSheet(html`<form class="decision" data-form="job-run" data-id="${id}">
             <div class="decision-head is-approve"><span class="decision-icon">${icon("play")}</span><div><h3>${t("jobs.runNow")}</h3><p>${ltr(id, "mono")}</p></div></div>
             <label class="field">
-              <span class="field-label">${icon("shield")}${t("approvals.stepUpRun")}</span>
-              <input class="input input-lg ltr otp-input" dir="ltr" name="totp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="••••••" required autofocus>
+              <span class="field-label">${icon("shield")}${t(stepUpByPassword() ? "approvals.stepUpRunPassword" : "approvals.stepUpRun")}</span>
+              <input class="input input-lg ltr otp-input" dir="ltr" name="totp" ${stepUpAttrs()} placeholder="••••••" required autofocus>
             </label>
             <p class="form-error" data-form-error hidden></p>
             <div class="sheet-actions">
@@ -2313,7 +2321,7 @@
         var runTotp = $("input[name=totp]", form);
         if (runTotp && !/^[0-9]{6}$/.test(String(runTotp.value || "").trim())) {
           runTotp.focus();
-          formError(form, t("approvals.stepUpRun"));
+          formError(form, t(stepUpByPassword() ? "approvals.stepUpRunPassword" : "approvals.stepUpRun"));
           return;
         }
         target.disabled = true;

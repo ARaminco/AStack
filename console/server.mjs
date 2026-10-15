@@ -179,8 +179,45 @@ export function resolveConsoleSettings(config = {}, overrides = {}) {
     lockout: config.lockout && typeof config.lockout === "object" ? config.lockout : {},
     chats: config.chats && typeof config.chats === "object" ? config.chats : {},
     remote,
+    brand: resolveBrand(config.brand),
     warnings
   };
+}
+
+/**
+ * `console.brand`: the name this install shows. Aramin is the console's base
+ * name; an owner may give their panel its own (for example `name: Gisoo`,
+ * `name_fa: گیسو`). Null keeps Aramin.
+ */
+export function resolveBrand(section) {
+  if (!section || typeof section !== "object") {
+    return null;
+  }
+  const clean = (value) => String(value ?? "").replace(/[<>"'&\u0000-\u001f]/g, "").trim().slice(0, 40);
+  const name = clean(section.name);
+  const nameFa = clean(section.name_fa ?? section.nameFa);
+  if (!name && !nameFa) {
+    return null;
+  }
+  const icons = section.icons ? String(section.icons) : null;
+  return { name: name || nameFa, nameFa: nameFa || name, icons };
+}
+
+/** Replace the base name with the configured brand in shell text and UI strings. */
+export function applyBrand(value, brand) {
+  if (!brand) {
+    return value;
+  }
+  if (typeof value === "string") {
+    return value.replace(/آرامین/g, brand.nameFa).replace(/Aramin/g, brand.name);
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) => applyBrand(entry, brand));
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, applyBrand(entry, brand)]));
+  }
+  return value;
 }
 
 /**
@@ -197,7 +234,10 @@ export function resolveRemoteSettings(section) {
   const hostname = String(section.hostname ?? "").trim().toLowerCase().replace(/\.$/, "");
   const host = String(section.host ?? DEFAULT_HOST);
   const port = Number(section.port ?? DEFAULT_REMOTE_PORT);
-  const base = { enabled: true, hostname, host, port, chat: section.chat === true, runner: section.runner === true };
+  // totp: false (owner decision) drops the authenticator code on the internet
+  // listener; Cloudflare Access (required) stays the first factor and the
+  // password the second, and step-up asks for the password again.
+  const base = { enabled: true, hostname, host, port, chat: section.chat === true, runner: section.runner === true, totp: section.totp !== false && section.totp !== "false" };
   if (!/^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/.test(hostname)) {
     return { ...base, error: "console.remote.hostname must be the public host name the tunnel serves (for example console.example.com)" };
   }
@@ -301,7 +341,7 @@ function parseCookies(header) {
  * stream for live badges and notifications. Bound to loopback by default.
  */
 export class ConsoleServer {
-  constructor({ runtime, host = DEFAULT_HOST, port = DEFAULT_PORT, pollMs = 3000, sessionDays = 30, locale = null, allowedHosts = [], log = console.log, clock = null, authMode = null, sessionIdleMs = null, lockout = {}, chats = {}, remote = null, accessFetch = null, accessCertsUrl = null, claudeHome = null, totpVault = undefined } = {}) {
+  constructor({ runtime, host = DEFAULT_HOST, port = DEFAULT_PORT, pollMs = 3000, sessionDays = 30, locale = null, allowedHosts = [], log = console.log, clock = null, authMode = null, sessionIdleMs = null, lockout = {}, chats = {}, remote = null, accessFetch = null, accessCertsUrl = null, claudeHome = null, totpVault = undefined, brand = null } = {}) {
     if (!runtime) {
       throw new Error("ConsoleServer needs a runtime");
     }
@@ -310,6 +350,7 @@ export class ConsoleServer {
     this.port = Number(port);
     this.log = log;
     this.locale = locale ?? runtime.configuration?.get?.("language.ui", null) ?? "fa";
+    this.brand = brand?.icons ? { ...brand, icons: resolve(runtime.workspaceRoot ?? runtime.root, brand.icons) } : brand;
     this.remote = remote && remote.enabled ? remote : null;
     // The public host name is never answered on the local listener.
     this.allowedHosts = allowedHosts.filter((entry) => !this.remote?.hostname || entry.toLowerCase() !== this.remote.hostname);
@@ -332,7 +373,7 @@ export class ConsoleServer {
     this.server = null;
     this.heartbeat = null;
     this.startedAt = null;
-    this.build = buildHash();
+    this.build = buildHash() + (this.brand ? "-" + createHash("sha1").update(JSON.stringify(this.brand)).digest("hex").slice(0, 6) : "");
     this.locales = new Map();
   }
 
@@ -390,8 +431,13 @@ export class ConsoleServer {
   }
 
   loginOptions(listener = LOCAL) {
-    if (listener.kind === "remote") {
+    if (listener.kind === "remote" && this.remote?.totp !== false) {
       return { methods: ["password"], totp: "required", remote: true };
+    }
+    if (listener.kind === "remote") {
+      const users = this.users.list();
+      const withTotp = users.filter((user) => user.totp).length;
+      return { methods: ["password"], totp: !withTotp ? "off" : withTotp === users.length ? "required" : "optional", remote: true };
     }
     const mode = this.authMode();
     const users = this.users.list();
@@ -536,7 +582,7 @@ export class ConsoleServer {
   localeBundle(locale) {
     const key = ["fa", "en"].includes(locale) ? locale : "fa";
     if (!this.locales.has(key)) {
-      this.locales.set(key, loadLocale(this.runtime.root, key));
+      this.locales.set(key, applyBrand(loadLocale(this.runtime.root, key), this.brand));
     }
     return this.locales.get(key);
   }
@@ -549,14 +595,19 @@ export class ConsoleServer {
       // Every other path is a client-side route: serve the shell.
       relative = "/index.html";
     }
-    const absolute = resolve(PUBLIC_DIRECTORY, "." + normalize(decodeURIComponent(relative)).replace(/\\/g, "/"));
-    if (!absolute.startsWith(PUBLIC_DIRECTORY + sep) || !existsSync(absolute) || !statSync(absolute).isFile()) {
+    const iconOverride = this.brand?.icons && relative.startsWith("/icons/") ? resolve(this.brand.icons, "." + normalize(decodeURIComponent(relative.slice("/icons".length))).replace(/\\/g, "/")) : null;
+    const useOverride = iconOverride && iconOverride.startsWith(this.brand.icons + sep) && existsSync(iconOverride) && statSync(iconOverride).isFile();
+    const absolute = useOverride ? iconOverride : resolve(PUBLIC_DIRECTORY, "." + normalize(decodeURIComponent(relative)).replace(/\\/g, "/"));
+    if ((!useOverride && !absolute.startsWith(PUBLIC_DIRECTORY + sep)) || !existsSync(absolute) || !statSync(absolute).isFile()) {
       this.send(response, 404, { ok: false, error: "not found" });
       return;
     }
     const type = CONTENT_TYPES[extname(absolute).toLowerCase()] ?? "application/octet-stream";
     let body = readFileSync(absolute);
     const headers = { ...SECURITY_HEADERS, "content-type": type, "cache-control": "no-cache" };
+    if (this.brand && (relative === "/index.html" || relative === "/manifest.webmanifest")) {
+      body = Buffer.from(applyBrand(body.toString("utf8"), this.brand), "utf8");
+    }
     if (relative === "/sw.js" || relative === "/index.html") {
       body = Buffer.from(body.toString("utf8").replace(/__BUILD__/g, this.build), "utf8");
       if (relative === "/sw.js") {
@@ -658,7 +709,7 @@ export class ConsoleServer {
             server: { loopback: isLoopback(this.host), remote: listener.kind === "remote", runner: listener.kind !== "remote" || Boolean(this.remote?.runner) },
             user: session.user ?? null,
             method: session.method ?? "token",
-            stepUp: listener.kind === "remote",
+            stepUp: listener.kind === "remote" ? (this.remote?.totp === false && !this.users.hasTotp(session.user) ? "password" : "totp") : false,
             login
           }
         : { ok: true, authenticated: false, locale: this.locale, build: this.build, login });
@@ -791,7 +842,7 @@ export class ConsoleServer {
         this.loginFailure(response, { address, method, username, keys, reason: "wrong username or secret", listener, accessEmail: request.accessEmail ?? null });
         return;
       }
-      const needsCode = listener.kind === "remote" || this.users.hasTotp(name);
+      const needsCode = (listener.kind === "remote" && this.remote?.totp !== false) || this.users.hasTotp(name);
       if (needsCode && (!this.users.hasTotp(name) || !this.users.useTotp(name, body.code))) {
         this.loginFailure(response, { address, method, username: name, keys, reason: this.users.hasTotp(name) ? "wrong code" : "no TOTP for remote sign-in", listener, accessEmail: request.accessEmail ?? null });
         return;
@@ -819,13 +870,19 @@ export class ConsoleServer {
    * authenticator code as well as their usual confirmation. A success is
    * audited (never the code).
    */
-  stepUp(session, body, address, purpose = "approval") {
+  async stepUp(session, body, address, purpose = "approval") {
     const keys = ["ip:" + address, "user:" + (session.user ?? "?")];
     const gate = this.guard.check(keys);
     if (!gate.allowed) {
       throw new HttpError(429, "too many attempts, try again later");
     }
-    if (!session.user || !this.users.useTotp(session.user, body.totp)) {
+    // Without an authenticator (console.remote.totp: false) the step-up secret is
+    // the user's password, sent in the same field.
+    const byPassword = this.remote?.totp === false && session.user && !this.users.hasTotp(session.user);
+    const ok = session.user && (byPassword
+      ? Boolean(await this.users.checkPassword(session.user, String(body.totp ?? "")))
+      : this.users.useTotp(session.user, body.totp));
+    if (!ok) {
       this.guard.fail(keys);
       this.runtime.audit?.record({ actor: "owner@console", action: "console-step-up-failed", target: address, riskLevel: "L1", result: session.user ?? "no user" });
       throw new HttpError(422, "a fresh authenticator code is required", { stepUpRequired: true });
@@ -835,11 +892,11 @@ export class ConsoleServer {
   }
 
   /** Remote listener: real runs and "run now" need console.remote.runner and a step-up code. */
-  remoteRunGate(session, body, address, purpose) {
+  async remoteRunGate(session, body, address, purpose) {
     if (!this.remote?.runner) {
       throw new HttpError(403, "runs do not start over the internet (console.remote.runner is off)", { remoteRunner: false });
     }
-    this.stepUp(session, body, address, purpose);
+    await this.stepUp(session, body, address, purpose);
   }
 
   async chatCall(fn) {
@@ -942,7 +999,7 @@ export class ConsoleServer {
             throw new HttpError(403, "a conversation's tool request is not approved over the internet listener");
           }
           if (record && record.state === "pending" && (isIrreversible(record) || isChatApproval(record))) {
-            this.stepUp(session, body, address, "approval " + id);
+            await this.stepUp(session, body, address, "approval " + id);
           }
         }
         return api.decide(id, body);
@@ -953,13 +1010,13 @@ export class ConsoleServer {
       if (resource === "runs" && !id) {
         const real = body.dryRun !== undefined && !body.dryRun;
         if (real && listener.kind === "remote") {
-          this.remoteRunGate(session, body, address, "run");
+          await this.remoteRunGate(session, body, address, "run");
         }
         return api.startRun(session.key, body);
       }
       if (resource === "jobs" && id && action === "run") {
         if (listener.kind === "remote") {
-          this.remoteRunGate(session, body, address, "job " + id);
+          await this.remoteRunGate(session, body, address, "job " + id);
         }
         return api.runJob(id);
       }
@@ -1041,7 +1098,7 @@ export class ConsoleServer {
     if (remote.error) {
       return Promise.reject(new Error(remote.error));
     }
-    if (!this.users.anyWithTotp()) {
+    if (remote.totp !== false && !this.users.anyWithTotp()) {
       return Promise.reject(new Error("console.remote needs a console user with two-factor sign-in. Run `astack console user set <name>` and `astack console user totp <name>`, then restart the console."));
     }
     if (!remote.access?.team || !remote.access?.aud) {
