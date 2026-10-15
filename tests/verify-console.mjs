@@ -338,7 +338,7 @@ try {
   runtime2.gateway = { status: () => ({ channels: ["telegram"], connected: true, token: "should-not-leak" }) };
   // The real runtime exposes board through a getter; replace it with a fake.
   Object.defineProperty(runtime2, "board", { configurable: true, value: { status: () => ({ columns: ["todo", "doing", "done"] }), list: () => [{ id: "C1", title: "Card", column: "todo" }] } });
-  const service = createService({ runtime: runtime2, config: { port: 0 }, log: () => {} });
+  const service = createService({ runtime: runtime2, config: { enabled: true, port: 0 }, log: () => {} });
   assert.equal(service.name, "console");
   await service.start();
   const status = service.status();
