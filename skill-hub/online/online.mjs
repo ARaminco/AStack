@@ -59,7 +59,10 @@ export const DEFAULT_ONLINE_SETTINGS = {
   pack: "online",
   timeoutMs: 15000,
   endpoints: {},
-  skillsmpKey: null
+  skillsmpKey: null,
+  // Hosts a registry may redirect a download to (for example its CDN). Empty:
+  // a redirect to any other host than the one requested is refused.
+  redirectHosts: []
 };
 
 function asList(value) {
@@ -87,6 +90,7 @@ export function onlineSettings(section = {}) {
     pack: String(value.pack ?? DEFAULT_ONLINE_SETTINGS.pack),
     timeoutMs: Math.max(1000, number(value.timeout_ms ?? value.timeoutMs, DEFAULT_ONLINE_SETTINGS.timeoutMs)),
     endpoints: value.endpoints && typeof value.endpoints === "object" ? { ...value.endpoints } : {},
+    redirectHosts: (asList(value.redirect_hosts ?? value.redirectHosts) ?? []).map((host) => host.toLowerCase()),
     skillsmpKey: /^credential:\/\//.test(String(value.skillsmp_key ?? value.skillsmpKey ?? "")) ? String(value.skillsmp_key ?? value.skillsmpKey) : null
   };
 }
@@ -254,7 +258,7 @@ function hasLicense(directory) {
 // ----------------------------------------------------------------- engine
 
 export class OnlineSkills {
-  constructor({ hub, policy = null, audit = null, eventBus = null, secrets = null, settings = {}, clock = null, runGit = undefined, runGh = undefined, fetchImpl = undefined } = {}) {
+  constructor({ hub, policy = null, audit = null, eventBus = null, secrets = null, settings = {}, clock = null, runGit = undefined, runGh = undefined, fetchImpl = undefined, lookupImpl = undefined } = {}) {
     if (!hub) {
       throw new Error("OnlineSkills needs the skill hub");
     }
@@ -268,6 +272,7 @@ export class OnlineSkills {
     this.runGit = runGit;
     this.runGh = runGh;
     this.fetchImpl = fetchImpl;
+    this.lookupImpl = lookupImpl;
     this.userAgent = "astack-skill-hub/" + VERSION;
   }
 
@@ -296,7 +301,14 @@ export class OnlineSkills {
   }
 
   http() {
-    const base = { policy: this.policy ?? this.hub.policy, userAgent: this.userAgent, timeoutMs: this.settings.timeoutMs, ...(this.fetchImpl ? { fetchImpl: this.fetchImpl } : {}) };
+    const base = {
+      policy: this.policy ?? this.hub.policy,
+      userAgent: this.userAgent,
+      timeoutMs: this.settings.timeoutMs,
+      redirectHosts: this.settings.redirectHosts ?? [],
+      ...(this.fetchImpl ? { fetchImpl: this.fetchImpl } : {}),
+      ...(this.lookupImpl ? { lookupImpl: this.lookupImpl } : {})
+    };
     return {
       get: (url, options = {}) => httpGet(url, { ...base, ...options, headers: { ...(options.headers ?? {}) } }),
       json: (url, options = {}) => httpGetJson(url, { ...base, maxBytes: 4 * 1024 * 1024, ...options, headers: { ...(options.headers ?? {}) } })
