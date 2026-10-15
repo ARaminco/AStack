@@ -3,6 +3,10 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 3.1.2
+
+Under the daemon, the console and skill-hub services received only their (usually empty) `daemon.<service>` block and ignored the owner's `console:` and `skills.packs` sections, so the internet listener (`console.remote`) never started. The owner's section is now the base and daemon keys override it.
+
 ## 3.1.1 — Internet exposure hardening
 
 Security review fixes for Aramin before its internet listener goes live
