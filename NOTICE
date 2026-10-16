@@ -2,6 +2,9 @@ AStack Enterprise
 Third-party notices
 
 This file lists third-party material that AStack's own files are adapted from.
+Also adapted from gstack (ideas and rule lists, rewritten): `bin/astack-guard.mjs`
+(careful/bin/check-careful.sh, freeze/bin/check-freeze.sh) and
+`context-engine/context-bill.mjs` (bin/gstack-context-bill).
 Skill packs copied verbatim under skill-packs/<pack>/ carry their own LICENSE
 file next to them.
 

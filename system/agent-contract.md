@@ -118,6 +118,7 @@ Installs from 3.0 carry third-party skill packs under `skill-packs/<pack>/` (for
 - Shell commands and network targets follow `astack schedule policy`; a denied command stays denied even after an approval.
 - Every external action produces an audit record: `astack audit list`.
 - The trust rules bind every runtime identically, whatever its own sandbox or approval mode allows.
+- In Claude Code the guard hook (`astack guard`) refuses catastrophic commands and asks before destructive ones; never work around it, and never grant an approval yourself unless the owner said so. `astack guard freeze <dir>` keeps edits inside one folder while investigating.
 
 ## Browser Protocol
 The internal browser uses persistent profiles so the owner logs in once and later runs reuse the session.
@@ -155,4 +156,4 @@ Departments and agents never coordinate directly. The Chief of Staff and the Orc
 Teams are designed capability first: one specialist by default; separate seats only for capabilities that must not share a head (design, build, test, security on large work); the specialist is taken from the role catalog ("Laravel" → the Laravel engineer); reviewers wait on demand until their trigger fires. `astack ask "<request>" --team` shows the seats, what each hands back, the delegation flows through the lead and the team cost next to the solo cost.
 
 ## Verification
-Run `npm test` (sixteen suites) or `astack doctor` after architectural changes. `astack interop status` verifies that both runtimes are wired to the same contract and memory. `npm run test:browser` exercises the internal browser against a real Chromium profile.
+Run `npm test` (seventeen suites) or `astack doctor` after architectural changes. `astack interop status` verifies that both runtimes are wired to the same contract and memory. `npm run test:browser` exercises the internal browser against a real Chromium profile.

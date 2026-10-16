@@ -1,7 +1,7 @@
 # QA
 
 Exploratory QA: test, find, fix with a regression test, verify. Uses the
-project's own browser (`browser` MCP server, `documentation/Dedicated-Browser.md`)
+project's own browser (`astack-browser` MCP server, `documentation/Dedicated-Browser.md`)
 for web surfaces. Adapted from gstack `qa` (MIT, see `NOTICE`). Report to the
 owner in Persian (`../../system/language-policy.md`).
 

@@ -1,15 +1,22 @@
 # Web probes with the dedicated browser
 
-The `browser` MCP server is Playwright attached to the project's own Chrome
-window (persistent profile, signed in once). Check it first:
+The `astack-browser` MCP server is Playwright attached to the project's own
+Chrome window (persistent profile, signed in once). Check it first:
 `astack browser dedicated status` (start it with `start [url]` if needed).
-Look-only tools run without a prompt; clicking and typing ask.
+Look-only tools run without a prompt; clicking and typing ask. The proxy also
+enforces: only http/https pages, no typing into password or code fields (the
+owner types those), and a click that submits, pays, sends, deletes or
+publishes — and every upload or accepted dialog — stops with an approval id:
+tell the owner exactly what will be submitted, wait for
+`astack approval approve <id>`, then repeat the same call. A project that runs
+its own Playwright server (for example `browser` on a shared port) uses that
+one instead.
 
 | Need | Tool |
 | --- | --- |
 | open a page | `browser_navigate` |
 | read structure and element refs | `browser_snapshot` (prefer it over screenshots for reasoning) |
-| evidence image | `browser_take_screenshot` (save under `.astack/qa/<run>/shots/`) |
+| evidence image | `browser_take_screenshot` with a bare `filename` (it lands in `.astack/browser/dedicated/output/`; copy it to `.astack/qa/<run>/shots/`) |
 | interact | `browser_click`, `browser_type`, `browser_fill_form`, `browser_select_option`, `browser_press_key`, `browser_hover` |
 | wait | `browser_wait_for` (text or time) |
 | errors | `browser_console_messages`, `browser_network_requests` |
