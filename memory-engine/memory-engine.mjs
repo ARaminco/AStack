@@ -96,8 +96,12 @@ export class MemoryEngine {
         ].filter(Boolean);
         this.blocks.set(persona, lines.join("\n"), { limit: 800, description: "Who this agent is; stable across missions.", source });
       }
-      if (agent.mission) {
-        this.blocks.set(goals, "Current mission: " + String(agent.mission).slice(0, 600), { limit: 1000, description: "What this agent is working toward now.", source });
+      // Goals follow a new mission, but never overwrite what someone else
+      // (the owner, or the agent itself) wrote there.
+      const current = this.blocks.get(goals);
+      const value = "Current mission: " + String(agent.mission ?? "").slice(0, 600);
+      if (agent.mission && (!current || (current.source === source && current.value !== value))) {
+        this.blocks.set(goals, value, { limit: 1000, description: "What this agent is working toward now.", source });
       }
     } catch {
       // Active memory is a convenience for the agent; a refused value (a
@@ -182,10 +186,17 @@ export class MemoryEngine {
         return "## facet:" + facet + " (" + records.length + ")\n" + lines.join("\n");
       })
       .join("\n\n");
-    const active = this.blocks
-      .list()
-      .map((block) => "## block:" + block.id + " (v" + block.version + ")\n" + block.value)
-      .join("\n\n");
+    let active = "";
+    try {
+      // The full version history stays in .astack/memory/blocks/blocks.jsonl;
+      // the backup records the current value of every block.
+      active = this.blocks
+        .list()
+        .map((block) => "## block:" + block.id + " (v" + block.version + ")\n" + block.value)
+        .join("\n\n");
+    } catch (error) {
+      active = "## blocks unreadable: " + error.message;
+    }
     writeFileSync(target, markdown + "\n\n" + structured + "\n" + (active ? "\n" + active + "\n" : ""), "utf8");
     return target;
   }

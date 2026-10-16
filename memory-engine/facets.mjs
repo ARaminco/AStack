@@ -67,20 +67,30 @@ export function normalizeScopeId(value) {
 }
 
 /**
- * Task scope filter: a record passes when it is bound to the scope, or when it
- * is unbound general knowledge.
+ * Task scope filter. Only a conflict excludes: a record bound to a different
+ * case when a case is in scope, or to a different project when a project is
+ * in scope. Unbound records (everything 3.2.0 and the markdown import wrote
+ * without a binding) and records bound only to other kinds of scope always
+ * pass; recall ranks the records bound to the scope higher instead.
  */
 export function inScope(record, scopeSet) {
   const bindings = recordBindings(record);
   if (!bindings.size) {
-    return GENERAL_FACETS.includes(record.facet);
+    return true;
   }
-  for (const binding of bindings) {
-    if (scopeSet.has(binding)) {
-      return true;
+  for (const kind of ["case", "project"]) {
+    const constrained = [...scopeSet].some((entry) => entry.startsWith(kind + ":"));
+    const own = [...bindings].filter((entry) => entry.startsWith(kind + ":"));
+    if (constrained && own.length && !own.some((entry) => scopeSet.has(entry))) {
+      return false;
     }
   }
-  return false;
+  return true;
+}
+
+/** True when the record is bound to one of the scope ids. */
+export function boundToScope(record, scopeSet) {
+  return [...recordBindings(record)].some((binding) => scopeSet.has(binding));
 }
 
 /**
@@ -376,7 +386,10 @@ export class FacetMemory {
       const usage = Math.log2(1 + record.hits) / 4;
       const base = queryTokens.length ? lexical : 1;
       const importance = 0.75 + 0.5 * (record.importance ?? 0.5);
-      const score = base * (0.55 + 0.45 * record.confidence) * record.weight * importance * (0.6 + 0.4 * recency) + usage;
+      // Under a task scope, what belongs to the task outranks what is merely
+      // allowed in.
+      const affinity = scopeSet && boundToScope(record, scopeSet) ? 1.5 : 1;
+      const score = base * (0.55 + 0.45 * record.confidence) * record.weight * importance * (0.6 + 0.4 * recency) * affinity + usage;
       return { ...record, score: Number(score.toFixed(4)), recency: Number(recency.toFixed(3)) };
     });
     const ranked = scored
@@ -393,7 +406,7 @@ export class FacetMemory {
         (domain && entry.domain === domain) ||
         (project && entry.project === project) ||
         entities.some((entity) => (entry.entities ?? []).includes(entity)) ||
-        (scopeSet && [...recordBindings(entry)].some((binding) => scopeSet.has(binding))))
+        (scopeSet && boundToScope(entry, scopeSet)))
       .map((entry) => ({ ...entry, score: Number(((entry.importance ?? 0.5) * entry.confidence * (0.5 + 0.5 * entry.recency)).toFixed(4)), matchedBy: "engagement" }))
       .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
       .slice(0, limit);

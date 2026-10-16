@@ -115,19 +115,30 @@ export class MemoryBlocks {
   }
 
   guard(value) {
-    const text = String(value ?? "");
+    const text = String(value ?? "").replace(/\r\n?/g, "\n");
     if (looksSecret(text)) {
       throw new Error("Refused: the text looks like it contains a secret (password, token, card or account number). Secrets are never stored in memory.");
     }
-    if (INJECTION_PATTERNS.some((pattern) => pattern.test(text))) {
-      throw new Error("Refused: the text reads like an instruction to override the system. Active memory is always in context, so it only holds facts.");
+    if (looksLikeInstruction(text)) {
+      throw new Error("Refused: the text reads like an instruction to override the system or skip an approval. Active memory is always in context, so it only holds facts.");
     }
     return text;
   }
 
-  checkWritable(current, { force = false } = {}) {
-    if (current?.readOnly && !force) {
-      throw new Error("Block " + current.id + " is read-only. Only the owner can change it (CLI with --force).");
+  /**
+   * Read-only blocks change only with force, and force is the owner's: an
+   * unattended run or an MCP call can never use it.
+   */
+  checkWritable(current, { force = false, id = null } = {}) {
+    const latest = current ?? (id ? this.history(id).at(-1) ?? null : null);
+    if (!latest?.readOnly) {
+      return;
+    }
+    if (!force) {
+      throw new Error("Block " + latest.id + " is read-only. Only the owner can change it (CLI with --force).");
+    }
+    if (process.env.ASTACK_MCP === "1" || process.env.ASTACK_UNATTENDED === "1") {
+      throw new Error("Block " + latest.id + " is read-only; --force is refused in unattended runs and over MCP.");
     }
   }
 
@@ -138,7 +149,10 @@ export class MemoryBlocks {
     const parsed = MemoryBlocks.parseId(id);
     const current = this.get(parsed.id);
     this.checkWritable(current, { force });
-    const text = this.guard(String(value ?? "").trim());
+    const text = this.guard(String(value ?? "")).trim();
+    if (!text) {
+      throw new Error("Refused: an empty value would wipe " + parsed.id + ". To retire the block use: astack memory block remove " + parsed.id);
+    }
     const cap = clampLimit(limit ?? current?.limit ?? DEFAULT_BLOCK_LIMIT);
     if (text.length > cap) {
       throw new Error("Block " + parsed.id + " is limited to " + cap + " characters; the new value has " + text.length + ". Shorten it or raise --limit.");
@@ -212,7 +226,7 @@ export class MemoryBlocks {
       throw new Error("Unknown block: " + parsed.id);
     }
     this.checkWritable(current, { force });
-    const needle = String(oldText ?? "");
+    const needle = String(oldText ?? "").replace(/\r\n?/g, "\n");
     if (!needle) {
       throw new Error("The text to replace is empty");
     }
@@ -253,7 +267,7 @@ export class MemoryBlocks {
       throw new Error("Block " + parsed.id + " has no version " + version);
     }
     const current = this.get(parsed.id);
-    this.checkWritable(current, { force });
+    this.checkWritable(current, { force, id: parsed.id });
     const block = this.write({ ...target, version: this.lastVersion(parsed.id) + 1, at: this.now(), source, restoredFrom: target.version, deleted: undefined });
     return { block, changed: true, evicted: [] };
   }
@@ -267,7 +281,7 @@ export class MemoryBlocks {
       return null;
     }
     const binding = scopeBinding(parsed.scope);
-    const record = this.facets.append(parsed.scope.startsWith("agent:") ? "working" : "semantic", {
+    const record = this.facets.append("semantic", {
       title: "Archived from active memory " + parsed.id,
       body: lines.join("\n"),
       project: binding.project,
@@ -317,6 +331,34 @@ export class MemoryBlocks {
   }
 }
 
+// Instructions that would ride along in every context: role prefixes, and
+// "always/automatically" or "without approval" next to an irreversible
+// action, unless the line negates it ("never pay without approval" is a
+// fact). Whitespace is collapsed first, so spacing and line breaks do not
+// hide a known pattern.
+const ROLE_PREFIX = /^\s*(system|assistant|developer)\s*:/im;
+const ACTIONS = "(approve|pay|send|publish|submit|delete|transfer|wire|sign|forward)";
+const AUTO_ACTION = new RegExp("\\b(always|automatically|auto-?)\\b[^.\\n]{0,30}\\b" + ACTIONS + "\\b|\\b" + ACTIONS + "\\b[^.\\n]{0,40}\\bwithout (asking|approval|confirmation|permission|the owner)\\b", "i");
+const AUTO_ACTION_FA = /(بدون|بی)\s*(تایید|تأیید|اجازه|هماهنگی)[^.\n]{0,40}(ارسال کن|بفرست|پرداخت کن|ثبت کن|منتشر کن|حذف کن|واریز کن)|(همیشه|خودکار)[^.\n]{0,30}(ارسال کن|بفرست|پرداخت کن|ثبت کن|منتشر کن|تایید کن|تأیید کن)/;
+// "Always send … after owner approval" is a standing preference, not a bypass.
+const GATED = /\b(after|with|once|upon|following|subject to)\b[^.\n]{0,25}\b(approv|confirm|sign-?off)/i;
+const GATED_FA = /(بعد|پس) از (تایید|تأیید|اجازه)|با (تایید|تأیید|اجازه)/;
+const UNGATED_FA = /(بدون|بی)\s*(تایید|تأیید|اجازه|هماهنگی)/;
+const NEGATION = /\b(never|not|don't|do not|must not|no)\b|هرگز|نکن|نفرست|نباید|ممنوع/i;
+
+/** True when a text reads like an instruction rather than a fact. */
+export function looksLikeInstruction(text) {
+  const raw = String(text ?? "");
+  const collapsed = raw.replace(/\s+/g, " ");
+  if (INJECTION_PATTERNS.some((pattern) => pattern.test(raw) || pattern.test(collapsed))) {
+    return true;
+  }
+  if (ROLE_PREFIX.test(raw)) {
+    return true;
+  }
+  return raw.split(/\n|(?<=[.!؟?])\s/).some((line) => ((AUTO_ACTION.test(line) && !GATED.test(line)) || (AUTO_ACTION_FA.test(line) && (UNGATED_FA.test(line) || !GATED_FA.test(line)))) && !NEGATION.test(line));
+}
+
 // English credential words only with an explicit assignment ("api_key=…",
 // "token: …") and JWT shapes, so "token budget" or "password policy" stay.
 const ASSIGNED_SECRET = /\b(api[_-]?key|access[_-]?token|token|secret|bearer|authorization|cookie|client[_-]?secret)\s*["']?\s*[:=]\s*["']?[^\s"',;]{6,}/i;
@@ -355,8 +397,11 @@ function scopeOrder(scope) {
 
 function clampLimit(value) {
   const number = Math.round(Number(value));
-  if (!Number.isFinite(number) || number < 100) {
+  if (!Number.isFinite(number)) {
     return DEFAULT_BLOCK_LIMIT;
+  }
+  if (number < 100) {
+    return 100;
   }
   return Math.min(MAX_BLOCK_LIMIT, number);
 }
