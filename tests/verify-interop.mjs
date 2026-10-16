@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MemoryEngine } from "../memory-engine/memory-engine.mjs";
-import { InteropEngine, claudeProjectSlug, detectRuntime } from "../interop-engine/interop-engine.mjs";
+import { BROWSER_READ_TOOLS, InteropEngine, claudeProjectSlug, detectRuntime } from "../interop-engine/interop-engine.mjs";
 import { createMcpHandler, mcpTools, runtimeFromClient } from "../interop-engine/mcp-server.mjs";
 import { RuntimeRegistry } from "../runtime-providers/agent-runtime.mjs";
 import { ClaudeCodeRuntime } from "../runtime-providers/adapters/claude-code.mjs";
@@ -78,7 +78,7 @@ const mcp = readJson(join(workspace, ".mcp.json"));
 assert.equal(mcp.mcpServers.other.command, "other", "owner MCP servers are kept");
 assert.deepEqual(mcp.mcpServers.astack.args, ["bin/astack.mjs", "mcp", "serve"]);
 const settings = readJson(join(workspace, ".claude", "settings.json"));
-assert.deepEqual(settings.permissions.allow, ["Bash(ls)", "mcp__astack"], "owner permissions are kept and the astack tools allowed");
+assert.deepEqual(settings.permissions.allow, ["Bash(ls)", "mcp__astack", ...BROWSER_READ_TOOLS.map((tool) => "mcp__browser__" + tool)], "owner permissions are kept, the astack tools and the browser tools that only look allowed");
 assert.equal(settings.hooks.SessionStart.length, 2, "owner hooks are kept beside the astack hook");
 assert.ok(settings.enabledMcpjsonServers.includes("astack"));
 const codexConfig = readFileSync(join(workspace, ".codex", "config.toml"), "utf8");
@@ -376,7 +376,7 @@ const setupHome = sandbox("astack-setup-home-");
 mkdirSync(join(setupHome, ".codex"), { recursive: true });
 writeFileSync(join(setupHome, ".codex", "config.toml"), "model = \"x\"\n", "utf8");
 const runSetup = (target, extra = []) => {
-  const result = spawnSync(process.execPath, [join(repoRoot, "bin", "astack.mjs"), "setup", "--target", target, "--no-graphify", "--no-index", ...extra], {
+  const result = spawnSync(process.execPath, [join(repoRoot, "bin", "astack.mjs"), "setup", "--target", target, "--no-graphify", "--no-index", "--no-browser", ...extra], {
     cwd: repoRoot,
     encoding: "utf8",
     windowsHide: true,
@@ -440,7 +440,7 @@ assert.deepEqual(
 assert.equal(repositoryId("git@github.com:ARaminco/AStack.git"), repositoryId("https://github.com/ARaminco/AStack"));
 
 process.env.ASTACK_USER_HOME = setupHome;
-const quiet = { "no-graphify": true, "no-index": true };
+const quiet = { "no-graphify": true, "no-index": true, "no-browser": true };
 const repoVersion = JSON.parse(readFileSync(join(repoRoot, "core", "manifest.json"), "utf8")).version;
 const makeOld = () => {
   const project = sandbox("astack-update-");

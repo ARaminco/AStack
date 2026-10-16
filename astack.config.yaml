@@ -1,7 +1,7 @@
 project:
   name: AStack Enterprise
   product: AI Operating System for Any Practice
-  version: 3.3.0
+  version: 3.4.0
   philosophy: enterprise_modular_platform
   primary_runtime: claude-code
   compatibility:
@@ -408,6 +408,14 @@ browser:
   evidence: .astack/evidence
   headless_default: true
   stop_before_commit: true
+  # The project's own browser (3.4.0): Playwright MCP "browser" attached to a
+  # persistent Chrome profile on a stable per-project port.
+  dedicated:
+    enabled: true
+    profile: .astack/browser/dedicated/profile
+    headless: false
+    window: "1440,1000"
+    caps: "vision,pdf"
 
 authority:
   default_level: L2

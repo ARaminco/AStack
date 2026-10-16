@@ -1,3 +1,4 @@
+import { PLAYWRIGHT_MCP_VERSION, prefetchPlaywright } from "../browser-engine/dedicated.mjs";
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -107,7 +108,7 @@ export function installGlobalSkill(coreRoot, home) {
   return written;
 }
 
-const passThrough = ["no-graphify", "no-trust-codex", "no-global-skill", "no-hooks", "no-index"];
+const passThrough = ["no-graphify", "no-trust-codex", "no-global-skill", "no-hooks", "no-index", "no-browser"];
 
 /**
  * Stage "core". Returns the result and whether the local stage must run in a
@@ -204,6 +205,16 @@ export function setupLocal({ runtime, flags, home = userHome() }) {
     step("context-index", true, () => {
       const index = runtime.context.build();
       return (index.stats?.files ?? "?") + " files indexed";
+    });
+  }
+  const dedicatedConfig = runtime.configuration.section("browser", {}).dedicated ?? {};
+  if (!has("no-browser") && dedicatedConfig.enabled !== false) {
+    // The project's own browser (3.4.0): wired as the `browser` MCP server by
+    // interop; here the pinned Playwright MCP package is fetched ahead of the
+    // first session. Optional: offline setup succeeds and fetches on first use.
+    step("browser", true, () => {
+      const fetched = prefetchPlaywright({ version: dedicatedConfig.playwright_version ?? PLAYWRIGHT_MCP_VERSION });
+      return fetched + " ready; window opens on first use";
     });
   }
   if (!has("no-global-skill")) {

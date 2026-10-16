@@ -128,6 +128,8 @@ The internal browser uses persistent profiles so the owner logs in once and late
 5. Stop at the commit step, report the exact values, wait for approval, then `astack browser resume <mission>`.
 6. Verify the outcome and keep the evidence bundle; `astack browser evidence verify <bundle>`.
 
+Every project has its own browser: the `browser` MCP server (Playwright MCP attached over CDP to the project's dedicated Chrome, profile under `.astack/browser/dedicated/`, a stable port per project). Use it for all web UI work in that project, never another browser, so the owner's sign-ins stay in one window. The window opens on the first browser tool call; `astack browser dedicated status|start|stop` manages it and AStack flows share it with `--profile dedicated`. The owner types passwords; tools that only look run without a prompt, clicking, typing and uploads ask. Before any commit click (submit, pay, send, delete, publish), take a screenshot, report the exact values and wait for approval. Each browser tool call is logged (tool and target, never typed text) in `.astack/browser/dedicated/calls.jsonl`. A project whose `.mcp.json` already declares its own `browser` server keeps it.
+
 ## Background Work
 - Recurring checks and maintenance are jobs: `astack schedule add ... --kind http-check --every 10m`.
 - Inbound events arrive through hooks: `astack signal create`, `astack signal rule`, `astack signal serve`.
@@ -153,4 +155,4 @@ Departments and agents never coordinate directly. The Chief of Staff and the Orc
 Teams are designed capability first: one specialist by default; separate seats only for capabilities that must not share a head (design, build, test, security on large work); the specialist is taken from the role catalog ("Laravel" → the Laravel engineer); reviewers wait on demand until their trigger fires. `astack ask "<request>" --team` shows the seats, what each hands back, the delegation flows through the lead and the team cost next to the solo cost.
 
 ## Verification
-Run `npm test` (fifteen suites) or `astack doctor` after architectural changes. `astack interop status` verifies that both runtimes are wired to the same contract and memory. `npm run test:browser` exercises the internal browser against a real Chromium profile.
+Run `npm test` (sixteen suites) or `astack doctor` after architectural changes. `astack interop status` verifies that both runtimes are wired to the same contract and memory. `npm run test:browser` exercises the internal browser against a real Chromium profile.

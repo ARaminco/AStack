@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { sanitizeExternalContent } from "../lib/text.mjs";
-import { attachToPage } from "./cdp-client.mjs";
+import { attachToPage, openTab } from "./cdp-client.mjs";
 import { EvidenceLedger } from "./evidence.mjs";
 import { findBrowserBinary, launchBrowser } from "./launcher.mjs";
 import { SessionStore } from "./session-store.mjs";
@@ -41,8 +41,9 @@ function cssArgument(selector) {
  * content as untrusted input.
  */
 export class BrowserEngine {
-  constructor(root, { clock, eventBus, policy = null, audit = null, authority = null, memory = null } = {}) {
+  constructor(root, { clock, eventBus, policy = null, audit = null, authority = null, memory = null, dedicated = null } = {}) {
     this.root = root;
+    this.dedicated = dedicated;
     this.clock = clock ?? (() => new Date());
     this.eventBus = eventBus ?? null;
     this.sessions = new SessionStore(root, { clock: this.clock });
@@ -264,9 +265,16 @@ export class BrowserEngine {
     let launched = null;
     let client = null;
     try {
-      launched = await launchBrowser({ userDataDir: profileRecord.userDataDir, headless, url: url ?? "about:blank" });
-      const attached = await attachToPage(launched.port, { timeoutMs: 30000 });
-      client = attached.client;
+      if (profile === "dedicated" && this.dedicated) {
+        // The project's own window, shared with the Playwright MCP tools: the
+        // flow runs in a new tab of the signed-in browser and leaves it open.
+        const running = await this.dedicated.ensure();
+        launched = { port: running.port, child: null, shared: true };
+        client = (await openTab(running.port)).client;
+      } else {
+        launched = await launchBrowser({ userDataDir: profileRecord.userDataDir, headless, url: url ?? "about:blank" });
+        client = (await attachToPage(launched.port, { timeoutMs: 30000 })).client;
+      }
       await client.send("Page.enable");
       await client.send("Runtime.enable");
       await client.send("Network.enable");

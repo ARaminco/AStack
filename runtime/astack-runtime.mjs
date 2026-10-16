@@ -26,6 +26,7 @@ import { AuditEngine } from "../trust-engine/audit.mjs";
 import { ApprovalEngine } from "../trust-engine/approvals.mjs";
 import { SecretBroker } from "../trust-engine/secrets.mjs";
 import { BrowserEngine } from "../browser-engine/browser-engine.mjs";
+import { DedicatedBrowser } from "../browser-engine/dedicated.mjs";
 import { ToolRegistry } from "../tool-registry/tool-registry.mjs";
 import { RuntimeRegistry } from "../runtime-providers/agent-runtime.mjs";
 import { ClaudeCodeRuntime } from "../runtime-providers/adapters/claude-code.mjs";
@@ -124,7 +125,8 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
     settings: onlineSettings(configuration.section("skills", {})?.online ?? {})
   });
 
-  const browser = new BrowserEngine(workspaceRoot, { clock, eventBus, policy: automationPolicy, audit, authority, memory });
+  const dedicatedBrowser = new DedicatedBrowser(workspaceRoot, { config: configuration.section("browser", {}).dedicated ?? {} });
+  const browser = new BrowserEngine(workspaceRoot, { clock, eventBus, policy: automationPolicy, audit, authority, memory, dedicated: dedicatedBrowser });
 
   const runtimes = new RuntimeRegistry(workspaceRoot, { clock, eventBus });
   runtimes.register(new ClaudeCodeRuntime({ root: workspaceRoot, clock, eventBus }));

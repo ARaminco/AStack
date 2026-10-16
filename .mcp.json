@@ -8,6 +8,13 @@
         "mcp",
         "serve"
       ]
+    },
+    "browser": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "bin/astack-browser-mcp.mjs"
+      ]
     }
   }
 }

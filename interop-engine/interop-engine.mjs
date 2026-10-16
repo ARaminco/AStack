@@ -3,6 +3,7 @@ import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, read
 import { homedir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { hashId, redactSecrets } from "../lib/text.mjs";
+import { ConfigurationEngine } from "../configuration-engine/configuration.mjs";
 import { importLegacyMemory } from "./memory-sources.mjs";
 
 /**
@@ -17,6 +18,17 @@ import { importLegacyMemory } from "./memory-sources.mjs";
  */
 
 export const MCP_SERVER_ID = "astack";
+// The project's dedicated browser (Playwright MCP over CDP, 3.4.0). An entry
+// with this name that does not run astack-browser-mcp is the owner's own and
+// is never touched.
+export const BROWSER_SERVER_ID = "browser";
+const BROWSER_MARKER = "astack-browser-mcp";
+// Browser tools that only look: allowed without a prompt. Clicking, typing,
+// uploading and running code still ask, so a commit step always stops.
+export const BROWSER_READ_TOOLS = [
+  "browser_snapshot", "browser_take_screenshot", "browser_tabs", "browser_console_messages",
+  "browser_network_requests", "browser_wait_for", "browser_navigate", "browser_navigate_back", "browser_resize"
+];
 const HOOK_MARKER = "interop hook";
 const TOML_BEGIN = "# >>> astack (managed by `astack interop sync`) >>>";
 const TOML_END = "# <<< astack <<<";
@@ -119,8 +131,9 @@ function parseFrontmatter(text) {
 }
 
 export class InteropEngine {
-  constructor(root, { workspaceRoot = root, projectRoot = null, legacyMemory = null, memory = null, standup = null, graphify = null, clock, home = homedir(), env = process.env } = {}) {
+  constructor(root, { workspaceRoot = root, projectRoot = null, legacyMemory = null, memory = null, standup = null, graphify = null, browser = null, clock, home = homedir(), env = process.env } = {}) {
     this.root = root;
+    this.browserConfig = browser ?? readDedicatedConfig(root);
     this.graphify = graphify;
     this.workspaceRoot = workspaceRoot;
     // Where the runtimes are opened. Usually the install itself; for a core
@@ -226,10 +239,41 @@ export class InteropEngine {
     return lines.join("\n");
   }
 
+  browserEnabled() {
+    return this.browserConfig?.enabled !== false;
+  }
+
+  browserServer() {
+    const bin = relative(this.projectRoot, join(this.root, "bin", "astack-browser-mcp.mjs")).split("\\").join("/");
+    return { command: "node", args: [bin || "bin/astack-browser-mcp.mjs"] };
+  }
+
   plannedMcpJson(current) {
     const next = current ?? {};
-    next.mcpServers = { ...(next.mcpServers ?? {}), [MCP_SERVER_ID]: { type: "stdio", ...this.mcpServer() } };
+    const servers = { ...(next.mcpServers ?? {}), [MCP_SERVER_ID]: { type: "stdio", ...this.mcpServer() } };
+    const existing = servers[BROWSER_SERVER_ID];
+    const ours = !existing || JSON.stringify(existing).includes(BROWSER_MARKER);
+    if (ours && this.browserEnabled()) {
+      servers[BROWSER_SERVER_ID] = { type: "stdio", ...this.browserServer() };
+    } else if (existing && ours && !this.browserEnabled()) {
+      delete servers[BROWSER_SERVER_ID];
+    }
+    next.mcpServers = servers;
     return next;
+  }
+
+  /** True when .mcp.json's browser entry is (or will be) AStack's own. */
+  browserManaged() {
+    if (!this.browserEnabled()) {
+      return false;
+    }
+    try {
+      const current = readJson(this.path(".mcp.json"), {});
+      const entry = current?.mcpServers?.[BROWSER_SERVER_ID];
+      return !entry || JSON.stringify(entry).includes(BROWSER_MARKER);
+    } catch {
+      return false;
+    }
   }
 
   mergeHooks(hooks, event, entry) {
@@ -251,9 +295,11 @@ export class InteropEngine {
       hooks: [{ type: "command", command: this.claudeHookCommand("session-end"), timeout: 30 }]
     });
     next.hooks = hooks;
-    next.enabledMcpjsonServers = [...new Set([...(next.enabledMcpjsonServers ?? []), MCP_SERVER_ID])];
+    const browser = this.browserManaged();
+    next.enabledMcpjsonServers = [...new Set([...(next.enabledMcpjsonServers ?? []), MCP_SERVER_ID, ...(browser ? [BROWSER_SERVER_ID] : [])])];
     const permissions = next.permissions ?? {};
-    next.permissions = { ...permissions, allow: [...new Set([...(permissions.allow ?? []), "mcp__" + MCP_SERVER_ID])] };
+    const browserReads = browser ? BROWSER_READ_TOOLS.map((tool) => "mcp__" + BROWSER_SERVER_ID + "__" + tool) : [];
+    next.permissions = { ...permissions, allow: [...new Set([...(permissions.allow ?? []), "mcp__" + MCP_SERVER_ID, ...browserReads])] };
     return next;
   }
 
@@ -278,6 +324,29 @@ export class InteropEngine {
     return next;
   }
 
+  /** The browser server inside the managed block, unless the owner declared one. */
+  codexBrowserLines(current) {
+    if (!this.browserEnabled()) {
+      return [];
+    }
+    const text = current ?? "";
+    const begin = text.indexOf(TOML_BEGIN);
+    const end = text.indexOf(TOML_END);
+    const outside = begin !== -1 && end > begin ? text.slice(0, begin) + text.slice(end + TOML_END.length) : text;
+    if (new RegExp("^\\s*\\[mcp_servers\\." + BROWSER_SERVER_ID + "\\]\\s*$", "m").test(outside)) {
+      return [];
+    }
+    const server = this.browserServer();
+    return [
+      "",
+      "[mcp_servers." + BROWSER_SERVER_ID + "]",
+      "command = " + JSON.stringify(server.command),
+      "args = [" + server.args.map((argument) => JSON.stringify(argument)).join(", ") + "]",
+      // The first start may fetch the pinned Playwright MCP package.
+      "startup_timeout_sec = 120"
+    ];
+  }
+
   plannedCodexConfig(current) {
     const server = this.mcpServer();
     const block = [
@@ -289,6 +358,7 @@ export class InteropEngine {
       // Every astack tool is a local CLI call already bound by the AStack trust
       // rules, so Codex runs it the way Claude Code does once mcp__astack is allowed.
       "default_tools_approval_mode = \"approve\"",
+      ...this.codexBrowserLines(current),
       TOML_END
     ].join("\n");
     if (current === null) {
@@ -739,5 +809,14 @@ export class InteropEngine {
       pending: pending.map(({ runtime, path, action }) => ({ runtime, path, action })),
       parity: runtimes["claude-code"].instructions && runtimes.codex.instructions && !pending.length
     };
+  }
+}
+
+/** browser.dedicated from the core's configuration, or the defaults. */
+function readDedicatedConfig(root) {
+  try {
+    return new ConfigurationEngine(root).section("browser", {}).dedicated ?? {};
+  } catch {
+    return {};
   }
 }

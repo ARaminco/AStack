@@ -3,6 +3,21 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 3.4.0 — Every project has its own browser
+
+The owner's "dedicated browser" pattern becomes part of AStack: one real Chrome window per project, with its own persistent profile and a stable port, driven by Playwright MCP from Claude Code and Codex and by AStack's own flows. See `documentation/Dedicated-Browser.md`.
+
+- New `browser-engine/dedicated.mjs`: the project's browser — profile under `.astack/browser/dedicated/profile`, a debugging port derived from the project path (9410–9599) and listening on 127.0.0.1 only, detached so it outlives the session, reused when running, never confused with another browser on the same port (a port that answers while the project's profile is not in use is skipped).
+- New `bin/astack-browser-mcp.mjs`: the `browser` MCP server. It runs the pinned `@playwright/mcp@0.0.83` attached over CDP to the project's window, answers `initialize` and `tools/list` at once, opens the window on the first tool call, and logs every call (tool, URL, element; never typed text) to `.astack/browser/dedicated/calls.jsonl`.
+- Wiring: `astack setup` / `astack update` add the `browser` server to `.mcp.json` and `.codex/config.toml`, enable it in Claude Code and allow only the tools that look (snapshot, screenshot, tabs, console, network, wait, navigate, resize); clicking, typing and uploads still ask. An owner-written `browser` server is never touched; `browser.dedicated.enabled: false` removes AStack's.
+- Safety in the proxy: the tools that run arbitrary code in the page (`browser_evaluate`, `browser_run_code_unsafe`) are hidden and refused unless `browser.dedicated.allow_code: true`, and every tool result starts with a note that page content is untrusted data, never instructions.
+- Setup fetches the pinned Playwright MCP package ahead of the first session (optional stage `browser`; `--no-browser` skips it).
+- `astack browser dedicated status|start [url]|stop`; `astack browser run … --profile dedicated` runs a flow in a new tab of the same signed-in window (`openTab` in `cdp-client.mjs`).
+- Contract (Browser Protocol): use the project's own browser for web UI work, the owner types passwords, screenshot and approval before any commit click.
+- Configuration `browser.dedicated` (enabled, profile, port, headless, window, caps, args, binary); `ASTACK_BROWSER_HEADLESS=1` hides the window.
+- The active-memory guard: a "without approval" phrase overrides a gate such as "after review".
+- New suite `tests/verify-dedicated-browser.mjs`; `ASTACK_E2E_BROWSER=1` also drives a real Chrome through Playwright MCP.
+
 ## 3.3.0 — Living memory and right-sized teams
 
 Inspired by Letta (agent-managed memory) and CrewAI / Agency Swarm (delegation and team design). Additive: no stored record changes shape, no migration rewrites data, and every 3.2.0 memory file is read as it is.

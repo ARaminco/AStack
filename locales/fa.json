@@ -322,7 +322,12 @@
       "artifacts": "شواهد ثبت‌شده ({count}):",
       "approvalNeeded": "اجرا پیش از «{action}» متوقف شد و منتظر تأیید مالک است.",
       "evidenceVerify": "بسته شواهد {bundle}: {entries} رکورد — یکپارچگی {intact}",
-      "unknownAction": "فرمان ناشناخته برای browser: {action}"
+      "unknownAction": "فرمان ناشناخته برای browser: {action}",
+      "dedicatedStarted": "مرورگر اختصاصی پروژه روی 127.0.0.1:{port} باز شد (پروفایل {profile}). یک بار وارد حساب‌ها شوید؛ اجراهای بعدی و ابزارهای Playwright همین پنجره را به کار می‌برند.",
+      "dedicatedRunning": "مرورگر اختصاصی پروژه از قبل روی 127.0.0.1:{port} باز است (پروفایل {profile}).",
+      "dedicatedStopped": "مرورگر اختصاصی روی درگاه {port} بسته شد؛ پروفایل و ورودها می‌مانند.",
+      "dedicatedNotStopped": "چیزی بسته نشد: {reason}.",
+      "dedicatedStatus": "مرورگر اختصاصی پروژه: {state} · درگاه {port} · پروفایل {profile} · {playwright} · مرورگر {binary}"
     },
     "mission": {
       "listTitle": "مأموریت‌ها ({count}):",
