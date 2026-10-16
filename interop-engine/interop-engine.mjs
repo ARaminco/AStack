@@ -21,12 +21,16 @@ export const MCP_SERVER_ID = "astack";
 // The project's dedicated browser (Playwright MCP over CDP, 3.4.0). An entry
 // with this name that does not run astack-browser-mcp is the owner's own and
 // is never touched.
-export const BROWSER_SERVER_ID = "browser";
+export const BROWSER_SERVER_ID = "astack-browser";
 const BROWSER_MARKER = "astack-browser-mcp";
+// A Playwright MCP server the owner already runs (for example "browser" on a
+// shared CDP port) is the project's browser: AStack then adds none of its own,
+// for Claude Code or Codex, so both runtimes stay on one window.
+const PLAYWRIGHT_MARKER = /@playwright\/mcp|playwright-mcp/i;
 // Browser tools that only look: allowed without a prompt. Clicking, typing,
 // uploading and running code still ask, so a commit step always stops.
 export const BROWSER_READ_TOOLS = [
-  "browser_snapshot", "browser_take_screenshot", "browser_tabs", "browser_console_messages",
+  "browser_snapshot", "browser_take_screenshot", "browser_console_messages",
   "browser_network_requests", "browser_wait_for", "browser_navigate", "browser_navigate_back", "browser_resize"
 ];
 const HOOK_MARKER = "interop hook";
@@ -251,29 +255,48 @@ export class InteropEngine {
   plannedMcpJson(current) {
     const next = current ?? {};
     const servers = { ...(next.mcpServers ?? {}), [MCP_SERVER_ID]: { type: "stdio", ...this.mcpServer() } };
-    const existing = servers[BROWSER_SERVER_ID];
-    const ours = !existing || JSON.stringify(existing).includes(BROWSER_MARKER);
-    if (ours && this.browserEnabled()) {
+    // Entries of ours under any name (a 3.4 pre-release used "browser") are
+    // dropped and written again only where AStack manages the browser.
+    for (const [name, entry] of Object.entries(servers)) {
+      if (JSON.stringify(entry).includes(BROWSER_MARKER)) {
+        delete servers[name];
+      }
+    }
+    if (this.browserManagedFor(servers) && !this.codexOwnsBrowser()) {
       servers[BROWSER_SERVER_ID] = { type: "stdio", ...this.browserServer() };
-    } else if (existing && ours && !this.browserEnabled()) {
-      delete servers[BROWSER_SERVER_ID];
     }
     next.mcpServers = servers;
     return next;
   }
 
-  /** True when .mcp.json's browser entry is (or will be) AStack's own. */
-  browserManaged() {
+  /** AStack's browser is wired unless it is off or the owner runs Playwright already. */
+  browserManagedFor(servers = {}) {
     if (!this.browserEnabled()) {
       return false;
     }
+    return !Object.values(servers ?? {}).some((entry) => {
+      const text = JSON.stringify(entry);
+      return !text.includes(BROWSER_MARKER) && PLAYWRIGHT_MARKER.test(text);
+    });
+  }
+
+  /** True when .mcp.json's browser entry is (or will be) AStack's own. */
+  browserManaged() {
     try {
-      const current = readJson(this.path(".mcp.json"), {});
-      const entry = current?.mcpServers?.[BROWSER_SERVER_ID];
-      return !entry || JSON.stringify(entry).includes(BROWSER_MARKER);
+      const current = existsSync(this.path(".mcp.json")) ? readJson(this.path(".mcp.json"), {}) : {};
+      if (!this.browserManagedFor(current?.mcpServers ?? {})) {
+        return false;
+      }
     } catch {
       return false;
     }
+    return !this.codexOwnsBrowser();
+  }
+
+  /** An owner's Playwright server declared only for Codex counts too. */
+  codexOwnsBrowser() {
+    const path = this.path(".codex", "config.toml");
+    return existsSync(path) && PLAYWRIGHT_MARKER.test(outsideManagedBlock(readFileSync(path, "utf8")));
   }
 
   mergeHooks(hooks, event, entry) {
@@ -295,11 +318,17 @@ export class InteropEngine {
       hooks: [{ type: "command", command: this.claudeHookCommand("session-end"), timeout: 30 }]
     });
     next.hooks = hooks;
+    // Our enable and allow entries exist only while AStack manages the
+    // browser; they are removed otherwise, so they can never carry over to a
+    // server the owner adds later.
     const browser = this.browserManaged();
-    next.enabledMcpjsonServers = [...new Set([...(next.enabledMcpjsonServers ?? []), MCP_SERVER_ID, ...(browser ? [BROWSER_SERVER_ID] : [])])];
+    const ownAllow = (entry) => String(entry).startsWith("mcp__" + BROWSER_SERVER_ID + "__");
+    const enabled = (next.enabledMcpjsonServers ?? []).filter((name) => name !== BROWSER_SERVER_ID);
+    next.enabledMcpjsonServers = [...new Set([...enabled, MCP_SERVER_ID, ...(browser ? [BROWSER_SERVER_ID] : [])])];
     const permissions = next.permissions ?? {};
     const browserReads = browser ? BROWSER_READ_TOOLS.map((tool) => "mcp__" + BROWSER_SERVER_ID + "__" + tool) : [];
-    next.permissions = { ...permissions, allow: [...new Set([...(permissions.allow ?? []), "mcp__" + MCP_SERVER_ID, ...browserReads])] };
+    const keptAllow = (permissions.allow ?? []).filter((entry) => !ownAllow(entry));
+    next.permissions = { ...permissions, allow: [...new Set([...keptAllow, "mcp__" + MCP_SERVER_ID, ...browserReads])] };
     return next;
   }
 
@@ -326,14 +355,13 @@ export class InteropEngine {
 
   /** The browser server inside the managed block, unless the owner declared one. */
   codexBrowserLines(current) {
-    if (!this.browserEnabled()) {
+    if (!this.browserManaged()) {
       return [];
     }
-    const text = current ?? "";
-    const begin = text.indexOf(TOML_BEGIN);
-    const end = text.indexOf(TOML_END);
-    const outside = begin !== -1 && end > begin ? text.slice(0, begin) + text.slice(end + TOML_END.length) : text;
-    if (new RegExp("^\\s*\\[mcp_servers\\." + BROWSER_SERVER_ID + "\\]\\s*$", "m").test(outside)) {
+    // Any owner definition of the same key, in any TOML shape, wins: two
+    // definitions would make Codex reject the whole file.
+    const outside = outsideManagedBlock(current ?? "");
+    if (/astack-browser/.test(outside) || PLAYWRIGHT_MARKER.test(outside)) {
       return [];
     }
     const server = this.browserServer();
@@ -810,6 +838,13 @@ export class InteropEngine {
       parity: runtimes["claude-code"].instructions && runtimes.codex.instructions && !pending.length
     };
   }
+}
+
+/** TOML text outside the managed astack block. */
+function outsideManagedBlock(text) {
+  const begin = text.indexOf(TOML_BEGIN);
+  const end = text.indexOf(TOML_END);
+  return begin !== -1 && end > begin ? text.slice(0, begin) + text.slice(end + TOML_END.length) : text;
 }
 
 /** browser.dedicated from the core's configuration, or the defaults. */

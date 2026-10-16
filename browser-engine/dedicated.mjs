@@ -102,11 +102,31 @@ export class DedicatedBrowser {
     return ["lockfile", "SingletonLock", "SingletonSocket"].some((name) => existsSync(join(dir, name)));
   }
 
+  /**
+   * Ours: the port answers, the profile is locked, and the browser process
+   * AStack started (when it recorded one) is still alive — a stale lock left
+   * by a crash next to a foreign browser on the same port is not ours.
+   */
+  owns(state, version) {
+    if (!version || !this.profileInUse()) {
+      return false;
+    }
+    if (!state?.pid) {
+      return true;
+    }
+    try {
+      process.kill(state.pid, 0);
+      return true;
+    } catch (error) {
+      return error.code === "EPERM";
+    }
+  }
+
   async status() {
     const state = this.readState();
     const port = state?.port ?? this.preferredPort();
     const version = await this.endpoint(port);
-    const ours = Boolean(version) && this.profileInUse();
+    const ours = this.owns(state, version);
     return {
       enabled: this.config.enabled !== false,
       running: ours,
@@ -130,7 +150,7 @@ export class DedicatedBrowser {
    */
   async reservePort() {
     const state = this.readState();
-    if (state?.port && (await this.endpoint(state.port)) && this.profileInUse()) {
+    if (state?.port && this.owns(state, await this.endpoint(state.port))) {
       return state.port;
     }
     const wanted = state?.port ?? this.preferredPort();

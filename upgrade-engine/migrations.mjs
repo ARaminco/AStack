@@ -221,6 +221,48 @@ export const migrations = [
       writeFileSync(path, current.replace(/\s*$/, "\n") + rules.join("\n") + "\n", "utf8");
       return "added " + rules.length + " ignore rules for 3.0 state";
     }
+  },
+  {
+    id: "2026.10-browser-dedicated-config",
+    description: "Show the project's own browser in astack.config.yaml, so it can be seen and turned off (3.4.0).",
+    appliesTo: (root) => {
+      const path = join(root, "astack.config.yaml");
+      if (!existsSync(path)) {
+        return false;
+      }
+      const current = readFileSync(path, "utf8");
+      return /^browser:\s*$/m.test(current) && !/^\s+dedicated:\s*$/m.test(current);
+    },
+    run: (root) => {
+      // Only lines are added, under the existing browser section; nothing the
+      // owner wrote is changed.
+      const path = join(root, "astack.config.yaml");
+      const current = readFileSync(path, "utf8");
+      const newline = current.includes("\r\n") ? "\r\n" : "\n";
+      const lines = current.split(/\r?\n/);
+      const start = lines.findIndex((line) => /^browser:\s*$/.test(line));
+      let end = start + 1;
+      while (end < lines.length && (/^\s+\S/.test(lines[end]) || !lines[end].trim()) && !/^\S/.test(lines[end])) {
+        end += 1;
+      }
+      while (end > start + 1 && !lines[end - 1].trim()) {
+        end -= 1;
+      }
+      const block = [
+        "  # The project's own browser (3.4.0): Playwright MCP \"astack-browser\" attached",
+        "  # to a persistent Chrome profile on a stable per-project port.",
+        "  dedicated:",
+        "    enabled: true",
+        "    profile: .astack/browser/dedicated/profile",
+        "    headless: false",
+        "    window: \"1440,1000\"",
+        "    caps: \"vision,pdf\"",
+        "    allow_code: false"
+      ];
+      lines.splice(end, 0, ...block);
+      writeFileSync(path, lines.join(newline), "utf8");
+      return "added browser.dedicated to astack.config.yaml";
+    }
   }
 ];
 
