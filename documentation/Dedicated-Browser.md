@@ -80,7 +80,7 @@ browser:
     port: null                    # null = derived from the project path
     headless: false               # ASTACK_BROWSER_HEADLESS=1 also hides it
     window: "1440,1000"
-    caps: "vision,pdf"
+    caps: "pdf"                   # "vision,pdf" adds coordinate clicks (each needs approval)
     args: []                      # extra Chrome flags, e.g. a proxy PAC
     binary: null                  # else Chrome/Edge/Chromium is found
     allow_code: false             # true exposes browser_evaluate / run_code
