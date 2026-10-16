@@ -36,6 +36,8 @@ assert.equal(judgeEdit(null, frozen, "/p").decision, "deny", "a freeze fails clo
 assert.equal(judgeEdit("x.ts", { corrupt: true }, "/p").decision, "deny", "an unreadable state fails closed");
 assert.equal(judgeEdit(".claude/settings.json", {}, "/p").decision, "ask", "editing hooks and permissions asks");
 assert.equal(judgeEdit(".astack/guard/state.json", {}, "/p").decision, "ask", "editing the guard's state asks");
+assert.equal(judgeEdit(".astack/approvals/AP-1.json", {}, "/p").decision, "deny", "an agent never writes an approval record");
+assert.equal(decide({ tool_name: "Write", tool_input: { file_path: "/p/.astack/approvals/AP-2.json" } }, { state: {}, projectDir: "/p" }).decision, "deny");
 assert.equal(decide({ tool_name: "Bash", tool_input: { command: "pm2 kill" } }, { state: { enabled: false } }).decision, "allow", "guard off lets everything through");
 assert.equal(decide({ tool_name: "PowerShell", tool_input: { command: "Remove-Item -Recurse -Force C:\\" } }, { state: {} }).decision, "deny");
 assert.equal(decide({ tool_name: "Read", tool_input: { file_path: "/etc/passwd" } }, { state: frozen }).decision, "allow", "reading is never blocked");

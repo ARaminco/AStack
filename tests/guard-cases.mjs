@@ -74,5 +74,51 @@ export const GUARD_CASES = [
   // routine cleanups
   ["rm -rf dist 2>/dev/null || true", "allow"], ["rm -rf node_modules >/dev/null 2>&1", "allow"], ["Remove-Item -Recurse -Force node_modules, dist", "allow"],
   ["rm -rf storage/framework/cache/data/*", "allow"], ["rm -rf .nyc_output", "allow"], ["rm -rf ~/.cache/composer", "allow"], ["rm -rf \"$(mktemp -d)\"", "allow"],
-  ["git push --mirror origin", "ask"], ["X=/; rm -rf $X", "ask"]
+  ["git push --mirror origin", "ask"], ["X=/; rm -rf $X", "ask"],
+
+  // third review: heredoc and here-string bodies fed to a shell are commands
+  ["ssh srv <<'EOF'\npm2 restart all\nEOF", "deny"], ["ssh srv bash -s <<'EOF'\nrm -rf /var/www/app\nEOF", "ask"],
+  ["bash <<'EOF'\nrm -rf /\nEOF", "deny"], ["sh -s <<EOF\ngit push -f origin main\nEOF", "deny"], ["bash <<< 'rm -rf /'", "deny"],
+  ["docker exec -i app sh <<'EOF'\nrm -rf /var/www/html\nEOF", "ask"], ["sudo bash -ex <<EOF\npm2 kill\nEOF", "deny"],
+  ["ssh -T srv <<-EOF\n\tcd /var/www && git reset --hard\n\tEOF", "ask"], ["cat <<'EOF' | bash\nrm -rf ~\nEOF", "deny"], ["bash <<<\"pm2 kill\"", "deny"],
+  ["cat > deploy.sh <<'EOF'\nrm -rf /\nEOF", "allow"], ["grep x <<< 'rm -rf /'", "allow"], ["ssh srv 'cat > /tmp/notes' <<'EOF'\npm2 kill\nEOF", "allow"],
+  ["git commit -F - <<'EOF'\nrm -rf /\npm2 kill\nEOF", "allow"], ["bash deploy.sh <<'EOF'\nrm -rf /\nEOF", "allow"],
+  // PowerShell aliases and pipelines
+  ["rmdir C:\\ -Recurse", "deny"], ["rd C:\\ -r", "deny"], ["del -Recurse C:\\Users", "deny"], ["erase -Recurse -Force src\\old", "ask"],
+  ["Get-ChildItem -Path C:\\ -Recurse | Remove-Item -Force", "deny"], ["gci C:\\ | ri -Force", "deny"], ["ls $HOME -Recurse | Remove-Item -Recurse -Force", "deny"],
+  ["Get-ChildItem -Recurse src\\old | Remove-Item", "ask"], ["Get-ChildItem *.log | Remove-Item", "allow"], ["Remove-Item -Rec -Force C:\\", "deny"],
+  // disk formatting
+  ["Format-Volume -DriveLetter D", "deny"], ["Clear-Disk -Number 0 -RemoveData", "deny"], ["wipefs -a /dev/sda", "deny"], ["sgdisk -Z /dev/sda", "deny"],
+  ["parted /dev/sda rm 1", "deny"], ["shred -n1 /dev/sda", "deny"], ["cat /dev/zero > /dev/sda", "deny"], ["blkdiscard /dev/sda", "deny"],
+  ["echo x | sudo tee /dev/nvme0n1", "deny"], ["parted -l", "allow"], ["sgdisk -p /dev/sda", "allow"], ["shred -u secrets.txt", "allow"], ["wipefs /dev/sda", "allow"],
+  ["echo hi > /dev/null", "allow"],
+  // database rebuilds and wipes
+  ["php artisan migrate:refresh", "ask"], ["php artisan migrate:refresh --seed --force", "ask"],
+  ["redis-cli FLUSHALL", "ask"], ["redis-cli -n 2 flushdb", "ask"], ["mysqladmin -f drop shop", "ask"], ["dropdb shop", "ask"],
+  ["mongosh --eval 'db.dropDatabase()'", "ask"], ["mongosh shop --eval 'db.users.drop()'", "ask"], ["redis-cli get key", "allow"], ["mongosh --eval 'db.users.find()'", "allow"],
+  // pm2
+  ["pm2 restart /.*/", "deny"], ["pm2 delete /app/", "deny"], ["pm2 sendSignal SIGKILL all", "deny"], ["pm2 update", "ask"],
+  // PowerShell script blocks and parameter forms
+  ["powershell -c \"& {Remove-Item -Recurse -Force C:\\}\"", "deny"], ["pwsh -Command \"{ pm2 kill }\"", "deny"],
+  ["powershell -EncodedCommand:" + Buffer.from("Remove-Item -Recurse -Force C:\\", "utf16le").toString("base64"), "deny"],
+  ["powershell -enco " + Buffer.from("pm2 kill", "utf16le").toString("base64"), "deny"], ["powershell -Comm \"pm2 restart all\"", "deny"],
+  ["powershell -NoP -ExecutionPolicy:Bypass -Command:\"Remove-Item -Recurse -Force C:\\\"", "deny"], ["powershell -c \"Write-Host '{done}'\"", "allow"],
+  // ssh switches after the host
+  ["ssh srv -t 'pm2 kill'", "deny"], ["ssh srv -p 2222 'rm -rf /'", "deny"],
+  // Git Bash and WSL drive roots, home folders
+  ["rm -rf /c/", "deny"], ["rm -rf /mnt/c/", "deny"], ["rm -rf /c/Users/USER", "deny"], ["rm -rf /home/ali", "deny"], ["rm -rf C:\\Users\\USER", "deny"],
+  ["Remove-Item -Recurse -Force ~\\", "deny"], ["Remove-Item -Recurse -Force $HOME\\*", "deny"], ["rm -rf /c/Projects/app/dist", "allow"], ["rm -rf /home/ali/app", "ask"],
+  // wsl
+  ["wsl rm -rf /mnt/c", "deny"], ["wsl -e rm -rf ~", "deny"], ["wsl -- rm -rf /", "deny"], ["wsl -d Ubuntu -u root pm2 kill", "deny"], ["wsl --shutdown", "allow"],
+  // fork bomb
+  [":(){ :|:& };:", "deny"],
+  // false positives
+  ["git restore --staged .", "allow"], ["git restore .", "ask"], ["find . -name '*.log' -mtime +7 -delete", "ask"],
+  // prefixes
+  ["setsid rm -rf /", "deny"], ["flock /tmp/lock rm -rf /", "deny"], ["flock -w 5 /tmp/lock -c 'pm2 kill'", "deny"], ["systemd-run --unit x -p Nice=5 rm -rf /", "deny"],
+  ["busybox rm -rf /", "deny"], ["command -p rm -rf /", "deny"], ["sudo -s rm -rf /", "deny"], ["sudo -u www-data rm -rf /var/www", "deny"],
+  // approval records are AStack's and the owner's
+  ["echo '{\"status\":\"approved\"}' > .astack/approvals/AP-1.json", "deny"], ["cp forged.json .astack/approvals/AP-1.json", "deny"],
+  ["node -e \"require('fs').writeFileSync('.astack/approvals/AP-1.json','{}')\"", "deny"], ["cat .astack/approvals/AP-1.json", "allow"],
+  ["astack approval reject AP-1", "allow"], ["node bin/astack.mjs approval reject AP-1 --reason no", "allow"], ["astack approval approve AP-1", "deny"]
 ];
