@@ -285,6 +285,56 @@ if (process.env.ASTACK_E2E_BROWSER === "1") {
   assert.match((await key("Enter")).result.content[0].text, stoppedText, "an approval does not travel to another page");
   await new Promise((resolveWait) => setTimeout(resolveWait, 500));
   assert.deepEqual(hits, ["POST /commit/pay-now"], "the only commit the page saw is the approved one");
+
+  // The rest of the review's list, on a second local page.
+  const hits2 = [];
+  const html2 = "<!doctype html><title>more</title>" +
+    "<a href=\"/commit/checkout\">Checkout</a>" +
+    "<form method=\"post\" action=\"/commit/sabt\"><input type=\"submit\" value=\"ثبت نهایی\"></form>" +
+    "<button onclick=\"fetch('/commit/arabic',{method:'POST'})\">إرسال</button>" +
+    "<button title=\"Delete\" onclick=\"fetch('/commit/svg-delete',{method:'POST'})\"><svg width=10 height=10></svg></button>" +
+    "<label for=\"go\">Go</label><form method=\"post\" action=\"/commit/label\"><button id=\"go\">Pay now</button></form>" +
+    "<div id=\"host\"></div><script>document.getElementById('host').attachShadow({mode:'open'}).innerHTML='<button onclick=\\'fetch(\\\"/commit/shadow\\\",{method:\\\"POST\\\"})\\'>Pay now in shadow</button>';</script>" +
+    "<input placeholder=\"Password\" type=\"password\" oninput=\"fetch('/typed/placeholder',{method:'POST'})\">" +
+    "<input aria-label=\"PIN\" oninput=\"fetch('/typed/pin2',{method:'POST'})\">" +
+    "<form method=\"post\" action=\"/commit/enter\"><input aria-label=\"Name\" name=\"n\"></form>" +
+    "<textarea aria-label=\"Chat\" onkeydown=\"if(event.key==='Enter'&&event.ctrlKey)fetch('/commit/chat',{method:'POST'})\"></textarea>";
+  const site2 = createServer((request, response) => {
+    if (request.url.startsWith("/commit/") || request.url.startsWith("/typed/")) {
+      hits2.push(request.method + " " + request.url.split("?")[0]);
+    }
+    response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    response.end(html2);
+  });
+  await new Promise((resolveListen) => site2.listen(0, "127.0.0.1", resolveListen));
+  const page2 = "http://127.0.0.1:" + site2.address().port + "/";
+  await call("tools/call", { name: "browser_navigate", arguments: { url: page2 } });
+  const snap2 = JSON.stringify((await call("tools/call", { name: "browser_snapshot", arguments: {} })).result).replace(/\\"/g, '"');
+  const ref2 = (pattern) => new RegExp(pattern + "[^\\[]*\\[ref=([A-Za-z0-9_-]+)\\]").exec(snap2)?.[1];
+  const r = {
+    checkout: ref2('link "Checkout"'), sabt: ref2('button "ثبت نهایی"'), arabic: ref2('button "إرسال"'), svg: ref2('button "Delete"'),
+    label: ref2('button "Go"') ?? ref2('button "Pay now"'), shadow: ref2('button "Pay now in shadow"'),
+    placeholder: ref2('textbox "Password"'), pin: ref2('textbox "PIN"'), name: ref2('textbox "Name"'), chat: ref2('textbox "Chat"')
+  };
+  for (const [label, value] of Object.entries(r)) {
+    assert.ok(value, "snapshot names " + label + ": " + snap2.slice(0, 400));
+  }
+  for (const [label, target] of [["checkout link", r.checkout], ["ثبت نهایی", r.sabt], ["Arabic send", r.arabic], ["svg delete", r.svg], ["labelled pay", r.label], ["shadow pay", r.shadow]]) {
+    assert.match((await click(target, "a control")).result.content[0].text, stoppedText, label + " is a commit");
+  }
+  assert.match((await typeInto(r.placeholder, "box", "x")).result.content[0].text, /typed by the owner/, "placeholder-only password field");
+  assert.match((await typeInto(r.pin, "box", "1234")).result.content[0].text, /typed by the owner/, "a field named PIN");
+  assert.match((await call("tools/call", { name: "browser_fill_form", arguments: { fields: [{ name: "code", type: "textbox", target: r.placeholder, value: "x" }] } })).result.content[0].text, /typed by the owner/, "fill_form into a password field");
+  await click(r.placeholder, "box");
+  assert.match((await key("7")).result.content[0].text, /typed by the owner/, "no keys into a focused password field");
+  assert.match((await call("tools/call", { name: "browser_type", arguments: { element: "Name", target: r.name, text: "Bob\n", slowly: true } })).result.content[0].text, stoppedText, "typed text with a line break is a submit");
+  await click(r.name, "Name");
+  for (const value of ["Shift+Enter", "Control+Enter", "\n", "\r"]) {
+    assert.match((await key(value)).result.content[0].text, stoppedText, value + " is a commit");
+  }
+  await new Promise((resolveWait) => setTimeout(resolveWait, 500));
+  assert.deepEqual(hits2, [], "the second page saw no commit and no typed secret: " + hits2.join(", "));
+  site2.close();
   site.close();
   child.stdin.end();
   await new DedicatedBrowser(repoRoot).stop();
