@@ -356,7 +356,8 @@
       "pendingTitle": "Waiting for the owner ({count}):",
       "decided": "Approval {id} → {state} (receipt {receipt})",
       "requested": "Approval requested: {id} for {action}",
-      "unknownAction": "Unknown approval action: {action}"
+      "unknownAction": "Unknown approval action: {action}",
+      "needsPerson": "A browser commit is approved by a person: run this in your own terminal, or approve it in the console or the gateway. An agent's shell cannot approve it."
     },
     "audit": {
       "listTitle": "Audit trail ({count} records):",

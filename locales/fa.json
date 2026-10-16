@@ -356,7 +356,8 @@
       "pendingTitle": "در انتظار تصمیم مالک ({count}):",
       "decided": "تأیید {id} → {state} (رسید {receipt})",
       "requested": "درخواست تأیید ثبت شد: {id} برای {action}",
-      "unknownAction": "فرمان ناشناخته برای approval: {action}"
+      "unknownAction": "فرمان ناشناخته برای approval: {action}",
+      "needsPerson": "تأیید کلیک‌های ثبت و پرداخت مرورگر کار یک انسان است: این فرمان را در ترمینال خودتان اجرا کنید یا از کنسول یا درگاه تأیید کنید. ایجنت نمی‌تواند آن را تأیید کند."
     },
     "audit": {
       "listTitle": "ردّ ممیزی ({count} رکورد):",
