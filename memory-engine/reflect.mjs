@@ -41,6 +41,12 @@ export function reflect({ facets, blocks, scope = null, limit = 8, threshold = 0
     const candidates = rank(live, target, threshold).slice(0, limit);
     const id = target + "/" + KEY_FACTS_LABEL;
     const current = blocks.get(id);
+    const last = blocks.history(id).at(-1);
+    if (!current && last?.deleted && last.source !== REFLECT_SOURCE) {
+      report.scopes.push({ scope: target, block: id, status: "skipped", reason: "retired by " + last.source + "; restore it to let reflection maintain it again" });
+      report.skipped += 1;
+      continue;
+    }
     if (current && current.source !== REFLECT_SOURCE) {
       report.scopes.push({ scope: target, block: id, status: "skipped", reason: "edited by " + current.source + "; reflection never overwrites a manual edit" });
       report.skipped += 1;

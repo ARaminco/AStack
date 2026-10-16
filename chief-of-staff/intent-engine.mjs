@@ -6,17 +6,21 @@ const VERBS = [
   { verb: "analyze", level: "L1", patterns: [/analy[sz]e|review|audit|assess|check|تحلیل|بازبینی|حسابرسی|ارزیابی|بررسی/] },
   { verb: "explain", level: "L1", patterns: [/explain|what is|status|tell me|توضیح|وضعیت|چیست|بگو/] },
   { verb: "draft", level: "L2", patterns: [/draft|prepare|write|compose|report|پیش ?نویس|تنظیم کن|بنویس|گزارش|آماده کن|تهیه کن/] },
-  { verb: "build", level: "L2", patterns: [/build|create|implement|develop|\bdesign (a|an|the)\b|بساز|ایجاد|پیاده ?سازی|توسعه|طراحی کن|راه ?اندازی کن|refactor|\b(fix|add)\b|رفع کن|اضافه کن|اصلاح کن|درست کن/] },
+  { verb: "build", level: "L2", patterns: [/build|create|implement|develop|\bdesign (a|an|the)\b|بساز|ایجاد|پیاده ?سازی|توسعه|طراحی کن|راه ?اندازی کن/] },
   { verb: "fill", level: "L3", patterns: [/fill|complete the form|enter|update|پر کن|تکمیل کن|وارد کن|به ?روزرسانی/] },
   { verb: "submit", level: "L4", patterns: [/submit|file it|send it|pay|transfer|delete|publish|ارسال کن|ثبت کن|ثبت نهایی|پرداخت|حذف کن|منتشر|سابمیت/] }
 ];
 
 const LEVELS = ["L0", "L1", "L2", "L3", "L4", "L5"];
 
-// Software work that changes the product (3.3.0): fixing, adding and
-// refactoring are building too.
+// Changing something that already exists (3.3.0): in software work it is
+// building; anywhere else it is a draft (a corrected contract, a note added
+// to a case file), never more.
+const EDIT_WORDS = /\b(fix|add|refactor|correct|revise|amend)\b|رفع کن|اضافه کن|اصلاح کن|درست کن|ویرایش کن/;
 const BUILD = /build|create|implement|develop|design|refactor|\b(fix|add)\b|بساز|ایجاد|پیاده ?سازی|توسعه|طراحی|رفع کن|اضافه کن|اصلاح کن|درست کن/;
-const FEATURE_WORDS = /\b(online |card )?pay(ments?)?\b|checkout|\blogin\b|\bsite\b|website|portal|پرداخت|درگاه|صفحه ?(ی )?ورود|ورود|سایت|پورتال/g;
+// Feature noun phrases of a product being built. Only these are set aside
+// before the verbs are read; a real "pay the invoice" keeps its L4.
+const FEATURE_PHRASES = /\b(online|card|in-app) payments?\b|\bpayment (page|gateway|module|form|flow|method|integration)s?\b|\bcheckout( page| flow)?\b|\b(login|sign-?in|sign-?up) (page|form|flow|screen)s?\b|درگاه پرداخت|پرداخت (آنلاین|اینترنتی|درون ?برنامه ?ای)|با پرداخت|صفحه ?(ی )?(ورود|پرداخت|ثبت ?نام)|فرم (ورود|پرداخت|ثبت ?نام)/g;
 
 const EXTERNAL = /portal|website|site|login|browser|url|http|سایت|پورتال|سامانه|لینک|ورود/;
 const PAST_REFERENCE = /same as|like last time|previously|again|as before|قبل|قبلا|دفعه قبل|همان ?طور|مثل قبل|دوباره/;
@@ -41,17 +45,28 @@ export class IntentEngine {
     const text = normalizeText(request ?? "");
     const tokens = uniqueTokens(request ?? "");
     const resolvedDomain = domain ?? this.domains?.detect(request)?.id ?? null;
-    // Building software: "online payment", "the login page" or "the site" are
-    // features of the thing being built, not a payment to make or a portal to
-    // visit.
+    // Building software: "online payment" or "the login page" are features of
+    // the thing being built, not a payment to make or a portal to visit.
     const building = resolvedDomain === "software" && BUILD.test(text);
-    const verbText = building ? text.replace(FEATURE_WORDS, " ") : text;
-    const matched = VERBS.map((entry, index) => ({ ...entry, index }))
-      .filter((entry) => entry.patterns.some((pattern) => pattern.test(verbText)))
-      .sort((a, b) => LEVELS.indexOf(b.level) - LEVELS.indexOf(a.level) || a.index - b.index);
+    const verbText = building ? text.replace(FEATURE_PHRASES, " ") : text;
+    const order = (a, b) => LEVELS.indexOf(b.level) - LEVELS.indexOf(a.level) || a.index - b.index;
+    let matched = VERBS.map((entry, index) => ({ ...entry, index }))
+      .filter((entry) => entry.patterns.some((pattern) => pattern.test(verbText)));
+    if (EDIT_WORDS.test(verbText)) {
+      const verb = building ? "build" : "draft";
+      if (!matched.some((entry) => entry.verb === verb)) {
+        const index = VERBS.findIndex((entry) => entry.verb === verb);
+        matched.push({ ...VERBS[index], index });
+      }
+    }
+    if (building) {
+      // Building wins over drafting at the same level.
+      matched = matched.filter((entry) => entry.verb !== "draft");
+    }
+    matched.sort(order);
     const primary = matched[0] ?? { verb: "explain", level: "L1" };
     const stepHints = (text.match(MULTI_STEP) ?? []).length;
-    const external = EXTERNAL.test(building ? verbText : text);
+    const external = EXTERNAL.test(verbText);
     const past = PAST_REFERENCE.test(text);
     const deadline = TIME_HINT.test(text);
     const words = tokens.length;

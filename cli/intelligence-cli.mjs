@@ -286,7 +286,10 @@ function runBlockCommand({ memory, t, tokens }) {
   const [action = "list", ...rest] = tokens;
   const { positionals, flags } = parseArgs(rest);
   const blocks = memory.blocks;
-  const source = flags.source ? String(flags.source) : "cli";
+  // A caller can never pose as the reflect pass or the agent engine: those
+  // sources are what decide whether an automatic pass may rewrite a block.
+  const requested = flags.source ? String(flags.source) : "cli";
+  const source = ["memory-reflect", "agent-engine"].includes(requested) ? "cli:" + requested : requested;
   const force = Boolean(flags.force);
   const [id, ...words] = positionals;
   const text = words.join(" ");

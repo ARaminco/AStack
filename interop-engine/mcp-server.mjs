@@ -26,8 +26,37 @@ const text = (description) => ({ type: "string", description });
 const number = (description) => ({ type: "number", description });
 const list = (description) => ({ type: "array", items: { type: "string" }, description });
 
+// One token per option ("--flag=value"): the parser splits at the first "=",
+// so a value that starts with "--" stays a value and can never become an
+// option of its own (3.3.0).
 function optional(flag, value) {
-  return value === undefined || value === null || value === "" ? [] : ["--" + flag, String(value)];
+  return value === undefined || value === null || value === "" ? [] : ["--" + flag + "=" + String(value)];
+}
+
+const MEMORY_FACETS = ["identity", "semantic", "episodic", "project", "entity", "relationship", "procedural", "decision", "preference", "working", "calibration", "lesson"];
+const RECORD_ID = /^[a-z]{3}-[a-z0-9-]{4,64}$/;
+
+/** Shared checks for the memory tools' optional fields. */
+function memoryFieldProblem(input) {
+  if (input.facet !== undefined && input.facet !== "" && !MEMORY_FACETS.includes(String(input.facet))) {
+    return "Invalid facet: " + MEMORY_FACETS.join(", ") + ".";
+  }
+  for (const key of ["project", "domain", "case", "agent"]) {
+    const problem = plainIdProblem(key, input[key]);
+    if (problem) {
+      return problem;
+    }
+  }
+  for (const key of ["importance", "limit", "budget"]) {
+    const value = input[key];
+    if (value !== undefined && value !== null && value !== "" && !/^\d+(\.\d+)?$/.test(String(value).trim())) {
+      return "Invalid " + key + ": a non-negative number.";
+    }
+  }
+  if (input.asOf !== undefined && input.asOf !== "" && (!/^\d{4}-\d{2}-\d{2}/.test(String(input.asOf)) || Number.isNaN(Date.parse(String(input.asOf))))) {
+    return "Invalid asOf: an ISO date such as 2026-10-01.";
+  }
+  return null;
 }
 
 // Input checks for the online skill tools. An agent's value must never be
@@ -129,7 +158,7 @@ export const mcpTools = [
       },
       required: ["query"]
     },
-    validate: (input) => scopeListProblem(input.scope) ?? plainIdProblem("case", input.case),
+    validate: (input) => scopeListProblem(input.scope) ?? memoryFieldProblem(input),
     args: (input) => [
       "memory", "search",
       ...optional("facet", input.facet), ...optional("project", input.project),
@@ -155,14 +184,15 @@ export const mcpTools = [
       },
       required: ["title"]
     },
-    validate: (input) => plainIdProblem("case", input.case) ?? (input.entities && String(input.entities).split(",").some((entry) => !SCOPE_ID.test("entity:" + entry.trim()))
+    validate: (input) => memoryFieldProblem(input) ?? (input.entities && String(input.entities).split(",").some((entry) => !SCOPE_ID.test("entity:" + entry.trim()))
       ? "Invalid entities: comma-separated ids like company:acme or person:john-miller."
       : null),
     args: (input, source) => [
-      "memory", "remember", String(input.title),
+      "memory", "remember",
       ...optional("body", input.body), ...optional("facet", input.facet), ...optional("project", input.project),
       ...optional("domain", input.domain), ...optional("case", input.case), ...optional("entities", input.entities),
-      ...optional("importance", input.importance), "--source", source
+      ...optional("importance", input.importance), "--source=" + source,
+      "--", String(input.title)
     ]
   },
   {
@@ -173,7 +203,8 @@ export const mcpTools = [
       properties: { id: text("Record id to supersede"), title: text("Corrected fact"), body: text("Optional detail") },
       required: ["id", "title"]
     },
-    args: (input) => ["memory", "supersede", String(input.id), "--title", String(input.title), ...optional("body", input.body)]
+    validate: (input) => (RECORD_ID.test(String(input.id ?? "")) ? null : "Invalid id: use a record id returned by astack_memory_search, e.g. sem-6a1c9f0b2d11."),
+    args: (input) => ["memory", "supersede", "--title=" + String(input.title), ...optional("body", input.body), "--", String(input.id)]
   },
   {
     name: "astack_memory_active",
@@ -187,7 +218,7 @@ export const mcpTools = [
         budget: number("Token cap, default 1200")
       }
     },
-    validate: (input) => plainIdProblem("project", input.project) ?? plainIdProblem("case", input.case) ?? plainIdProblem("agent", input.agent),
+    validate: (input) => memoryFieldProblem(input),
     args: (input) => [
       "memory", "active",
       ...optional("project", input.project), ...optional("case", input.case),
@@ -224,7 +255,16 @@ export const mcpTools = [
       if (input.action === "replace" && !String(input.old ?? "")) {
         return "The exact text to replace (old) is required.";
       }
-      return blockIdProblem(input.id) ?? onlineLimitProblem(input.limit);
+      const problem = blockIdProblem(input.id) ?? memoryFieldProblem({ limit: input.limit });
+      if (problem) {
+        return problem;
+      }
+      // The owner's and the system's blocks ride along in every session;
+      // only the owner writes them, from the CLI.
+      if (["set", "append", "replace"].includes(input.action) && /^(owner|system)\//.test(String(input.id))) {
+        return "Refused: owner/ and system/ blocks are written only by the owner (astack memory block … in a terminal).";
+      }
+      return null;
     },
     args: (input, source) => {
       const action = String(input.action);
@@ -232,10 +272,10 @@ export const mcpTools = [
         return ["memory", "block", "list", ...optional("scope", input.scope)];
       }
       if (action === "replace") {
-        return ["memory", "block", "replace", "--old=" + String(input.old), "--new=" + String(input.new ?? ""), "--source", source, "--", String(input.id)];
+        return ["memory", "block", "replace", "--old=" + String(input.old), "--new=" + String(input.new ?? ""), "--source=" + source, "--", String(input.id)];
       }
       if (action === "set" || action === "append") {
-        return ["memory", "block", action, ...optional("limit", input.limit), "--source", source, "--", String(input.id), String(input.text)];
+        return ["memory", "block", action, ...optional("limit", input.limit), "--source=" + source, "--", String(input.id), String(input.text)];
       }
       return ["memory", "block", action, "--", String(input.id)];
     }

@@ -14,7 +14,7 @@ Inspired by Letta (agent-managed memory) and CrewAI / Agency Swarm (delegation a
 - `astack memory active` / MCP `astack_memory_active` render the blocks of one engagement inside a token budget and name what was left out. The context router adds an "active memory" section (budget `activeMemory`, default 1200) and the session-start brief shows the owner's blocks.
 
 ### Task-scoped recall
-- `recall({ scope })`: under a project or case scope a record is recalled only when it belongs to that scope, or when it is unbound general knowledge (identity, semantic, entity, relationship, procedural, decision, preference, lesson, calibration). Records of another case or project never enter the context.
+- `recall({ scope })`: under a case scope a record bound to a different case is left out, under a project scope a record bound to a different project; everything else — including every unbound record that 3.2.0 or the markdown import wrote — stays recallable, and records bound to the scope rank higher. Records of another case or project never enter the context.
 - `astack memory search --case <id> | --scope project:<id>,case:<id>`, `astack memory remember --case <id> --entities a,b`, and the same `case` / `scope` / `entities` inputs on the MCP tools.
 - The context router scopes recall automatically when a request resolves to a project or a Case node in the knowledge graph.
 
@@ -29,6 +29,16 @@ Inspired by Letta (agent-managed memory) and CrewAI / Agency Swarm (delegation a
 - Specialists come from the 219-role catalog (`roles/enterprise-roles.json`, now used by the planner), including Persian spellings (لاراول → the Laravel engineer); everyday words such as "go live" never pick a specialist.
 - Each seat carries what it covers and its expected output; reviewers that are needed only sometimes are on-demand seats with a trigger (`TeamPlanner.escalate` brings one in); `form()` creates agents only for always-active seats. Plans state the process (solo, sequential, hierarchical), the delegation and handoff flows (always through the lead and the Chief of Staff) and the team cost next to the solo cost. `astack ask "<request>" --team` prints all of it.
 - The intent engine reads "fix", "add", «رفع کن», «اضافه کن» and «طراحی کن» as building work, and in software work treats "online payment", "login page" or "the site" as features of the product, not as a payment to make or a portal to visit.
+
+### Review fixes before release
+An independent review found one blocker and five should-fix items; each has a regression test in `tests/verify-memory-crew.mjs`.
+- **Old memory under a scope (blocker).** Scoped recall dropped unbound records (what `import-legacy` writes from `memory/cases/*.md`) and project-tagged case facts. A scope now excludes only conflicting bindings, as described above.
+- **Real payments keep L4.** Only feature noun phrases ("online payment", "payment gateway", "login page", «درگاه پرداخت», «صفحه ورود») are set aside in software work; "pay the invoice" is still a payment.
+- **MCP options are single tokens.** Every optional value travels as `--flag=value` and free text after `--`, so a value can never become an option; facet, project, domain, case, agent, numbers and dates are validated; `supersede` ids are checked.
+- **Agents never write `owner/` or `system/` blocks** over MCP, and `--force` on a read-only block is refused in unattended runs and over MCP. The instruction guard collapses whitespace and refuses role prefixes and "always … / … without approval" next to an irreversible action (English and Persian), while statements such as "never pay without approval" or "after owner approval" stay.
+- **Reflection** leaves a key-facts block the owner retired alone; **agent seeding** never overwrites goals someone else wrote; no caller can pose as the reflect pass or the agent engine.
+- Also: outside software "fix / add / اصلاح کن" is a draft, not a build; limits below 100 become 100; empty values are refused; line endings are normalised; lines evicted from agent blocks go to the semantic facet; restoring a removed read-only block needs `--force`; the case id is no longer listed twice in a scope; a backup survives an unreadable block file.
+- The interop and online-skill tests expect the single-token option form.
 
 ### Tests
 - New suite `tests/verify-memory-crew.mjs` (also `npm run test:memory`), including a check that a 3.2.0 memory store is read and left byte-for-byte unchanged by the new layer.

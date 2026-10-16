@@ -106,12 +106,12 @@ export class ContextRouter {
     // one case never fills the context of another.
     const cases = entities.filter((entity) => String(entity.type).toLowerCase() === "case").map((entity) => entity.id);
     const taskScope = matchedProject || cases.length
-      ? [
+      ? [...new Set([
           ...(matchedProject ? ["project:" + matchedProject.id] : []),
           ...cases,
           ...(cases.length ? entities.map((entity) => entity.id) : []),
           ...(cases.length ? related.map((entry) => entry.node.id) : [])
-        ]
+        ])]
       : null;
 
     const active = this.memory?.active?.({
