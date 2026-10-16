@@ -7,22 +7,25 @@
  * - deny: catastrophic commands and the owner's production rules (recursive
  *   delete or permission change of a root, home or system folder, force-push
  *   or delete of a protected branch, `pm2 … all`, `pm2 kill`, disk
- *   formatting, an agent granting an approval);
+ *   formatting or erasing, a fork bomb, an agent granting an approval or
+ *   writing an approval record);
  * - ask: destructive commands that are sometimes right (`git reset --hard`,
- *   `DROP TABLE`, `migrate:fresh`, recursive deletes outside build and temp
- *   folders, reboots, turning the guard off, writing the guard's state or
- *   Claude Code's settings …);
+ *   `DROP TABLE`, `migrate:fresh`, data wipes, recursive deletes outside build
+ *   and temp folders, reboots, turning the guard off, writing the guard's
+ *   state or Claude Code's settings …);
  * - freeze: while `astack guard freeze <dir>` is on, edits outside that folder
  *   are denied, and anything it cannot place is denied (fails closed).
  *
- * Commands are parsed, not pattern-matched: quotes, chains, groups, shell
- * keywords (if/for/while/case, functions), heredocs, command substitution
- * ($(…) and backticks), prefixes (sudo, env, timeout …) and wrappers (bash -c,
- * su -c, ssh, eval, docker/kubectl exec, PowerShell -Command/-EncodedCommand,
- * iex, Start-Process, cmd /c, xargs, find -exec, npx/pnpm/yarn exec,
- * echo … | sh) are unwrapped and every inner command is judged by its program
- * and arguments. A dangerous phrase that is only mentioned (echo, grep, a
- * commit message) is not a command and passes.
+ * Commands are parsed, not pattern-matched: quotes, chains, pipes, groups,
+ * shell keywords (if/for/while/case, functions), heredocs and here-strings
+ * (judged as commands when they feed a shell), command substitution ($(…) and
+ * backticks), prefixes (sudo, env, timeout, setsid, flock, systemd-run,
+ * busybox …) and wrappers (bash -c, su -c, ssh, eval, docker/kubectl exec,
+ * wsl, PowerShell -Command/-EncodedCommand, iex, Start-Process, cmd /c, xargs,
+ * find -exec, npx/pnpm/yarn exec, echo … | sh) are unwrapped and every inner
+ * command is judged by its program and arguments. A dangerous phrase that is
+ * only mentioned (echo, grep, a commit message, a heredoc for a program that
+ * is not a shell) is not a command and passes.
  *
  * It is a safety net against mistakes, not a sandbox: a script written to a
  * file and run later, `curl … | bash`, aliases and values hidden in variables
@@ -38,20 +41,101 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const stateDir = () => process.env.ASTACK_GUARD_STATE_DIR ?? join(root, ".astack", "guard");
 
 const PROTECTED_BRANCHES = new Set(["main", "master", "production", "prod"]);
-const ROOT_TARGETS = /^(\/|\/\*|~|~\/\*|\$home|\$\{home\}|\$home\/\*|\/home|\/home\/\*|\/root|\/etc|\/var|\/usr|\/bin|\/boot|\/opt|\/srv|\/lib|\/lib64|\/sbin|\/var\/www|\/var\/www\/\*|\/var\/lib|[a-z]:\\?\*?|\$env:userprofile|\$env:systemroot|%userprofile%|[a-z]:\\users|[a-z]:\\windows|[a-z]:\\program files)$/i;
+// Roots, homes and system folders, in POSIX, Git Bash (/c/…), WSL (/mnt/c/…)
+// and Windows spellings; "~\" and "$HOME\*" are PowerShell's.
+const ROOT_TARGETS = /^(\/|\/\*|~|~[\\/]\*?|\$home|\$\{home\}|\$home[\\/]\*?|\/home|\/home\/\*|\/home\/[^/]+(\/\*)?|\/users\/[^/]+(\/\*)?|\/root|\/etc|\/var|\/usr|\/bin|\/boot|\/opt|\/srv|\/lib|\/lib64|\/sbin|\/var\/www|\/var\/www\/\*|\/var\/lib|(\/mnt)?\/[a-z](\/\*)?|(\/mnt)?\/[a-z]\/(users|windows|program files)(\/[^/]+)?(\/\*)?|[a-z]:\\?\*?|\$env:userprofile([\\/]\*?)?|\$env:systemroot|%userprofile%|[a-z]:\\users(\\[^\\]+)?(\\\*)?|[a-z]:\\windows|[a-z]:\\program files)$/i;
+// Block devices: writing to one destroys a disk.
+const DISK_DEVICE = /^\/dev\/(sd|nvme|hd|xvd|vd|disk|rdisk|mmcblk|md\d|dm-|mapper\/)/i;
+// PowerShell accepts any unique prefix of a parameter, and -Name:value.
+const RECURSE = /^-r(e(c(u(r(se?)?)?)?)?)?(:\$true)?$/i;
+const FORK_BOMB = /([A-Za-z_:][\w:]*)\s*\(\)\s*\{\s*\1\s*\|\s*\1\s*&\s*;?\s*\}/;
+const HEREDOC = /<<-?\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\1([^\n]*)\n([\s\S]*?)\n\s*\2\s*(\n|$)/g;
+const HERE_STRING = /<<<\s*(?:'([^']*)'|"((?:[^"\\]|\\.)*)"|(\S+))/g;
+const PS_VALUE_PARAMS = ["-executionpolicy", "-windowstyle", "-version", "-outputformat", "-inputformat", "-configurationname", "-psconsolefile", "-settingsfile", "-workingdirectory", "-custompipename"];
+const LISTERS = new Set(["get-childitem", "gci", "ls", "dir", "get-item", "gi"]);
+const REMOVERS = new Set(["remove-item", "ri", "rm", "del", "erase", "rd", "rmdir"]);
+// Options that take a value, per prefix command, so the value is not taken
+// for the command it runs (`sudo -u www-data rm …`, but `sudo -s rm …`).
+const PREFIX_VALUES = {
+  sudo: ["-u", "-g", "-C", "-p", "-h", "-D", "-r", "-t", "-U", "-T", "--user", "--group", "--prompt", "--chdir"],
+  doas: ["-u", "-C"],
+  env: ["-u", "-C", "--unset", "--chdir"],
+  nice: ["-n", "--adjustment"],
+  ionice: ["-c", "-n", "-p", "--class", "--classdata", "--pid"],
+  exec: ["-a"],
+  stdbuf: ["-i", "-o", "-e"],
+  timeout: ["-s", "-k", "--signal", "--kill-after"],
+  watch: ["-n", "--interval"],
+  runuser: ["-u", "-g", "-G", "--user", "--group", "--supp-group"],
+  "systemd-run": ["-u", "--unit", "-p", "--property", "-E", "--setenv", "-M", "--machine", "-H", "--host", "--description", "--slice", "--uid", "--gid", "--working-directory", "--nice", "--service-type", "--on-calendar", "--on-active"],
+  nohup: [], command: [], builtin: [], chroot: [], setsid: []
+};
 const BUILD_LEAF = /^(node_modules|dist|build|out|\.next|\.nuxt|\.turbo|\.cache|\.parcel-cache|coverage|\.nyc_output|vendor|tmp|temp|__pycache__|\.pytest_cache|target|\.vite|\.svelte-kit|\.output)$/i;
 const SAFE_PREFIX = /^(\/tmp\/|\/var\/tmp\/|\$tmpdir\/|\$\{tmpdir\}\/|%temp%\\|\$env:temp\\|~\/\.cache\/|\$\(mktemp|storage\/framework\/|\.\/storage\/framework\/|bootstrap\/cache\/)/i;
 const LOCK_FILE = /(^|[\\/])(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|composer\.lock|bun\.lockb)$/i;
-const DB_CLIENTS = new Set(["mysql", "mariadb", "psql", "sqlite3", "sqlcmd", "mysqlsh", "clickhouse-client", "mongosh"]);
+const DB_CLIENTS = new Set(["mysql", "mariadb", "psql", "sqlite3", "sqlcmd", "mysqlsh", "clickhouse-client", "mongosh", "mongo"]);
 const KEYWORDS = new Set(["if", "then", "else", "elif", "fi", "do", "done", "while", "until", "!", "{", "}", "coproc", "function", "time", "esac", "in", "select"]);
 const READ_ONLY = new Set(["cat", "type", "get-content", "gc", "grep", "rg", "egrep", "fgrep", "less", "more", "head", "tail", "jq", "ls", "dir", "findstr", "select-string", "sls", "test-path", "stat", "wc", "diff", "git", "code", "echo", "printf"]);
 const SHELLS = new Set(["sh", "bash", "zsh", "dash", "ksh"]);
 
 // ------------------------------------------------------------------ parsing
 
-/** Heredoc bodies are data, never commands. */
+/**
+ * Heredoc bodies leave the command line: they are data for the program that
+ * receives them. A body fed to a shell is judged separately (see heredocs).
+ */
 function stripHeredocs(text) {
-  return text.replace(/<<-?\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\1([^\n]*)\n[\s\S]*?\n\s*\2\s*(\n|$)/g, (match, quote, tag, rest) => "<<heredoc" + rest + "\n");
+  return text.replace(HEREDOC, (match, quote, tag, rest) => "<<heredoc" + rest + "\n");
+}
+
+/**
+ * Every heredoc with the simple command it feeds: the last one on the
+ * opening line before "<<", and, for `cat <<EOF | sh`, the command piped to.
+ */
+function heredocs(text) {
+  const found = [];
+  for (const match of text.matchAll(HEREDOC)) {
+    const lineStart = text.lastIndexOf("\n", match.index - 1) + 1;
+    const receiver = splitParts(text.slice(lineStart, match.index)).pop();
+    const rest = match[3];
+    const piped = /^\s*\|(?!\|)/.test(rest) ? splitParts(rest)[0] : null;
+    found.push({ receiver: receiver ? words(receiver.text) : [], piped: piped ? words(piped.text) : null, body: match[4] });
+  }
+  return found;
+}
+
+/** A here-string (`<<< 'text'`) and the command line without it. */
+function hereString(simple) {
+  let body = null;
+  const rest = simple.replace(HERE_STRING, (match, single, double, bare) => {
+    body = single ?? (double !== undefined ? double.replace(/\\(["\\$`])/g, "$1") : bare);
+    return " ";
+  });
+  return { body, rest };
+}
+
+/**
+ * Whether a command runs its standard input as commands: a shell without -c
+ * or a script file (`bash`, `sh -s`, `bash -ex`), ssh without a remote
+ * command, or any wrapper whose inner command is such a shell
+ * (`ssh srv bash -s`, `docker exec -i app sh`, `sudo bash`).
+ */
+function readsCommands(list, depth = 0) {
+  const unwrapped = unwrap(list);
+  if (unwrapped.inner) {
+    return depth < 4 && unwrapped.inner.some((line) => splitCommands(line).some((simple) => readsCommands(words(simple), depth + 1)));
+  }
+  const rest = unwrapped.words;
+  const name = program(rest[0]);
+  if (name === "ssh") {
+    return true;
+  }
+  if (SHELLS.has(name) || name === "fish") {
+    // `bash -s a b` reads stdin; `bash deploy.sh` reads the file.
+    const first = rest.findIndex((word, index) => index > 0 && !word.startsWith("-"));
+    return first === -1 || rest.slice(1, first).some((word) => /^-[a-z]*s[a-z]*$/i.test(word));
+  }
+  return false;
 }
 
 /**
@@ -110,7 +194,24 @@ function closesWindowsPath(text, index) {
 
 /** Split into simple commands on ; & | newline ( ) { } outside quotes. */
 export function splitCommands(text) {
+  return splitParts(text).map((part) => part.text);
+}
+
+/**
+ * The simple commands with the separators before each one; `piped` is true
+ * when the previous command's output is this one's input (`a | b`, not
+ * `a || b`).
+ */
+function splitParts(text) {
   const parts = [];
+  let pending = "";
+  const push = (raw) => {
+    const trimmed = raw.trim();
+    if (trimmed) {
+      parts.push({ text: trimmed, piped: /^\|&?$/.test(pending.replace(/\n/g, "")) });
+      pending = "";
+    }
+  };
   let current = "";
   let quote = null;
   for (let index = 0; index < text.length; index += 1) {
@@ -145,14 +246,15 @@ export function splitCommands(text) {
           continue;
         }
       }
-      parts.push(current);
+      push(current);
+      pending += char;
       current = "";
       continue;
     }
     current += char;
   }
-  parts.push(current);
-  return parts.map((part) => part.trim()).filter(Boolean);
+  push(current);
+  return parts;
 }
 
 /** Words of one simple command, quotes removed, redirections dropped. */
@@ -218,10 +320,18 @@ const program = (word) => String(word ?? "").split(/[\\/]/).pop().toLowerCase().
 
 function decodePowerShell(encoded) {
   try {
-    return Buffer.from(String(encoded), "base64").toString("utf16le");
+    return Buffer.from(String(encoded ?? ""), "base64").toString("utf16le");
   } catch {
     return "";
   }
+}
+
+/**
+ * PowerShell script blocks glue braces to words (`& {Remove-Item … C:\}`):
+ * standing them apart lets the splitter see the commands inside.
+ */
+function powerShellScript(text) {
+  return text.replace(/[{}]/g, (brace) => " " + brace + " ");
 }
 
 /**
@@ -251,14 +361,48 @@ function unwrap(list) {
         return { inner: [rest[split].includes("=") ? rest[split].split("=").slice(1).join("=") : rest.slice(split + 1).join(" ")] };
       }
     }
-    if (["sudo", "doas", "env", "nohup", "nice", "ionice", "exec", "command", "builtin", "stdbuf", "timeout", "watch", "chroot", "runuser"].includes(name)) {
+    if (Object.hasOwn(PREFIX_VALUES, name)) {
+      const takesValue = PREFIX_VALUES[name];
       rest = rest.slice(1);
       while (rest.length && (rest[0].startsWith("-") || /^\d+[smhd]?$/.test(rest[0]) || /^[A-Za-z_][A-Za-z0-9_]*=/.test(rest[0]))) {
         const option = rest.shift();
-        if (["-u", "-g", "-C", "-p", "-n", "-s", "-k"].includes(option) && rest.length && !rest[0].startsWith("-")) {
+        if (takesValue.includes(option) && rest.length && !rest[0].startsWith("-")) {
           rest.shift();
         }
       }
+      continue;
+    }
+    if (name === "busybox") {
+      rest = rest.slice(1);
+      continue;
+    }
+    if (name === "flock") {
+      // flock [options] <lock file> <command…> | -c '<command>'
+      let index = 1;
+      while (index < rest.length && rest[index].startsWith("-")) {
+        if (rest[index] === "-c" || rest[index] === "--command") {
+          return { inner: [rest[index + 1] ?? ""] };
+        }
+        index += /^(-w|--timeout|-E|--conflict-exit-code)$/.test(rest[index]) ? 2 : 1;
+      }
+      const after = rest.slice(index + 1);
+      if (after[0] === "-c" || after[0] === "--command") {
+        return { inner: [after[1] ?? ""] };
+      }
+      rest = after;
+      continue;
+    }
+    if (name === "wsl") {
+      // wsl [-d distro] [-u user] [--cd dir] [-e|--exec|--] <command…>
+      let index = 1;
+      while (index < rest.length && rest[index].startsWith("-")) {
+        if (["-e", "--exec", "--"].includes(rest[index])) {
+          index += 1;
+          break;
+        }
+        index += /^(-d|--distribution|-u|--user|--cd|--shell-type)$/.test(rest[index]) ? 2 : 1;
+      }
+      rest = rest.slice(index);
       continue;
     }
     if (name === "su") {
@@ -270,24 +414,33 @@ function unwrap(list) {
       return flag > 0 && rest[flag + 1] !== undefined ? { inner: [rest[flag + 1]] } : { words: rest };
     }
     if (["powershell", "pwsh"].includes(name)) {
+      // PowerShell takes any unique prefix of a parameter (-enco, -Comm) and
+      // the -Name:value form.
       let index = 1;
       while (index < rest.length && rest[index].startsWith("-")) {
-        const option = rest[index].toLowerCase();
-        if (/^-(e|ec|enc|encodedcommand)$/.test(option)) {
-          return { inner: [decodePowerShell(rest[index + 1])] };
+        const [option, ...valueParts] = rest[index].toLowerCase().split(":");
+        const glued = valueParts.length ? rest[index].slice(option.length + 1) : null;
+        const value = (offset) => (glued !== null ? glued : rest[index + offset]);
+        if (option === "-e" || option === "-ec" || (option.length >= 3 && "-encodedcommand".startsWith(option))) {
+          return { inner: [powerShellScript(decodePowerShell(value(1)))] };
         }
-        if (/^-(c|command)$/.test(option)) {
-          return { inner: [rest.slice(index + 1).join(" ")] };
+        if (option === "-c" || option === "-cwa" || (option.length >= 3 && ("-command".startsWith(option) || "-commandwithargs".startsWith(option)))) {
+          const script = glued !== null ? [glued, ...rest.slice(index + 1)] : rest.slice(index + 1);
+          return { inner: [powerShellScript(script.join(" "))] };
         }
-        if (/^-(f|file)$/.test(option)) {
-          return { words: ["powershell-file", ...rest.slice(index + 1)] };
+        if (option === "-f" || (option.length >= 3 && "-file".startsWith(option))) {
+          return { words: ["powershell-file", ...(glued !== null ? [glued] : []), ...rest.slice(index + 1)] };
         }
-        index += /^-(executionpolicy|ep|windowstyle|w|version|outputformat|inputformat|configurationname)$/.test(option) ? 2 : 1;
+        // Skipping a value hides a word from judgement, so only known
+        // value-taking parameters (or prefixes of 3+ characters) skip one.
+        const withValue = ["-ep", "-ex", "-w", "-v", "-o", "-of", "-if", "-wd"].includes(option)
+          || (option.length >= 4 && PS_VALUE_PARAMS.some((param) => param.startsWith(option)));
+        index += withValue && glued === null ? 2 : 1;
       }
-      return index < rest.length ? { inner: [rest.slice(index).join(" ")] } : { words: rest };
+      return index < rest.length ? { inner: [powerShellScript(rest.slice(index).join(" "))] } : { words: rest };
     }
     if (name === "iex" || name === "invoke-expression") {
-      return { inner: [rest.slice(1).filter((word) => !/^-command$/i.test(word)).join(" ")] };
+      return { inner: [powerShellScript(rest.slice(1).filter((word) => !/^-command$/i.test(word)).join(" "))] };
     }
     if (name === "start-process" || name === "saps" || name === "start") {
       const file = rest.find((word, index) => index > 0 && !word.startsWith("-") && !/^-/.test(rest[index - 1] ?? ""));
@@ -309,7 +462,11 @@ function unwrap(list) {
       while (index < rest.length && rest[index].startsWith("-")) {
         index += /^-[bcDEeFIiJLlmOopQRSWw]$/.test(rest[index]) ? 2 : 1;
       }
+      // OpenSSH also takes switches after the host: `ssh srv -t 'cmd'`.
       let command = rest.slice(index + 1);
+      while (command.length && command[0].startsWith("-") && command[0] !== "--") {
+        command = command.slice(/^-[bcDEeFIiJLlmOopQRSWw]$/.test(command[0]) ? 2 : 1);
+      }
       if (command[0] === "--") {
         command = command.slice(1);
       }
@@ -424,11 +581,16 @@ function judgeRm(list) {
 function judgeWindowsDelete(name, list) {
   const powershell = name === "remove-item" || name === "ri" || name === "rm";
   const lower = list.map((word) => word.toLowerCase());
-  const recursive = powershell ? lower.some((word) => /^-r(ecurse)?$/.test(word)) : lower.includes("/s");
+  // In PowerShell rmdir, rd, del and erase are all Remove-Item, so -Recurse
+  // counts for them too; /s is cmd's spelling.
+  const recursive = lower.some((word) => RECURSE.test(word)) || (!powershell && lower.includes("/s"));
   const targets = [];
   for (let index = 1; index < list.length; index += 1) {
     const word = list[index];
-    if (/^-(path|literalpath)$/i.test(word)) {
+    const glued = /^-(path|literalpath|lp|pspath):(.+)$/i.exec(word);
+    if (glued) {
+      targets.push(glued[2]);
+    } else if (/^-(path|literalpath|lp|pspath)$/i.test(word)) {
       targets.push(list[index + 1] ?? "");
       index += 1;
     } else if (word.startsWith("-")) {
@@ -440,6 +602,36 @@ function judgeWindowsDelete(name, list) {
     }
   }
   return deleteVerdict(targets, { recursive });
+}
+
+/**
+ * `Get-ChildItem C:\ -Recurse | Remove-Item`: what is deleted is what the
+ * listing names. A recursive listing or delete is judged as a recursive
+ * delete of the listed path; a flat one is refused only for a root.
+ */
+function judgePipedDelete(lister, remover) {
+  const targets = [];
+  for (let index = 1; index < lister.length; index += 1) {
+    const word = lister[index];
+    if (/^-(path|literalpath|lp|pspath)$/i.test(word)) {
+      targets.push(lister[index + 1] ?? "");
+      index += 1;
+    } else if (/^-(filter|include|exclude|depth|attributes)$/i.test(word)) {
+      index += 1;
+    } else if (!word.startsWith("-")) {
+      targets.push(word);
+    }
+  }
+  if (!targets.length) {
+    targets.push(".");
+  }
+  if ([...lister, ...remover].some((word) => RECURSE.test(word))) {
+    return deleteVerdict(targets, { recursive: true });
+  }
+  if (targets.some((target) => ROOT_TARGETS.test(normaliseTarget(target)))) {
+    return verdict("deny", "deleting the contents of a root, home or system folder");
+  }
+  return ALLOW;
 }
 
 function judgeFind(list) {
@@ -504,7 +696,9 @@ function judgeGit(list) {
   if (sub === "clean" && args.some((word) => (/^-[a-z]+$/i.test(word) && word.includes("f")) || word === "--force")) {
     return verdict("ask", "deleting untracked files");
   }
-  if ((sub === "checkout" || sub === "restore") && (args.includes(".") || args.includes(":/"))) {
+  // `git restore --staged .` only unstages; the working tree is untouched.
+  const unstageOnly = sub === "restore" && args.some((word) => word === "--staged" || /^-[a-z]*S[a-z]*$/.test(word)) && !args.some((word) => word === "--worktree" || /^-[a-zA-Z]*W[a-zA-Z]*$/.test(word));
+  if ((sub === "checkout" || sub === "restore") && !unstageOnly && (args.includes(".") || args.includes(":/"))) {
     return verdict("ask", "discarding uncommitted changes");
   }
   if (sub === "branch" && (args.includes("-D") || (args.includes("--delete") && args.includes("--force")))) {
@@ -539,11 +733,24 @@ export function judgeSql(text) {
   if (/\bdelete\s+from\s+[`"]?\w+[`"]?\s*(;|$|"|')/im.test(text)) {
     return verdict("ask", "DELETE without WHERE");
   }
+  // MongoDB shell: dropping a database or collection, deleting every document.
+  if (/\.dropDatabase\s*\(|\.drop\s*\(\s*\)|\.(deleteMany|remove)\s*\(\s*\{\s*\}\s*\)/.test(text)) {
+    return verdict("ask", "dropping or emptying MongoDB data");
+  }
   return ALLOW;
 }
 
+/**
+ * Approval records are written only by AStack's own code and the owner: an
+ * agent forging one is the threat, so any shell write there is refused.
+ */
+const APPROVALS = /\.astack[\\/]approvals([\\/]|$)/i;
+
 /** Writing the guard's own state or Claude Code's settings asks. */
 function guardFilesVerdict(name, raw) {
+  if (redirectTargets(raw).some((target) => APPROVALS.test(target)) || (!READ_ONLY.has(name) && APPROVALS.test(raw))) {
+    return verdict("deny", "approvals are written only by AStack and the owner");
+  }
   const sensitive = /(\.astack[\\/]guard[\\/]|\.claude[\\/]settings(\.local)?\.json)/i;
   if (redirectTargets(raw).some((target) => sensitive.test(target))) {
     return verdict("ask", "writing the guard's state or Claude Code's settings");
@@ -561,8 +768,12 @@ function judgeWords(list, raw = list.join(" ")) {
   const name = program(list[0]);
   const lower = list.map((word) => word.toLowerCase());
   const files = guardFilesVerdict(name, raw);
+  // `cat /dev/zero > /dev/sda`, `… | tee /dev/nvme0n1`: whatever the program.
+  const disk = redirectTargets(raw).some((target) => DISK_DEVICE.test(target)) || (name === "tee" && list.slice(1).some((word) => DISK_DEVICE.test(word)))
+    ? verdict("deny", "writing raw to a disk device")
+    : ALLOW;
   const own = judgeProgram(name, list, lower, raw);
-  return strongest([files, own]);
+  return strongest([files, disk, own]);
 }
 
 function judgeProgram(name, list, lower, raw) {
@@ -573,7 +784,7 @@ function judgeProgram(name, list, lower, raw) {
     return judgeRm(list);
   }
   if (["remove-item", "ri", "del", "erase", "rd", "rmdir"].includes(name)) {
-    if ((name === "rmdir" || name === "rd") && !lower.includes("/s") && !lower.some((word) => /^-r(ecurse)?$/.test(word))) {
+    if ((name === "rmdir" || name === "rd") && !lower.includes("/s") && !lower.some((word) => RECURSE.test(word))) {
       return ALLOW;
     }
     return judgeWindowsDelete(name, list);
@@ -589,18 +800,40 @@ function judgeProgram(name, list, lower, raw) {
     if (action === "kill") {
       return verdict("deny", "owner rule: never kill pm2 on a shared server");
     }
-    if (["restart", "reload", "stop", "delete"].includes(action) && lower.slice(2).includes("all")) {
+    // "all" and a /regex/ name both reach other people's processes.
+    if (["restart", "reload", "stop", "delete", "sendsignal"].includes(action) && lower.slice(2).some((word) => word === "all" || /^\/.+\/$/.test(word))) {
       return verdict("deny", "owner rule: never touch every pm2 process on a shared server");
+    }
+    if (action === "update") {
+      return verdict("ask", "pm2 update restarts the daemon and every process on the server");
     }
     return ALLOW;
   }
-  if (/^mkfs(\.\w+)?$/.test(name) || (name === "format" && /^[a-z]:$/i.test(list[1] ?? ""))) {
-    return verdict("deny", "formatting a disk");
+  if (/^mkfs(\.\w+)?$/.test(name) || (name === "format" && /^[a-z]:$/i.test(list[1] ?? "")) || ["format-volume", "clear-disk", "remove-partition", "blkdiscard"].includes(name)) {
+    return verdict("deny", "formatting or erasing a disk");
   }
-  if (name === "dd" && list.some((word) => /^of=\/dev\/(sd|nvme|hd|xvd|disk|mmcblk)/i.test(word))) {
+  if (name === "wipefs" && !lower.some((word) => word === "-n" || word === "--no-act") && lower.some((word) => /^-[a-z]*a/.test(word) || ["--all", "-o", "--offset"].includes(word) || word.startsWith("--offset="))) {
+    return verdict("deny", "erasing disk signatures");
+  }
+  if (name === "sgdisk") {
+    if (list.some((word) => /^(-[zZo]|--zap|--zap-all|--clear|-d|--delete)(=|$)/.test(word))) {
+      return verdict("deny", "erasing a partition table");
+    }
+    return list.slice(1).every((word) => /^(-p|--print|-v|--verify|-i|--info(=.*)?|\d+|\/dev\/\S+)$/.test(word)) ? ALLOW : verdict("ask", "partitioning disks");
+  }
+  if (name === "parted") {
+    if (lower.some((word) => ["rm", "mklabel", "mktable"].includes(word))) {
+      return verdict("deny", "erasing a partition table");
+    }
+    return lower.slice(1).every((word) => /^(-l|--list|print|-s|--script|-m|--machine|\/dev\/\S+)$/.test(word)) && lower.length > 1 ? ALLOW : verdict("ask", "partitioning disks");
+  }
+  if (name === "shred" && list.slice(1).some((word) => DISK_DEVICE.test(word))) {
+    return verdict("deny", "erasing a disk");
+  }
+  if (name === "dd" && list.some((word) => /^of=/i.test(word) && DISK_DEVICE.test(word.slice(3)))) {
     return verdict("deny", "writing raw to a disk device");
   }
-  if (name === "diskpart") {
+  if (["diskpart", "fdisk", "sfdisk", "gdisk", "cfdisk"].includes(name) && !lower.some((word) => word === "-l" || word === "--list")) {
     return verdict("ask", "partitioning disks");
   }
   if (["chmod", "chown", "chgrp"].includes(name) && lower.some((word) => /^-[a-z]*r/i.test(word) || word === "--recursive")) {
@@ -613,7 +846,7 @@ function judgeProgram(name, list, lower, raw) {
   if (["reboot", "poweroff", "halt", "shutdown", "restart-computer", "stop-computer"].includes(name) || (name === "systemctl" && ["reboot", "poweroff", "halt", "kexec"].includes(lower[1]))) {
     return verdict("ask", "rebooting or shutting down the machine");
   }
-  if (name === "php" && lower[1] === "artisan" && /^(migrate:fresh|migrate:reset|migrate:rollback|db:wipe)$/.test(lower[2] ?? "")) {
+  if (name === "php" && lower[1] === "artisan" && /^(migrate:fresh|migrate:refresh|migrate:reset|migrate:rollback|db:wipe)$/.test(lower[2] ?? "")) {
     return verdict("ask", "rebuilding or wiping the database");
   }
   if (name === "php" && lower[1] === "artisan" && lower[2] === "db:seed" && lower.includes("--force")) {
@@ -652,6 +885,9 @@ function judgeProgram(name, list, lower, raw) {
   if (DB_CLIENTS.has(name)) {
     return judgeSql(raw);
   }
+  if ((name === "redis-cli" && lower.some((word) => word === "flushall" || word === "flushdb")) || (name === "mysqladmin" && lower.includes("drop")) || name === "dropdb") {
+    return verdict("ask", "wiping a database");
+  }
   if (name === "astack" || ((name === "node" || name === "bun") && /astack(\.mjs)?$/i.test(list[1] ?? ""))) {
     return judgeAstack(list);
   }
@@ -662,39 +898,68 @@ function judgeProgram(name, list, lower, raw) {
 function judgeCommandWords(list, depth = 0) {
   const unwrapped = unwrap(list);
   if (unwrapped.inner) {
-    return strongest(unwrapped.inner.map((line) => (depth < 4 ? judgeCommand(line, depth + 1) : verdict("ask", "deeply nested command"))));
+    return strongest(unwrapped.inner.map((line) => nested(line, depth)));
   }
   return judgeWords(unwrapped.words);
+}
+
+/** Judge text that will run as commands one level deeper. */
+function nested(line, depth) {
+  return depth < 4 ? judgeCommand(line, depth + 1) : verdict("ask", "deeply nested command");
 }
 
 /** The decision for one shell command line: { decision: deny|ask|allow, reason }. */
 export function judgeCommand(command, depth = 0) {
   const original = String(command ?? "");
-  const text = stripHeredocs(original);
   const results = [];
-  for (const body of substitutions(text)) {
-    results.push(depth < 4 ? judgeCommand(body, depth + 1) : verdict("ask", "deeply nested command"));
+  if (FORK_BOMB.test(original)) {
+    results.push(verdict("deny", "fork bomb"));
   }
-  const simples = splitCommands(text);
-  let previous = null;
-  for (const simple of simples) {
-    const list = words(simple);
-    const unwrapped = unwrap(list);
-    if (unwrapped.inner) {
-      results.push(...unwrapped.inner.map((line) => (depth < 4 ? judgeCommand(line, depth + 1) : verdict("ask", "deeply nested command"))));
-    } else {
-      results.push(judgeWords(unwrapped.words, simple));
-      const name = program(unwrapped.words[0]);
-      // echo/printf "…" | sh: what the shell runs is the echoed text.
-      if (SHELLS.has(name) && previous && ["echo", "printf"].includes(program(previous[0]))) {
-        results.push(depth < 4 ? judgeCommand(previous.slice(1).join(" "), depth + 1) : verdict("ask", "deeply nested command"));
-      }
-      // SQL piped or heredoc'd into a database client.
-      if (DB_CLIENTS.has(name)) {
-        results.push(judgeSql(original));
-      }
-      previous = unwrapped.words;
+  // A heredoc body is data, unless the command receiving it is a shell
+  // (`ssh srv <<EOF`, `bash -s <<EOF`, `cat <<EOF | sh`): then it is commands.
+  for (const doc of heredocs(original)) {
+    if (readsCommands(doc.receiver) || (doc.piped && program(doc.receiver[0]) === "cat" && readsCommands(doc.piped))) {
+      results.push(nested(doc.body, depth));
     }
+  }
+  const text = stripHeredocs(original);
+  for (const body of substitutions(text)) {
+    results.push(nested(body, depth));
+  }
+  let previous = null;
+  for (const part of splitParts(text)) {
+    const simple = part.text;
+    // A here-string is standard input, not an argument.
+    const here = hereString(simple);
+    const list = words(here.rest);
+    if (here.body !== null && readsCommands(list)) {
+      results.push(nested(here.body, depth));
+    }
+    const unwrapped = unwrap(list);
+    const from = part.piped ? previous : null;
+    previous = null;
+    if (unwrapped.inner) {
+      results.push(...unwrapped.inner.map((line) => nested(line, depth)));
+      continue;
+    }
+    results.push(judgeWords(unwrapped.words, simple));
+    const name = program(unwrapped.words[0]);
+    if (from) {
+      const source = program(from[0]);
+      // echo/printf "…" | sh: what the shell runs is the echoed text.
+      if (["echo", "printf"].includes(source) && readsCommands(unwrapped.words)) {
+        results.push(nested(from.slice(1).join(" "), depth));
+      }
+      // Get-ChildItem C:\ -Recurse | Remove-Item: the listing is the target.
+      if (LISTERS.has(source) && REMOVERS.has(name)) {
+        results.push(judgePipedDelete(from, unwrapped.words));
+      }
+    }
+    // SQL piped or heredoc'd into a database client.
+    if (DB_CLIENTS.has(name)) {
+      results.push(judgeSql(original));
+    }
+    previous = unwrapped.words;
   }
   return strongest(results);
 }
@@ -713,6 +978,9 @@ export function judgeEdit(filePath, state, projectDir) {
   const target = filePath ? resolve(projectDir, String(filePath)) : null;
   if (state?.corrupt) {
     return verdict("deny", "guard state unreadable; refusing edits until `astack guard unfreeze`");
+  }
+  if (target && /[\\/]\.astack[\\/]approvals([\\/]|$)/i.test(target)) {
+    return verdict("deny", "approvals are written only by AStack and the owner");
   }
   if (state?.freeze) {
     if (!target) {
