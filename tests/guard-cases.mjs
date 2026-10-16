@@ -38,5 +38,41 @@ export const GUARD_CASES = [
   ["docker compose down", "allow"], ["docker compose up -d", "allow"], ["nginx -t", "allow"], ["grep -rn \"rm -rf\" docs", "allow"],
   ["echo truncate the text", "allow"], ["echo 'never pm2 restart all' >> NOTES.md", "allow"], ["git log --oneline | grep 'pm2 kill'", "allow"],
   ["which mkfs.ext4", "allow"], ["git commit -m \"a; git reset --hard b\"", "allow"], ["git commit -F - <<'EOF'\nnever pm2 restart all\nEOF", "allow"],
-  ["git status", "allow"], ["crontab -l", "allow"], ["astack approval pending", "allow"], ["composer install", "allow"], ["npm test", "allow"]
+  ["git status", "allow"], ["crontab -l", "allow"], ["astack approval pending", "allow"], ["composer install", "allow"], ["npm test", "allow"],
+
+  // second review: shell keywords and groups
+  ["if [ -d /var/www/app ]; then rm -rf /var/www/app; fi", "ask"], ["if true; then rm -rf /; fi", "deny"], ["for d in a b; do rm -rf /; done", "deny"],
+  ["{ rm -rf /; }", "deny"], ["! rm -rf /", "deny"], ["while true; do pm2 kill; done", "deny"], ["case $x in a) rm -rf / ;; esac", "deny"],
+  ["coproc rm -rf /", "deny"], ["f(){ rm -rf /; }; f", "deny"], ["[ -f x ] || { git reset --hard; }", "ask"],
+  ["cd /var/www/app && if [ -n \"$X\" ]; then git push -f origin main; fi", "deny"],
+  // command substitution
+  ["echo $(rm -rf /)", "deny"], ["echo \"$(rm -rf ~)\"", "deny"], ["echo `rm -rf /`", "deny"], ["X=\"$(git push -f origin main)\"", "deny"],
+  ["echo \"$(true; rm -rf /)\"", "deny"], ["echo '$(rm -rf /)'", "allow"],
+  // paths that normalise to a root
+  ["rm -rf /tmp/..", "deny"], ["rm -rf /tmp/../..", "deny"], ["rm -rf /tmp/../home", "deny"], ["rm -rf //", "deny"], ["rm -rf /.", "deny"], ["rm -rf ~/.", "deny"],
+  // PowerShell forms
+  ["powershell \"Remove-Item -Recurse -Force C:\\\"", "deny"], ["powershell -NoProfile Remove-Item -Recurse -Force C:\\", "deny"],
+  ["powershell -EncodedCommand " + Buffer.from("Remove-Item -Recurse -Force C:\\", "utf16le").toString("base64"), "deny"],
+  ["pwsh -enc " + Buffer.from("git push --force origin main", "utf16le").toString("base64"), "deny"],
+  ["iex \"Remove-Item -Recurse -Force C:\\\"", "deny"], ["Invoke-Expression 'pm2 kill'", "deny"],
+  ["Start-Process powershell -ArgumentList '-Command Remove-Item -Recurse -Force C:\\'", "deny"],
+  // other programs
+  ["find / -delete", "deny"], ["find ~ -mindepth 1 -delete", "deny"], ["find / -exec rm -rf {} +", "deny"], ["find . -name '*.log' -delete", "ask"],
+  ["find . -name '*.tmp'", "allow"], ["chmod -R 000 /", "deny"], ["chown -R nobody /", "deny"], ["chmod -R 755 storage", "allow"],
+  // package runners and pipes
+  ["npx pm2 restart all", "deny"], ["npx pm2 kill", "deny"], ["pnpm exec pm2 restart all", "deny"], ["npx astack approval approve AP-1", "deny"],
+  ["npm run astack -- approval approve AP-1", "deny"], ["npx prisma migrate reset", "ask"],
+  ["echo 'DROP TABLE users;' | mysql shop", "ask"], ["cat <<'SQL' | mysql shop\nDROP DATABASE shop;\nSQL", "ask"], ["echo 'rm -rf /' | sh", "deny"],
+  // the guard's own files
+  ["echo '{\"enabled\":false}' > .astack/guard/state.json", "ask"], ["sed -i 's/x/y/' .claude/settings.json", "ask"], ["cp /dev/null .claude/settings.json", "ask"],
+  ["cat .claude/settings.json", "allow"],
+  // reboots
+  ["sudo reboot", "ask"], ["shutdown -h now", "ask"], ["shutdown /s /t 0", "ask"], ["systemctl reboot", "ask"], ["systemctl poweroff", "ask"],
+  ["Restart-Computer -Force", "ask"], ["Stop-Computer", "ask"],
+  // more wrappers
+  ["ssh srv -- rm -rf /", "deny"], ["su - root -c 'rm -rf /'", "deny"], ["sudo su -c 'pm2 kill'", "deny"], ["env -S 'rm -rf /'", "deny"],
+  // routine cleanups
+  ["rm -rf dist 2>/dev/null || true", "allow"], ["rm -rf node_modules >/dev/null 2>&1", "allow"], ["Remove-Item -Recurse -Force node_modules, dist", "allow"],
+  ["rm -rf storage/framework/cache/data/*", "allow"], ["rm -rf .nyc_output", "allow"], ["rm -rf ~/.cache/composer", "allow"], ["rm -rf \"$(mktemp -d)\"", "allow"],
+  ["git push --mirror origin", "ask"], ["X=/; rm -rf $X", "ask"]
 ];

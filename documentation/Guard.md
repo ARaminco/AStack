@@ -14,11 +14,15 @@ gstack's careful/freeze hooks (MIT, see `NOTICE`).
 | ask | recursive delete outside build and temp folders; `git reset --hard`, `git clean -f`, `git checkout .`, `git branch -D`, other force-pushes; `DROP`, `TRUNCATE`, `DELETE` without `WHERE` in a database client; `migrate:fresh`, `db:wipe`; Docker prunes and `down -v`; service stops; firewall flushes; `crontab -r`; `astack guard off\|unfreeze`; edits to `.claude/settings*.json` or `.astack/guard/` |
 | allow | everything else, including `rm -rf node_modules dist .next vendor`, lock files, `/tmp/…`, and dangerous phrases that are only mentioned (`echo`, `grep`, commit messages, heredocs) |
 
-Commands are parsed, not pattern-matched: quotes, `;`, `&&`, `|`, heredocs,
-`sudo`/`env`/`timeout` prefixes and wrappers (`bash -c`, `sh -c`, `ssh host
-"…"`, `eval`, `docker exec`, `kubectl exec`, `powershell -Command`, `cmd /c`,
-`xargs`) are unwrapped, and each inner command is judged by its program and
-arguments.
+Commands are parsed, not pattern-matched: quotes, chains, groups, shell
+keywords (`if`, `for`, `while`, `case`, functions), heredocs, command
+substitution (`$(…)`, backticks), prefixes (`sudo`, `env`, `timeout` …) and
+wrappers (`bash -c`, `su -c`, `ssh host "…"`, `eval`, `docker exec`, `kubectl
+exec`, PowerShell `-Command`/`-EncodedCommand`, `iex`, `Start-Process`,
+`cmd /c`, `xargs`, `find -exec`/`-delete`, `npx`/`pnpm exec`/`npm run`,
+`echo … | sh`) are unwrapped, paths are normalised (`/tmp/..` is `/`), and each
+inner command is judged by its program and arguments. SQL piped or heredoc'd
+into a database client is checked too.
 
 Approvals are the owner's: the owner approves from the console, the gateway or
 a terminal of their own; an agent's attempt is refused.
@@ -35,6 +39,11 @@ astack guard log --limit 20
 ```
 
 ## Notes
+
+- The guard is a safety net against mistakes, not a sandbox. It cannot judge
+  reliably: a script written to a file and run later, `curl … | bash`, shell
+  aliases, and dangerous values hidden in variables (`X=/; rm -rf $X` asks
+  because the target is unknown). The contract's trust rules still apply.
 
 - Freeze bounds the edit tools; shell commands are judged by the rules above
   (a redirect such as `echo > other/x` is not blocked by a freeze).
