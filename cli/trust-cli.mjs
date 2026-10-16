@@ -87,6 +87,11 @@ export function runApprovalCommand({ runtime, i18n, tokens }) {
   if (action === "approve" || action === "reject" || action === "deny") {
     // A run's child process inherits ASTACK_UNATTENDED=1 and may never decide.
     assertAttended(action + " " + (positionals[0] ?? "an approval"));
+    // A browser commit is approved by a person: from a real terminal, the
+    // console or the gateway. An agent's shell has no terminal attached.
+    if (action === "approve" && approvals.get(positionals[0])?.action === "browser.commit" && !process.stdin.isTTY && process.env.ASTACK_APPROVAL_CHANNEL !== "console") {
+      throw new Error(t("cli.approval.needsPerson"));
+    }
     const record = action === "approve"
       ? approvals.approve(positionals[0], { by: String(flags.by ?? "owner"), note: flags.note ? String(flags.note) : null })
       : approvals.reject(positionals[0], { by: String(flags.by ?? "owner"), note: flags.note ? String(flags.note) : null });

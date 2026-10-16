@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:http";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -218,36 +218,73 @@ if (process.env.ASTACK_E2E_BROWSER === "1") {
   assert.equal(script.result.isError, true, "javascript: is refused before Playwright sees it");
   const overwrite = await call("tools/call", { name: "browser_take_screenshot", arguments: { filename: "../../../../CLAUDE.md" } });
   assert.equal(overwrite.result.isError, true, "no tool writes outside the output folder");
-  const pay = { name: "browser_click", arguments: { element: "Pay now button", ref: "e999" } };
-  const stopped = await call("tools/call", pay);
-  const approvalId = /AP-[0-9a-f]+/.exec(stopped.result.content[0].text)?.[0];
-  assert.ok(stopped.result.isError && approvalId, "a commit click stops with an approval id");
-  new ApprovalEngine(repoRoot).approve(approvalId, { by: "owner" });
-  const allowed = await call("tools/call", pay);
-  assert.doesNotMatch(JSON.stringify(allowed.result), /Stopped before a commit/, "after approval the same call goes through once");
-  const again = await call("tools/call", pay);
-  assert.match(again.result.content[0].text, /Stopped before a commit/, "one approval never covers a second click");
   const shot = await call("tools/call", { name: "browser_take_screenshot", arguments: { filename: "CLAUDE.md" } });
   assert.ok(!shot.result.isError, "a bare filename is accepted");
   assert.ok(readFileSync(join(repoRoot, "CLAUDE.md")).equals(claudeBefore), "the project's CLAUDE.md is untouched even with client roots");
   assert.ok(existsSync(join(repoRoot, ".astack", "browser", "dedicated", "output", "CLAUDE.md")), "the file lands in the output folder");
   rmSync(join(repoRoot, ".astack", "browser", "dedicated", "output", "CLAUDE.md"), { force: true });
   assert.ok(!listed.result.tools.some((tool) => /mouse_click_xy/.test(tool.name)), "no coordinate clicks by default");
-  // A real page with a pay button, described misleadingly by the agent.
+  // The policy reads the parameter names this Playwright version really uses.
+  const clickSchema = listed.result.tools.find((tool) => tool.name === "browser_click").inputSchema.properties;
+  assert.ok("target" in clickSchema || "ref" in clickSchema, "browser_click names its element by target or ref");
+  assert.ok(Object.keys(clickSchema).every((key) => ["element", "target", "ref", "doubleClick", "button", "modifiers"].includes(key)), "no unknown element parameter slipped in: " + Object.keys(clickSchema).join(","));
+
+  // A local shop: every commit the page makes is logged by the server.
+  const hits = [];
+  const html = "<!doctype html><title>shop</title>" +
+    "<button id=\"primary\" onclick=\"fetch('/commit/pay-now',{method:'POST'})\">Pay now</button>" +
+    "<button aria-label=\"Pay\" onclick=\"fetch('/commit/icon-pay',{method:'POST'})\"><svg width=10 height=10></svg></button>" +
+    "<form method=\"post\" action=\"/commit/payment\"><input name=\"amount\" value=\"4990\" aria-label=\"Amount\"><button>Continue</button></form>" +
+    "<label for=\"pw\">Passwort</label><input id=\"pw\" type=\"password\" oninput=\"fetch('/typed/pw',{method:'POST'})\">" +
+    "<input id=\"pin\" aria-label=\"Code\" autocomplete=\"one-time-code\" oninput=\"fetch('/typed/pin',{method:'POST'})\">" +
+    "<input id=\"q\" aria-label=\"Search\"><a href=\"/other\">Next</a>";
   const site = createServer((request, response) => {
+    if (request.url.startsWith("/commit/") || request.url.startsWith("/typed/")) {
+      hits.push(request.method + " " + request.url);
+    }
     response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-    response.end("<!doctype html><title>shop</title><button onclick=\"document.title='PAID'\">Pay now</button><a href=\"#next\">Next</a>");
+    response.end(html);
   });
   await new Promise((resolveListen) => site.listen(0, "127.0.0.1", resolveListen));
   const shop = "http://127.0.0.1:" + site.address().port + "/";
   await call("tools/call", { name: "browser_navigate", arguments: { url: shop } });
-  const snapshot = await call("tools/call", { name: "browser_snapshot", arguments: {} });
-  const payRef = /button "Pay now" \[ref=([A-Za-z0-9_-]+)\]/.exec(JSON.stringify(snapshot.result).replace(/\\"/g, '"'))?.[1];
-  assert.ok(payRef, "the snapshot names the pay button");
-  const disguised = await call("tools/call", { name: "browser_click", arguments: { element: "blue button", ref: payRef } });
-  assert.match(disguised.result.content[0].text, /Stopped before a commit/, "the gate reads the page, not the agent's description");
-  const title = await call("tools/call", { name: "browser_snapshot", arguments: {} });
-  assert.doesNotMatch(JSON.stringify(title.result), /PAID/, "nothing was paid");
+  const snapshot = JSON.stringify((await call("tools/call", { name: "browser_snapshot", arguments: {} })).result).replace(/\\"/g, '"');
+  const ref = (pattern) => new RegExp(pattern + " \\[ref=([A-Za-z0-9_-]+)\\]").exec(snapshot)?.[1];
+  const refs = { pay: ref('button "Pay now"'), icon: ref('button "Pay"'), next: ref('button "Continue"'), pw: ref('textbox "Passwort"'), pin: ref('textbox "Code"'), search: ref('textbox "Search"') };
+  assert.ok(Object.values(refs).every(Boolean), "the snapshot names every control: " + JSON.stringify(refs));
+  const stoppedText = /Stopped before a commit/;
+  const click = (target, element) => call("tools/call", { name: "browser_click", arguments: { element, target } });
+  assert.match((await click("#primary", "Pay now")).result.content[0].text, /not a ref/, "selectors are refused");
+  assert.match((await click(refs.pay, "blue button")).result.content[0].text, stoppedText, "a misleading description does not pass");
+  assert.match((await click(refs.icon, "icon")).result.content[0].text, stoppedText, "an icon button named Pay is a commit");
+  assert.match((await click(refs.next, "Continue button")).result.content[0].text, stoppedText, "a POST form's submit button is a commit whatever it says");
+  const typeInto = (target, element, text) => call("tools/call", { name: "browser_type", arguments: { element, target, text } });
+  assert.match((await typeInto(refs.pw, "text box", "secret1")).result.content[0].text, /typed by the owner/, "no typing into a password field");
+  assert.match((await typeInto(refs.pin, "text box", "123456")).result.content[0].text, /typed by the owner/, "no typing into a one-time-code field");
+  assert.ok(!(await typeInto(refs.search, "Search box", "laravel")).result.isError, "ordinary typing works");
+  const key = (value) => call("tools/call", { name: "browser_press_key", arguments: { key: value } });
+  assert.match((await key("NumpadEnter")).result.content[0].text, stoppedText, "every Enter variant is a commit");
+  assert.match((await key(" ")).result.content[0].text, stoppedText, "Space presses buttons, so it is a commit");
+  assert.ok(!(await key("Tab")).result.isError, "Tab is fine");
+  assert.match((await call("tools/call", { name: "browser_drop", arguments: { element: "Search", target: refs.search, data: { "text/plain": "x" } } })).result.content[0].text, stoppedText, "a drop is an upload");
+
+  // One approval, one call, one page; agents cannot approve.
+  const payCall = { name: "browser_click", arguments: { element: "blue button", target: refs.pay } };
+  const stopped = await call("tools/call", payCall);
+  const approvalId = /AP-[0-9a-f]+/.exec(stopped.result.content[0].text)?.[0];
+  assert.ok(approvalId);
+  const selfApprove = spawnSync(process.execPath, [join(repoRoot, "bin", "astack.mjs"), "approval", "approve", approvalId], { cwd: repoRoot, encoding: "utf8", input: "" });
+  assert.notEqual(selfApprove.status, 0, "an agent's shell (no terminal) cannot approve a browser commit");
+  new ApprovalEngine(repoRoot).approve(approvalId, { by: "owner" });
+  assert.ok(!(await call("tools/call", payCall)).result.isError, "after the owner's approval the call runs once");
+  assert.match((await call("tools/call", payCall)).result.content[0].text, stoppedText, "and never twice");
+  const enter = await key("Enter");
+  const enterId = /AP-[0-9a-f]+/.exec(enter.result.content[0].text)?.[0];
+  new ApprovalEngine(repoRoot).approve(enterId, { by: "owner" });
+  await call("tools/call", { name: "browser_navigate", arguments: { url: shop + "other" } });
+  assert.match((await key("Enter")).result.content[0].text, stoppedText, "an approval does not travel to another page");
+  await new Promise((resolveWait) => setTimeout(resolveWait, 500));
+  assert.deepEqual(hits, ["POST /commit/pay-now"], "the only commit the page saw is the approved one");
   site.close();
   child.stdin.end();
   await new DedicatedBrowser(repoRoot).stop();
