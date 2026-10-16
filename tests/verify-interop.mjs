@@ -206,7 +206,7 @@ const unknown = await handle({ jsonrpc: "2.0", id: 5, method: "tools/call", para
 assert.equal(unknown.error.code, -32602);
 assert.equal((await handle({ jsonrpc: "2.0", id: 6, method: "resources/list" })).error.code, -32601);
 await handle({ jsonrpc: "2.0", id: 7, method: "tools/call", params: { name: "astack_handoff_write", arguments: { summary: "s", findings: ["a", "b"], next: "n" } } });
-assert.deepEqual(calls.at(-1), ["interop", "handoff", "s", "--runtime", "codex", "--findings=a;b", "--next=n"]);
+assert.deepEqual(calls.at(-1), ["interop", "handoff", "--runtime=codex", "--findings=a;b", "--next=n", "--", "s"]);
 
 // The real server over stdio, the way Claude Code and Codex launch it.
 const transcript = await new Promise((resolve, reject) => {
@@ -342,9 +342,9 @@ assert.match(withGraph.sessionContext({ runtime: "codex" }), /Code graph: 2 node
 const graphCalls = [];
 const graphHandle = createMcpHandler({ run: async (args) => (graphCalls.push(args), { ok: true, output: "" }) });
 await graphHandle({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "astack_graph_query", arguments: { question: "who calls route", budget: 800 } } });
-assert.deepEqual(graphCalls.at(-1), ["graphify", "query", "who calls route", "--budget=800"]);
+assert.deepEqual(graphCalls.at(-1), ["graphify", "query", "--budget=800", "--", "who calls route"]);
 await graphHandle({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "astack_graph_path", arguments: { from: "A", to: "B" } } });
-assert.deepEqual(graphCalls.at(-1), ["graphify", "path", "A", "B"]);
+assert.deepEqual(graphCalls.at(-1), ["graphify", "path", "--", "A", "B"]);
 assert.match(agents, /## Code Graph \(Graphify\)/, "Graphify guidance lives once, in the shared contract");
 assert.ok(!/graphify claude install|## graphify/i.test(claudeMd), "no runtime-specific Graphify section in CLAUDE.md");
 
