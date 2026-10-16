@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { closeSync, existsSync, openSync, readFileSync, readSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { estimateTokens } from "../lib/text.mjs";
@@ -12,7 +12,7 @@ export const DEFAULT_ALWAYS_ON_BUDGET = 15000;
  * skill listings — measured, itemised and held against a budget, so growth in
  * always-loaded text is seen before it costs every conversation.
  */
-export function contextBill({ projectRoot, interop = null, mcpTools = [], home = homedir(), budget = DEFAULT_ALWAYS_ON_BUDGET } = {}) {
+export function contextBill({ projectRoot, coreRoot = null, interop = null, mcpTools = [], home = homedir(), budget = DEFAULT_ALWAYS_ON_BUDGET } = {}) {
   const items = [];
   const add = (group, name, text, note = null) => {
     if (text === null || text === undefined) {
@@ -32,7 +32,7 @@ export function contextBill({ projectRoot, interop = null, mcpTools = [], home =
   if (mcpTools.length) {
     add("tools", "astack MCP server (" + mcpTools.length + " tools)", JSON.stringify(mcpTools.map(({ name, description, inputSchema }) => ({ name, description, inputSchema }))));
   }
-  const browserTools = join(projectRoot, ".astack", "browser", "dedicated", "tools.json");
+  const browserTools = join(coreRoot ?? projectRoot, ".astack", "browser", "dedicated", "tools.json");
   if (existsSync(browserTools)) {
     try {
       const cached = JSON.parse(readFileSync(browserTools, "utf8"));
@@ -59,6 +59,17 @@ export function contextBill({ projectRoot, interop = null, mcpTools = [], home =
   };
 }
 
+/** The first bytes of a file, without reading the rest. */
+function readHead(path, bytes) {
+  const buffer = Buffer.alloc(bytes);
+  const fd = openSync(path, "r");
+  try {
+    return buffer.subarray(0, readSync(fd, buffer, 0, bytes, 0)).toString("utf8");
+  } finally {
+    closeSync(fd);
+  }
+}
+
 /** Only a skill's name and description are always loaded; the body is not. */
 function skillListing(dir) {
   if (!existsSync(dir)) {
@@ -70,7 +81,7 @@ function skillListing(dir) {
     if (!entry.isDirectory() || !existsSync(path)) {
       continue;
     }
-    const head = readFileSync(path, "utf8").slice(0, 3000);
+    const head = readHead(path, 3000);
     const frontmatter = /^---\n([\s\S]*?)\n---/.exec(head.replace(/\r\n/g, "\n"))?.[1] ?? "";
     lines.push(entry.name + ": " + (/description:\s*(.+)/.exec(frontmatter)?.[1] ?? ""));
   }

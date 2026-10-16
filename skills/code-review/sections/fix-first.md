@@ -21,8 +21,8 @@ with a caveat), never higher.
 | missing eager loading | races and concurrency |
 | stale comments | design decisions |
 | magic numbers to named constants | fixes over 20 lines |
-| missing output validation on model/LLM data | enum completeness |
-| version or path mismatches | removing functionality |
+| version or path mismatches in docs and config | enum completeness |
+| missing output validation on model/LLM data | removing functionality |
 | inline styles, O(n*m) view lookups | user-visible behaviour, migrations |
 | | gate integrity (four options, see `gate-integrity.md`) |
 | | every proposed test, every simplification |

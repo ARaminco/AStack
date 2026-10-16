@@ -48,7 +48,8 @@ export function runGuardCommand({ runtime, i18n, tokens }) {
     if (!existsSync(absolute)) {
       throw new Error(t("cli.guard.freezeMissing", { dir: target }));
     }
-    save({ ...state, corrupt: undefined, freeze: relative(projectDir, absolute).split("\\").join("/") || "." });
+    // Stored absolute, so the hook resolves the same folder from any cwd.
+    save({ ...state, corrupt: undefined, freeze: absolute });
     out(t("cli.guard.frozen", { dir: target }));
     return;
   }
@@ -59,7 +60,9 @@ export function runGuardCommand({ runtime, i18n, tokens }) {
     return;
   }
   if (action === "check") {
-    const verdict = judgeCommand(positionals.join(" "));
+    // Raw words: flags of the checked command are not options of this one.
+    const raw = rest[0] === "--" ? rest.slice(1) : rest;
+    const verdict = judgeCommand(raw.join(" "));
     out(verdict.decision + (verdict.reason ? " — " + verdict.reason : ""));
     return;
   }

@@ -381,3 +381,19 @@ are `credential://` references, and real gateway owner ids belong in
 [Search](Search.md), [Skill Hub](Skill-Hub.md),
 [Aramin Console](Aramin-Console.md) and
 [Board, Sandbox, Vault and A2A](Board-Sandbox-Vault.md) for what each key does.
+
+## AStack 3.4 and 3.5 sections
+
+```yaml
+browser:
+  dedicated:            # the project's own browser (documentation/Dedicated-Browser.md)
+    enabled: true
+    allow_code: false
+context:
+  always_on_budget: 15000   # astack context bill
+guard:
+  enabled: true             # the Claude Code guard hook (documentation/Guard.md)
+```
+
+Existing installs receive `browser.dedicated` from a migration; `guard` and
+`context.always_on_budget` default to the values above when absent.

@@ -274,6 +274,8 @@ cli:
 
 context:
   enabled: true
+  # Always-on tokens per session before the first question (astack context bill).
+  always_on_budget: 15000
   engine: context-engine/context-engine.mjs
   router: context-engine/context-router.mjs
   lenses: context-engine/lenses.json
@@ -417,6 +419,11 @@ browser:
     window: "1440,1000"
     caps: "pdf"
     allow_code: false
+
+# The Claude Code guard hook (3.5.0): refuses catastrophic commands, asks before
+# destructive ones, freezes edits to a folder. false removes the hook.
+guard:
+  enabled: true
 
 authority:
   default_level: L2

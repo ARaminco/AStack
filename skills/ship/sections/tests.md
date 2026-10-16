@@ -1,7 +1,8 @@
 # Tests on merged code
 
 ## 1. Integrate first
-Merge or rebase the latest base into the branch before testing, so the tests
+Merge the latest base into the branch before testing (rebase only commits that
+were never pushed: a pushed branch would then need a force-push), so the tests
 run on what will land. Conflicts: resolve only the obvious ones; anything
 semantic goes to the owner.
 

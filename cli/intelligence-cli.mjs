@@ -23,6 +23,7 @@ export function runContextCommand({ runtime, i18n, tokens }) {
   if (action === "bill") {
     const bill = contextBill({
       projectRoot: runtime.interop?.projectRoot ?? runtime.workspaceRoot ?? runtime.root,
+      coreRoot: runtime.root,
       interop: runtime.interop,
       mcpTools,
       budget: Number(flags.budget ?? runtime.configuration?.section?.("context", {})?.always_on_budget ?? DEFAULT_ALWAYS_ON_BUDGET)
