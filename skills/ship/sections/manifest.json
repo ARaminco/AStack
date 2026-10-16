@@ -1,0 +1,12 @@
+{
+  "skill": "ship",
+  "note": "Passive index. SKILL.md decides when a section is opened; open one file per step, never all.",
+  "sections": [
+    { "id": "tests", "file": "tests.md", "title": "Run tests on merged code and triage failures", "trigger": "step 2" },
+    { "id": "docs-drift", "file": "docs-drift.md", "title": "Documentation drift audit", "trigger": "step 4" },
+    { "id": "version-changelog", "file": "version-changelog.md", "title": "Version bump and CHANGELOG entry", "trigger": "step 5" },
+    { "id": "commit-push", "file": "commit-push.md", "title": "Bisectable commits and a safe push", "trigger": "steps 6 and 9" },
+    { "id": "deploy", "file": "deploy.md", "title": "Deploy with production safety and automatic rollback", "trigger": "step 10, the project deploys and the owner approved it" },
+    { "id": "canary", "file": "canary.md", "title": "Post-deploy verification, rollback and verdict", "trigger": "step 11, after a deploy" }
+  ]
+}

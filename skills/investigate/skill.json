@@ -1,0 +1,69 @@
+{
+  "id": "investigate",
+  "name": "Investigate",
+  "nameFa": "عیب‌یابی ریشه‌ای",
+  "source": "builtin",
+  "status": "trusted",
+  "version": 1,
+  "confidence": 0.85,
+  "domains": [
+    "software"
+  ],
+  "keywords": [
+    "debug",
+    "bug",
+    "error",
+    "exception",
+    "stack trace",
+    "root cause",
+    "500",
+    "broken",
+    "flaky",
+    "flake",
+    "race",
+    "regression",
+    "investigate",
+    "باگ",
+    "خطا",
+    "ارور",
+    "ریشه",
+    "عیب‌یابی",
+    "خراب"
+  ],
+  "description": "عیب‌یابی منظم: اول بازتولید و یافتن علت ریشه‌ای، بعد اصلاح با تست بازگشتی؛ توقف و گزارش پس از سه تلاش ناموفق.",
+  "capabilities": [
+    "reproduce",
+    "root-cause",
+    "flake-recipe",
+    "race-recipe",
+    "polluter-recipe",
+    "regression-test"
+  ],
+  "requiredTools": [
+    "filesystem",
+    "shell",
+    "graph",
+    "memory"
+  ],
+  "requiredCredentials": [],
+  "riskLevel": "L2",
+  "approvalLevel": "none",
+  "compatibleRuntimes": [
+    "claude-code",
+    "codex",
+    "cli"
+  ],
+  "sections": "sections/manifest.json",
+  "adaptedFrom": "gstack investigate (MIT, commit 47d639a); see NOTICE",
+  "procedure": [
+    { "order": 1, "label": "نشانه را دقیق ثبت کن و حافظه را برای باگ‌های قبلی همان بخش جست‌وجو کن.", "required": true, "share": 1 },
+    { "order": 2, "label": "مسیر کد و تغییرات اخیر را بخوان و باگ را به‌طور قطعی بازتولید کن.", "required": true, "share": 1 },
+    { "order": 3, "label": "فرضیه علت ریشه‌ای را به شکل ادعای آزمون‌پذیر بنویس و ویرایش‌ها را به همان ماژول محدود کن.", "required": true, "share": 1 },
+    { "order": 4, "label": "فرضیه را با یک probe تأیید کن؛ برای تست ناپایدار، آلوده‌کننده یا race همان دستورالعمل را باز کن.", "required": true, "share": 1 },
+    { "order": 5, "label": "پس از سه فرضیه یا اصلاح ناموفق متوقف شو و با سه گزینه به مالک گزارش بده.", "required": true, "share": 1 },
+    { "order": 6, "label": "تست بازگشتی بنویس که پیش از اصلاح شکست بخورد، کوچک‌ترین اصلاح را بزن و کل تست‌ها را اجرا کن.", "required": true, "share": 1 },
+    { "order": 7, "label": "سناریوی اصلی را دوباره اجرا کن، گزارش عیب‌یابی را به فارسی بده و درس را در حافظه مشترک ثبت کن.", "required": true, "share": 1 }
+  ],
+  "createdAt": "2026-10-17T00:00:00.000Z",
+  "updatedAt": "2026-10-17T00:00:00.000Z"
+}

@@ -1,0 +1,64 @@
+{
+  "id": "plan-review",
+  "name": "Plan Review",
+  "nameFa": "بازبینی طرح پیش از پیاده‌سازی",
+  "source": "builtin",
+  "status": "trusted",
+  "version": 1,
+  "confidence": 0.85,
+  "domains": [
+    "software"
+  ],
+  "keywords": [
+    "plan",
+    "planning",
+    "plan review",
+    "feature",
+    "scope",
+    "architecture",
+    "design",
+    "spec",
+    "requirements",
+    "test plan",
+    "estimate",
+    "طرح",
+    "برنامه",
+    "قابلیت",
+    "فیچر",
+    "محدوده",
+    "معماری"
+  ],
+  "description": "بازبینی طرح پیش از نوشتن کد: چالش محدوده (گسترش، انتخابی، ثابت، کاهش)، قفل‌کردن معماری و ماتریس تست، و امتیاز طراحی.",
+  "capabilities": [
+    "scope-challenge",
+    "engineering-lock-in",
+    "design-score",
+    "decision-gate"
+  ],
+  "requiredTools": [
+    "filesystem",
+    "graph",
+    "memory",
+    "project"
+  ],
+  "requiredCredentials": [],
+  "riskLevel": "L1",
+  "approvalLevel": "none",
+  "compatibleRuntimes": [
+    "claude-code",
+    "codex",
+    "cli"
+  ],
+  "sections": "sections/manifest.json",
+  "adaptedFrom": "gstack plan-ceo-review, plan-eng-review, plan-design-review, autoplan (MIT, commit 47d639a); see NOTICE",
+  "procedure": [
+    { "order": 1, "label": "طرح و کدی را که تغییر می‌دهد بخوان، تصمیم‌های قبلی را از حافظه بازیابی کن و مسئله واقعی را نام ببر.", "required": true, "share": 1 },
+    { "order": 2, "label": "یکی از حالت‌های گسترش، انتخابی، ثابت یا کاهش را با دلیل پیشنهاد کن؛ انتخاب با مالک است.", "required": true, "share": 1 },
+    { "order": 3, "label": "هر افزودن یا حذف را جداگانه بپرس و موارد کنارگذاشته را با دلیل ثبت کن.", "required": true, "share": 1 },
+    { "order": 4, "label": "معماری، نمودار جریان داده، حالت‌های مرزی، نقشه خطا و ماتریس تست را بنویس.", "required": true, "share": 1 },
+    { "order": 5, "label": "اگر طرح رابط کاربری دارد، هفت بعد طراحی را از ۰ تا ۱۰ امتیاز بده.", "required": false, "share": 1 },
+    { "order": 6, "label": "خلاصه یک‌صفحه‌ای را با تصمیم‌های سلیقه‌ای و تغییرات جهت مالک ارائه کن و تصمیم‌های تأییدشده را ثبت کن.", "required": true, "share": 1 }
+  ],
+  "createdAt": "2026-10-17T00:00:00.000Z",
+  "updatedAt": "2026-10-17T00:00:00.000Z"
+}

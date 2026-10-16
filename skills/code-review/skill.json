@@ -1,0 +1,66 @@
+{
+  "id": "code-review",
+  "name": "Code Review",
+  "nameFa": "بازبینی کد پیش از ادغام",
+  "source": "builtin",
+  "status": "trusted",
+  "version": 1,
+  "confidence": 0.85,
+  "domains": [
+    "software"
+  ],
+  "keywords": [
+    "code review",
+    "review",
+    "diff",
+    "pull request",
+    "pr",
+    "merge",
+    "pre-merge",
+    "gate integrity",
+    "security",
+    "laravel",
+    "livewire",
+    "filament",
+    "nextjs",
+    "بازبینی",
+    "بازبینی کد",
+    "ریویو",
+    "دیف",
+    "ادغام"
+  ],
+  "description": "بازبینی دومرحله‌ای diff پیش از ادغام، با متخصص‌هایی که فقط در صورت نیاز باز می‌شوند، کنترل تضعیف تست‌ها و اصلاح خودکار موارد ساده.",
+  "capabilities": [
+    "two-pass-review",
+    "lazy-specialists",
+    "gate-integrity",
+    "fix-first"
+  ],
+  "requiredTools": [
+    "filesystem",
+    "shell",
+    "graph"
+  ],
+  "requiredCredentials": [],
+  "riskLevel": "L2",
+  "approvalLevel": "none",
+  "compatibleRuntimes": [
+    "claude-code",
+    "codex",
+    "cli"
+  ],
+  "sections": "sections/manifest.json",
+  "adaptedFrom": "gstack review (MIT, commit 47d639a); see NOTICE",
+  "procedure": [
+    { "order": 1, "label": "پایه و کل تغییرات (commit‌شده، stage، تغییرات کاری و فایل‌های جدید) را مشخص کن و کل diff را بخوان.", "required": true, "share": 1 },
+    { "order": 2, "label": "مرحله اول (موارد بحرانی) و بررسی یکپارچگی گیت‌ها را اجرا کن؛ هر یافته را در همه نقاط مشابه هم جست‌وجو کن.", "required": true, "share": 1 },
+    { "order": 3, "label": "مرحله دوم (موارد اطلاعاتی) و بخش مخصوص Laravel یا Next.js را فقط در صورت تغییر همان فایل‌ها اجرا کن.", "required": true, "share": 1 },
+    { "order": 4, "label": "متخصص‌ها را فقط طبق جدول محرک‌ها باز کن و دلیل ردشدن بقیه را بنویس.", "required": true, "share": 1 },
+    { "order": 5, "label": "موارد بی‌اهمیت را حذف کن و برای هر یافته file:line و میزان اطمینان بنویس.", "required": true, "share": 1 },
+    { "order": 6, "label": "موارد مکانیکی را خودکار اصلاح کن و بقیه را یک‌جا از مالک بپرس؛ یافته‌های گیت همیشه پرسیده می‌شوند.", "required": true, "share": 1 },
+    { "order": 7, "label": "برای هر اصلاح رفتاری اول تست بازگشتی بنویس که پیش از اصلاح شکست بخورد؛ حداکثر سه دور بازبینی.", "required": true, "share": 1 },
+    { "order": 8, "label": "گزارش را با قالب خروجی و به فارسی بده؛ چیزی commit یا push نکن.", "required": true, "share": 1 }
+  ],
+  "createdAt": "2026-10-17T00:00:00.000Z",
+  "updatedAt": "2026-10-17T00:00:00.000Z"
+}
