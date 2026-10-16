@@ -17,7 +17,8 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from "node:pat
 import { fileURLToPath } from "node:url";
 import { ConfigurationEngine } from "../configuration-engine/configuration.mjs";
 import { DedicatedBrowser, npxCommand } from "../browser-engine/dedicated.mjs";
-import { CODE_TOOLS, actionKey, commitTarget, filenameProblem, indexSnapshotRefs, logEntry, secretFieldProblem, targetRefs, urlProblem } from "../browser-engine/browser-policy.mjs";
+import { ACTING_TOOLS, CODE_TOOLS, SECRET_REFUSAL, actionKey, callTargets, commitTarget, filenameProblem, indexSnapshotRefs, logEntry, pageOf, secretFieldProblem, snapshotName, targetProblem, urlProblem } from "../browser-engine/browser-policy.mjs";
+import { probePage } from "../browser-engine/page-probe.mjs";
 import { ApprovalEngine } from "../trust-engine/approvals.mjs";
 import { estimateTokens } from "../lib/text.mjs";
 
@@ -67,19 +68,20 @@ function refuse(id, text) {
  * opens the request and stops; the owner approves it (CLI, console or
  * gateway); the same call made again consumes the receipt and proceeds.
  */
-function commitGate(tool, args, target) {
-  const key = actionKey(tool, args);
+function commitGate(tool, args, target, context) {
+  const key = actionKey(tool, args, context);
   const mine = approvals.list({ limit: 500 }).filter((entry) => entry.action === "browser.commit" && entry.parameters?.key === key);
-  const approved = mine.find((entry) => entry.state === "approved");
+  // An approval in flight (forwarded, result not back yet) is not reusable.
+  const approved = mine.find((entry) => entry.state === "approved" && !inFlight.has(entry.id));
   if (approved) {
-    approvals.consume(approved.id, { by: "astack-browser" });
     return { ok: true, approval: approved.id };
   }
   const pending = mine.find((entry) => entry.state === "pending");
+  const page = context.page ?? "the current page";
   const request = pending ?? approvals.request({
     action: "browser.commit",
-    summary: "Browser: " + target,
-    parameters: { key, tool, target },
+    summary: "Browser on " + page + ": " + target,
+    parameters: { key, tool, target, page },
     level: "L4",
     tool: "astack-browser",
     target,
@@ -88,7 +90,7 @@ function commitGate(tool, args, target) {
   });
   return {
     ok: false,
-    text: "Stopped before a commit: " + target + ". This needs the owner's approval " + request.id +
+    text: "Stopped before a commit on " + page + ": " + target + ". This needs the owner's approval " + request.id +
       ". Take a screenshot, tell the owner exactly what will be submitted, and ask them to approve it (`astack approval approve " + request.id +
       "` in their terminal, the console or the gateway). After approval, make the same call again with the same arguments; one approval allows it once."
   };
@@ -155,6 +157,20 @@ function rewrite(line) {
     }
     measure(message.result.tools);
     return JSON.stringify(message);
+  }
+  const approval = inFlightById.get(message.id);
+  if (approval) {
+    // The receipt is used up only when the action actually ran; a call that
+    // failed (stale ref, timeout) leaves the owner's approval in place.
+    inFlightById.delete(message.id);
+    inFlight.delete(approval);
+    if (!message.error && !message.result?.isError) {
+      try {
+        approvals.consume(approval, { by: "astack-browser" });
+      } catch {
+        // Already consumed or expired: nothing more to do.
+      }
+    }
   }
   if (callRequests.has(message.id) && Array.isArray(message.result?.content)) {
     callRequests.delete(message.id);
@@ -231,29 +247,47 @@ async function forward(line) {
       refuse(message.id, "Refused: running code in the page is off for this project's browser (browser.dedicated.allow_code). Use snapshot, click and type instead.");
       return;
     }
-    const problem = urlProblem(args) ?? filenameProblem(args) ?? secretFieldProblem(tool, args);
+    const problem = urlProblem(args) ?? filenameProblem(args) ?? targetProblem(tool, args, refText);
     if (problem) {
       record(tool, args, { refused: "policy" });
       refuse(message.id, problem);
       return;
-    }
-    const pageText = targetRefs(args).map((ref) => refText.get(ref) ?? "").join(" ");
-    const target = commitTarget(tool, args, pageText);
-    let approval = null;
-    if (target) {
-      const gate = commitGate(tool, args, target);
-      if (!gate.ok) {
-        record(tool, args, { refused: "needs-approval" });
-        refuse(message.id, gate.text);
-        return;
-      }
-      approval = gate.approval;
     }
     try {
       await ensureBrowser();
     } catch (error) {
       refuse(message.id, "The project's browser could not be opened: " + error.message);
       return;
+    }
+    const lines = callTargets(args).map((ref) => refText.get(ref) ?? "");
+    const pageText = lines.join(" ");
+    // Ask the page itself what the target is (password field? a POST form's
+    // submit button? what has focus?) before an acting call.
+    let probe = {};
+    if (ACTING_TOOLS.has(tool)) {
+      probe = await probePage(port, { pageUrl: lastPage, names: lines.map(snapshotName).filter(Boolean) });
+    }
+    const secret = secretFieldProblem(tool, args, pageText) ??
+      (["browser_type", "browser_fill_form"].includes(tool) && probe.secret ? SECRET_REFUSAL : null) ??
+      (tool === "browser_press_key" && probe.focusedSecret ? SECRET_REFUSAL : null) ??
+      (tool === "browser_click" && probe.secret && args.doubleClick ? SECRET_REFUSAL : null);
+    if (secret) {
+      record(tool, args, { refused: "secret-field" });
+      refuse(message.id, secret);
+      return;
+    }
+    const target = commitTarget(tool, args, pageText, probe);
+    let approval = null;
+    if (target) {
+      const gate = commitGate(tool, args, target, { page: lastPage, text: pageText + " " + (probe.focused ?? "") });
+      if (!gate.ok) {
+        record(tool, args, { refused: "needs-approval" });
+        refuse(message.id, gate.text);
+        return;
+      }
+      approval = gate.approval;
+      inFlight.add(approval);
+      inFlightById.set(message.id, approval);
     }
     callRequests.add(message.id);
     record(tool, args, approval ? { approval } : {});
@@ -270,10 +304,23 @@ async function forward(line) {
 
 /** What each element ref says, from tool results and saved snapshots. */
 const refText = new Map();
+// The page the browser is on (origin and path), from the latest result.
+let lastPage = null;
+const inFlight = new Set();
+const inFlightById = new Map();
 function learnRefs(content) {
   for (const part of content) {
     if (part?.type !== "text" || typeof part.text !== "string") {
       continue;
+    }
+    const url = /Page URL:\s*(\S+)/.exec(part.text)?.[1];
+    if (url) {
+      const page = pageOf(url);
+      if (page && page !== lastPage) {
+        // Refs belong to one page: a new page starts a new map.
+        refText.clear();
+      }
+      lastPage = page ?? lastPage;
     }
     indexSnapshotRefs(part.text, refText);
     for (const match of part.text.matchAll(/\(([^()\n]+\.ya?ml)\)/g)) {
