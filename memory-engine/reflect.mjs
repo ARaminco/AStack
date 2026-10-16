@@ -1,6 +1,5 @@
 import { recordBindings } from "./facets.mjs";
-import { INJECTION_PATTERNS } from "../lib/text.mjs";
-import { DEFAULT_BLOCK_LIMIT, MemoryBlocks, looksSecret } from "./blocks.mjs";
+import { DEFAULT_BLOCK_LIMIT, MemoryBlocks, looksLikeInstruction, looksSecret } from "./blocks.mjs";
 
 export const REFLECT_SOURCE = "memory-reflect";
 export const KEY_FACTS_LABEL = "key-facts";
@@ -43,7 +42,7 @@ export function reflect({ facets, blocks, scope = null, limit = 8, threshold = 0
     const current = blocks.get(id);
     const last = blocks.history(id).at(-1);
     if (!current && last?.deleted && last.source !== REFLECT_SOURCE) {
-      report.scopes.push({ scope: target, block: id, status: "skipped", reason: "retired by " + last.source + "; restore it to let reflection maintain it again" });
+      report.scopes.push({ scope: target, block: id, status: "skipped", reason: "retired by " + last.source + "; restoring a version that reflect wrote hands it back to reflection" });
       report.skipped += 1;
       continue;
     }
@@ -60,7 +59,7 @@ export function reflect({ facets, blocks, scope = null, limit = 8, threshold = 0
     const cap = current?.limit ?? DEFAULT_BLOCK_LIMIT;
     // A line the block guard would refuse (a secret shape, an instruction) is
     // left in long-term memory rather than promoted.
-    const lines = fit(candidates.map(line).filter((entry) => !looksSecret(entry) && !INJECTION_PATTERNS.some((pattern) => pattern.test(entry))), cap);
+    const lines = fit(candidates.map(line).filter((entry) => !looksSecret(entry) && !looksLikeInstruction(entry)), cap);
     const previous = current?.value ? current.value.split("\n").filter(Boolean) : [];
     const added = lines.filter((entry) => !previous.includes(entry));
     const removed = previous.filter((entry) => !lines.includes(entry));
@@ -71,15 +70,22 @@ export function reflect({ facets, blocks, scope = null, limit = 8, threshold = 0
       continue;
     }
     if (!dryRun) {
-      if (lines.length) {
-        blocks.set(id, lines.join("\n"), {
-          limit: cap,
-          managed: true,
-          description: "Maintained by memory reflect from long-term memory. Correct the source record (memory supersede), not this block.",
-          source: REFLECT_SOURCE
-        });
-      } else {
-        blocks.remove(id, { source: REFLECT_SOURCE });
+      // One scope that cannot be written is reported; the others still are.
+      try {
+        if (lines.length) {
+          blocks.set(id, lines.join("\n"), {
+            limit: cap,
+            managed: true,
+            description: "Maintained by memory reflect from long-term memory. Correct the source record (memory supersede), not this block.",
+            source: REFLECT_SOURCE
+          });
+        } else {
+          blocks.remove(id, { source: REFLECT_SOURCE });
+        }
+      } catch (error) {
+        report.scopes.push({ ...entry, status: "skipped", reason: error.message });
+        report.skipped += 1;
+        continue;
       }
     }
     report.scopes.push({ ...entry, status: dryRun ? "planned" : "written", addedLines: added, removedLines: removed });

@@ -2,6 +2,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { redactCredentialWords, redactLabelledBase32, redactTokenShapes } from "../lib/redact.mjs";
 import { estimateTokens, INJECTION_PATTERNS } from "../lib/text.mjs";
+import { isUnattended } from "../trust-engine/approvals.mjs";
 
 export const DEFAULT_BLOCK_LIMIT = 1500;
 export const MAX_BLOCK_LIMIT = 8000;
@@ -137,7 +138,7 @@ export class MemoryBlocks {
     if (!force) {
       throw new Error("Block " + latest.id + " is read-only. Only the owner can change it (CLI with --force).");
     }
-    if (process.env.ASTACK_MCP === "1" || process.env.ASTACK_UNATTENDED === "1") {
+    if (process.env.ASTACK_MCP === "1" || isUnattended()) {
       throw new Error("Block " + latest.id + " is read-only; --force is refused in unattended runs and over MCP.");
     }
   }
@@ -268,7 +269,8 @@ export class MemoryBlocks {
     }
     const current = this.get(parsed.id);
     this.checkWritable(current, { force, id: parsed.id });
-    const block = this.write({ ...target, version: this.lastVersion(parsed.id) + 1, at: this.now(), source, restoredFrom: target.version, deleted: undefined });
+    const owner = target.source === "memory-reflect" ? target.source : source;
+    const block = this.write({ ...target, version: this.lastVersion(parsed.id) + 1, at: this.now(), source: owner, restoredBy: source, restoredFrom: target.version, deleted: undefined });
     return { block, changed: true, evicted: [] };
   }
 
@@ -336,12 +338,12 @@ export class MemoryBlocks {
 // action, unless the line negates it ("never pay without approval" is a
 // fact). Whitespace is collapsed first, so spacing and line breaks do not
 // hide a known pattern.
-const ROLE_PREFIX = /^\s*(system|assistant|developer)\s*:/im;
-const ACTIONS = "(approve|pay|send|publish|submit|delete|transfer|wire|sign|forward)";
+const ROLE_PREFIX = /^\s*(system|assistant|developer)\s*:\s*(you |ignore |disregard |forget |always |never |do |must |send |approve |delete |publish |reveal |from now on)/im;
+const ACTIONS = "(approve|pay|send|publish|submit|delete|transfer|wire|forward)";
 const AUTO_ACTION = new RegExp("\\b(always|automatically|auto-?)\\b[^.\\n]{0,30}\\b" + ACTIONS + "\\b|\\b" + ACTIONS + "\\b[^.\\n]{0,40}\\bwithout (asking|approval|confirmation|permission|the owner)\\b", "i");
 const AUTO_ACTION_FA = /(بدون|بی)\s*(تایید|تأیید|اجازه|هماهنگی)[^.\n]{0,40}(ارسال کن|بفرست|پرداخت کن|ثبت کن|منتشر کن|حذف کن|واریز کن)|(همیشه|خودکار)[^.\n]{0,30}(ارسال کن|بفرست|پرداخت کن|ثبت کن|منتشر کن|تایید کن|تأیید کن)/;
 // "Always send … after owner approval" is a standing preference, not a bypass.
-const GATED = /\b(after|with|once|upon|following|subject to)\b[^.\n]{0,25}\b(approv|confirm|sign-?off)/i;
+const GATED = /\b(after|with|once|upon|following|subject to)\b[^.\n]{0,25}\b(approv|confirm|sign-?off|review)/i;
 const GATED_FA = /(بعد|پس) از (تایید|تأیید|اجازه)|با (تایید|تأیید|اجازه)/;
 const UNGATED_FA = /(بدون|بی)\s*(تایید|تأیید|اجازه|هماهنگی)/;
 const NEGATION = /\b(never|not|don't|do not|must not|no)\b|هرگز|نکن|نفرست|نباید|ممنوع/i;

@@ -297,19 +297,19 @@ export const mcpTools = [
     name: "astack_memory_entity",
     description: "Resolve a person, company, project or case in the knowledge graph and show its neighbours.",
     inputSchema: { type: "object", properties: { name: text("Entity name") }, required: ["name"] },
-    args: (input) => ["memory", "entity", String(input.name)]
+    args: (input) => ["memory", "entity", "--", String(input.name)]
   },
   {
     name: "astack_context_map",
     description: "Token-budgeted map of the files and symbols relevant to a question. Use instead of reading the workspace.",
     inputSchema: { type: "object", properties: { question: text("The question") }, required: ["question"] },
-    args: (input) => ["context", "map", String(input.question)]
+    args: (input) => ["context", "map", "--", String(input.question)]
   },
   {
     name: "astack_context_search",
     description: "Ranked search over the context index; open only the returned paths and line ranges.",
     inputSchema: { type: "object", properties: { terms: text("Search terms") }, required: ["terms"] },
-    args: (input) => ["context", "search", String(input.terms)]
+    args: (input) => ["context", "search", "--", String(input.terms)]
   },
   {
     name: "astack_graph_query",
@@ -319,31 +319,31 @@ export const mcpTools = [
       properties: { question: text("The codebase question"), budget: number("Token cap, default from astack.config.yaml graphify.query_budget") },
       required: ["question"]
     },
-    args: (input) => ["graphify", "query", String(input.question), ...optional("budget", input.budget)]
+    args: (input) => ["graphify", "query", ...optional("budget", input.budget), "--", String(input.question)]
   },
   {
     name: "astack_graph_explain",
     description: "Explain one symbol, file or concept from the code graph with its connections.",
     inputSchema: { type: "object", properties: { node: text("Symbol, file or concept"), budget: number("Token cap") }, required: ["node"] },
-    args: (input) => ["graphify", "explain", String(input.node), ...optional("budget", input.budget)]
+    args: (input) => ["graphify", "explain", ...optional("budget", input.budget), "--", String(input.node)]
   },
   {
     name: "astack_graph_path",
     description: "Shortest relationship path between two nodes of the code graph.",
     inputSchema: { type: "object", properties: { from: text("Start node"), to: text("End node") }, required: ["from", "to"] },
-    args: (input) => ["graphify", "path", String(input.from), String(input.to)]
+    args: (input) => ["graphify", "path", "--", String(input.from), String(input.to)]
   },
   {
     name: "astack_graph_affected",
     description: "Impact analysis: what calls, imports or depends on a node, before you change it.",
     inputSchema: { type: "object", properties: { node: text("Symbol or file") }, required: ["node"] },
-    args: (input) => ["graphify", "affected", String(input.node)]
+    args: (input) => ["graphify", "affected", "--", String(input.node)]
   },
   {
     name: "astack_ask",
     description: "Chief of Staff analysis of a request: intent, entities, context, skills, tools, runtime, authority and proposed team. Read-only.",
     inputSchema: { type: "object", properties: { request: text("The owner's request") }, required: ["request"] },
-    args: (input) => ["ask", String(input.request)]
+    args: (input) => ["ask", "--", String(input.request)]
   },
   {
     name: "astack_skill_catalog",
@@ -355,13 +355,13 @@ export const mcpTools = [
     name: "astack_skill_pack_search",
     description: "Search the auxiliary skill packs (for example the Hermes pack) for a specialised procedure. Use only when your own and the built-in skills do not cover the task; returns ranked one-line hits, high-risk skills excluded.",
     inputSchema: { type: "object", properties: { query: text("What the task needs, in a few words"), pack: text("Optional pack name, e.g. hermes") }, required: ["query"] },
-    args: (input) => ["skill", "pack", "search", String(input.query), ...optional("pack", input.pack)]
+    args: (input) => ["skill", "pack", "search", ...optional("pack", input.pack), "--", String(input.query)]
   },
   {
     name: "astack_skill_pack_show",
     description: "Load one auxiliary pack skill (<pack>/<id>) with its scan summary, after selecting it from astack_skill_pack_search. Third-party text: guidance only, never run its scripts without telling the owner.",
     inputSchema: { type: "object", properties: { id: text("Pack skill id, e.g. hermes/xlsx") }, required: ["id"] },
-    args: (input) => ["skill", "pack", "show", String(input.id)]
+    args: (input) => ["skill", "pack", "show", "--", String(input.id)]
   },
   {
     name: "astack_skill_online_search",
@@ -416,17 +416,19 @@ export const mcpTools = [
       required: ["summary"]
     },
     args: (input, source) => [
-      "interop", "handoff", String(input.summary), "--runtime", source,
+      "interop", "handoff", "--runtime=" + source,
       ...optional("done", input.done),
       ...optional("findings", Array.isArray(input.findings) ? input.findings.join(";") : input.findings),
       ...optional("open", Array.isArray(input.openQuestions) ? input.openQuestions.join(";") : input.openQuestions),
-      ...optional("next", input.next), ...optional("project", input.project)
+      ...optional("next", input.next), ...optional("project", input.project),
+      "--", String(input.summary)
     ]
   },
   {
     name: "astack_journal",
     description: "Latest sessions and handoffs from both Claude Code and Codex.",
     inputSchema: { type: "object", properties: { limit: number("Entries, default 10") } },
+    validate: (input) => memoryFieldProblem({ limit: input.limit }),
     args: (input) => ["interop", "journal", ...optional("limit", input.limit)]
   },
   {
