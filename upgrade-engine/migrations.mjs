@@ -263,6 +263,23 @@ export const migrations = [
       writeFileSync(path, lines.join(newline), "utf8");
       return "added browser.dedicated to astack.config.yaml";
     }
+  },
+  {
+    id: "2026.11-ignore-guard-state",
+    description: "Keep the guard's decision log and freeze state out of git (3.5.0).",
+    appliesTo: (root) => {
+      if (!existsSync(join(root, ".gitignore"))) {
+        return false;
+      }
+      const current = readFileSync(join(root, ".gitignore"), "utf8");
+      return !/^\/?\.astack\/?\s*$/m.test(current) && !current.includes(".astack/guard/");
+    },
+    run: (root) => {
+      const path = join(root, ".gitignore");
+      const current = readFileSync(path, "utf8");
+      writeFileSync(path, current.replace(/\s*$/, "\n") + ".astack/guard/\n", "utf8");
+      return "added .astack/guard/ to .gitignore";
+    }
   }
 ];
 

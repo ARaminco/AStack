@@ -34,6 +34,7 @@ export const BROWSER_READ_TOOLS = [
   "browser_network_requests", "browser_wait_for", "browser_navigate", "browser_navigate_back", "browser_resize"
 ];
 const HOOK_MARKER = "interop hook";
+const GUARD_MARKER = "astack-guard.mjs";
 const TOML_BEGIN = "# >>> astack (managed by `astack interop sync`) >>>";
 const TOML_END = "# <<< astack <<<";
 const CLAUDE_IMPORT = "@AGENTS.md";
@@ -135,9 +136,10 @@ function parseFrontmatter(text) {
 }
 
 export class InteropEngine {
-  constructor(root, { workspaceRoot = root, projectRoot = null, legacyMemory = null, memory = null, standup = null, graphify = null, browser = null, clock, home = homedir(), env = process.env } = {}) {
+  constructor(root, { workspaceRoot = root, projectRoot = null, legacyMemory = null, memory = null, standup = null, graphify = null, browser = null, guard = null, clock, home = homedir(), env = process.env } = {}) {
     this.root = root;
     this.browserConfig = browser ?? readDedicatedConfig(root);
+    this.guardConfig = guard ?? readSection(root, "guard");
     this.graphify = graphify;
     this.workspaceRoot = workspaceRoot;
     // Where the runtimes are opened. Usually the install itself; for a core
@@ -243,6 +245,11 @@ export class InteropEngine {
     return lines.join("\n");
   }
 
+  guardCli() {
+    const bin = relative(this.projectRoot, join(this.root, "bin", "astack-guard.mjs")).split("\\").join("/");
+    return bin || "bin/astack-guard.mjs";
+  }
+
   browserEnabled() {
     return this.browserConfig?.enabled !== false;
   }
@@ -317,6 +324,18 @@ export class InteropEngine {
     hooks.SessionEnd = this.mergeHooks(hooks, "SessionEnd", {
       hooks: [{ type: "command", command: this.claudeHookCommand("session-end"), timeout: 30 }]
     });
+    // The guard (3.5.0): destructive commands ask, catastrophic ones are
+    // refused, and a frozen folder bounds edits. guard.enabled: false removes it.
+    const guardCommand = "node \"$CLAUDE_PROJECT_DIR/" + this.guardCli() + "\"";
+    const keptPreToolUse = (Array.isArray(hooks.PreToolUse) ? hooks.PreToolUse : [])
+      .map((group) => ({ ...group, hooks: (group.hooks ?? []).filter((hook) => !String(hook.command ?? "").includes(GUARD_MARKER)) }))
+      .filter((group) => group.hooks.length);
+    hooks.PreToolUse = this.guardConfig?.enabled === false
+      ? keptPreToolUse
+      : [...keptPreToolUse, { matcher: "Bash|PowerShell|Edit|Write|MultiEdit|NotebookEdit", hooks: [{ type: "command", command: guardCommand, timeout: 10 }] }];
+    if (!hooks.PreToolUse.length) {
+      delete hooks.PreToolUse;
+    }
     next.hooks = hooks;
     // Our enable and allow entries exist only while AStack manages the
     // browser; they are removed otherwise, so they can never carry over to a
@@ -845,6 +864,15 @@ function outsideManagedBlock(text) {
   const begin = text.indexOf(TOML_BEGIN);
   const end = text.indexOf(TOML_END);
   return begin !== -1 && end > begin ? text.slice(0, begin) + text.slice(end + TOML_END.length) : text;
+}
+
+/** A top-level section of the core's configuration, or {}. */
+function readSection(root, name) {
+  try {
+    return new ConfigurationEngine(root).section(name, {}) ?? {};
+  } catch {
+    return {};
+  }
 }
 
 /** browser.dedicated from the core's configuration, or the defaults. */

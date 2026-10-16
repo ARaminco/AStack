@@ -1,4 +1,6 @@
 import { parseArgs } from "../delivery-engine/cli.mjs";
+import { DEFAULT_ALWAYS_ON_BUDGET, contextBill } from "../context-engine/context-bill.mjs";
+import { mcpTools } from "../interop-engine/mcp-server.mjs";
 import { appendSessionMatches } from "../search-engine/hooks.mjs";
 import { runSkillCurateCommand, runSkillPackCommand } from "./skill-hub-cli.mjs";
 import { runSkillOnlineCommand } from "./skill-online-cli.mjs";
@@ -18,6 +20,23 @@ export function runContextCommand({ runtime, i18n, tokens }) {
   const engine = runtime.context;
   const query = positionals.join(" ");
 
+  if (action === "bill") {
+    const bill = contextBill({
+      projectRoot: runtime.interop?.projectRoot ?? runtime.workspaceRoot ?? runtime.root,
+      interop: runtime.interop,
+      mcpTools,
+      budget: Number(flags.budget ?? runtime.configuration?.section?.("context", {})?.always_on_budget ?? DEFAULT_ALWAYS_ON_BUDGET)
+    });
+    out(t("cli.context.billTitle", { total: bill.total, budget: bill.budget, state: bill.overBudget ? "OVER" : "ok" }));
+    for (const item of bill.items) {
+      out("- [" + item.group + "] " + item.name + ": " + item.tokens + (item.note ? " (" + item.note + ")" : ""));
+    }
+    out(bill.note);
+    if (bill.overBudget) {
+      process.exitCode = 1;
+    }
+    return;
+  }
   if (action === "build") {
     const index = engine.build({ force: Boolean(flags.force) });
     out(t("cli.context.built", {

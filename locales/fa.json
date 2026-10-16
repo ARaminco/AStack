@@ -176,7 +176,8 @@
       "refreshed": "ایندکس به‌روزرسانی شد: {files} فایل، {parsed} تحلیل تازه.",
       "fresh": "ایندکس تازه است (ساخته‌شده در {builtAt}).",
       "pins": "فایل‌های سنجاق‌شده: {count}",
-      "unknownAction": "فرمان ناشناخته برای context: {action}"
+      "unknownAction": "فرمان ناشناخته برای context: {action}",
+      "billTitle": "هزینهٔ ثابت هر نشست: حدود {total} توکن پیش از اولین پرسش (سقف {budget}، {state})"
     },
     "memory": {
       "facetsTitle": "وجوه حافظه:",
@@ -669,6 +670,16 @@
       "totpStored": "کلید در اینجا نگه داشته می‌شود: {store} (vault:windows یعنی رمزشده با DPAPI ویندوز برای همین کاربر ویندوز؛ file یعنی ‎.astack/console/users.json).",
       "userSessionsEnded": "{count} نشست واردشده‌ی این کاربر بسته شد.",
       "unattendedRefused": "مدیریت ورود کنسول از یک فرایند خودکار (ASTACK_UNATTENDED) پذیرفته نمی‌شود: این فرمان را خودتان در ترمینال اجرا کنید."
+    },
+    "guard": {
+      "status": "نگهبان: {state} · ویرایش محدود به: {freeze} · تصمیم‌های ثبت‌شده: {events}",
+      "on": "نگهبان روشن شد: فرمان‌های پرخطر تأیید می‌خواهند و فرمان‌های فاجعه‌بار رد می‌شوند.",
+      "off": "نگهبان برای این پروژه خاموش شد (با astack guard on دوباره روشن می‌شود).",
+      "freezeNeedsDir": "پوشه‌ای را که ویرایش به آن محدود شود نام ببرید: astack guard freeze <dir>",
+      "freezeMissing": "پوشه پیدا نشد: {dir}",
+      "frozen": "ویرایش به {dir} محدود شد؛ تا astack guard unfreeze ویرایش جای دیگر رد می‌شود.",
+      "unfrozen": "محدودیت ویرایش برداشته شد.",
+      "unknownAction": "کار ناشناخته برای نگهبان: {action}"
     }
   },
   "delivery": {

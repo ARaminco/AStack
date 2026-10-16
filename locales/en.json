@@ -176,7 +176,8 @@
       "refreshed": "Index refreshed: {files} files, {parsed} parsed.",
       "fresh": "Index is fresh (built {builtAt}).",
       "pins": "Pinned files: {count}",
-      "unknownAction": "Unknown context action: {action}"
+      "unknownAction": "Unknown context action: {action}",
+      "billTitle": "Always-on context: about {total} tokens per session (budget {budget}, {state})"
     },
     "memory": {
       "facetsTitle": "Memory facets:",
@@ -669,6 +670,16 @@
       "totpStored": "The key is kept in: {store} (vault:windows = encrypted with Windows DPAPI for this Windows user; file = .astack/console/users.json).",
       "userSessionsEnded": "{count} signed-in session(s) of this user ended.",
       "unattendedRefused": "Refusing to manage console sign-in from an unattended process (ASTACK_UNATTENDED is set): run this yourself in a terminal."
+    },
+    "guard": {
+      "status": "Guard: {state} · edits frozen to: {freeze} · decisions logged: {events}",
+      "on": "Guard on: destructive commands ask, catastrophic ones are refused.",
+      "off": "Guard off for this project (astack guard on turns it back on).",
+      "freezeNeedsDir": "Name the folder to freeze edits to: astack guard freeze <dir>",
+      "freezeMissing": "Folder not found: {dir}",
+      "frozen": "Edits are frozen to {dir}; edits elsewhere are refused until astack guard unfreeze.",
+      "unfrozen": "Edit freeze lifted.",
+      "unknownAction": "Unknown guard action: {action}"
     }
   },
   "delivery": {
