@@ -26,21 +26,11 @@
   },
   "enabledMcpjsonServers": [
     "astack",
-    "browser",
     "astack-browser"
   ],
   "permissions": {
     "allow": [
       "mcp__astack",
-      "mcp__browser__browser_snapshot",
-      "mcp__browser__browser_take_screenshot",
-      "mcp__browser__browser_tabs",
-      "mcp__browser__browser_console_messages",
-      "mcp__browser__browser_network_requests",
-      "mcp__browser__browser_wait_for",
-      "mcp__browser__browser_navigate",
-      "mcp__browser__browser_navigate_back",
-      "mcp__browser__browser_resize",
       "mcp__astack-browser__browser_snapshot",
       "mcp__astack-browser__browser_take_screenshot",
       "mcp__astack-browser__browser_console_messages",

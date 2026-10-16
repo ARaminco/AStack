@@ -19,7 +19,7 @@ const DEFAULTS = {
   headless: false,
   window: "1440,1000",
   args: [],
-  caps: "vision,pdf",
+  caps: "pdf",
   playwright_version: PLAYWRIGHT_MCP_VERSION
 };
 

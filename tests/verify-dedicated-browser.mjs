@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { createServer } from "node:http";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DedicatedBrowser, PLAYWRIGHT_MCP_VERSION, PORT_RANGE } from "../browser-engine/dedicated.mjs";
 import { BROWSER_SERVER_ID, InteropEngine } from "../interop-engine/interop-engine.mjs";
 import { looksLikeInstruction } from "../memory-engine/blocks.mjs";
-import { actionKey, commitTarget, filenameProblem, logEntry, secretFieldProblem, urlProblem } from "../browser-engine/browser-policy.mjs";
+import { actionKey, commitTarget, filenameProblem, indexSnapshotRefs, logEntry, secretFieldProblem, targetRefs, urlProblem } from "../browser-engine/browser-policy.mjs";
 import { ApprovalEngine } from "../trust-engine/approvals.mjs";
 
 /**
@@ -167,6 +168,10 @@ assert.ok(commitTarget("browser_handle_dialog", { accept: true }));
 assert.equal(commitTarget("browser_click", { element: "Next page link", ref: "e5" }), null);
 assert.equal(commitTarget("browser_snapshot", {}), null);
 assert.notEqual(actionKey("browser_click", { element: "Pay", ref: "e1" }), actionKey("browser_click", { element: "Pay", ref: "e2" }), "one approval covers exactly one call");
+const refs = indexSnapshotRefs('- generic [ref=e1]:\n  - button "Pay now" [ref=e12] [cursor=pointer]\n  - link "Next" [ref=e13]');
+assert.equal(commitTarget("browser_click", { element: "blue button", ref: "e12" }, targetRefs({ ref: "e12" }).map((ref) => refs.get(ref)).join(" ")) !== null, true, "a misleading description does not get past the gate");
+assert.equal(commitTarget("browser_click", { element: "link", ref: "e13" }, refs.get("e13")), null);
+assert.ok(commitTarget("browser_mouse_click_xy", { x: 10, y: 20 }), "a coordinate click always needs approval");
 const entry = logEntry("browser_navigate", { url: "https://site.test/reset?token=abc#x", text: "secret" });
 assert.equal(entry.url, "https://site.test/reset", "the log keeps no query string");
 assert.equal(entry.text, undefined, "or typed text");
@@ -198,7 +203,9 @@ if (process.env.ASTACK_E2E_BROWSER === "1") {
     waiting.set(id, resolve);
     child.stdin.write(JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n");
   });
-  await call("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "verify", version: "1" } });
+  const claudeBefore = readFileSync(join(repoRoot, "CLAUDE.md"));
+  // Claude Code declares roots; the proxy must keep Playwright out of the project anyway.
+  await call("initialize", { protocolVersion: "2025-06-18", capabilities: { roots: { listChanged: true } }, clientInfo: { name: "claude-code", version: "1" } });
   const listed = await call("tools/list", {});
   assert.ok(listed.result.tools.some((tool) => tool.name === "browser_snapshot"));
   assert.ok(!listed.result.tools.some((tool) => ["browser_evaluate", "browser_run_code_unsafe"].includes(tool.name)), "code-running tools are hidden");
@@ -220,6 +227,28 @@ if (process.env.ASTACK_E2E_BROWSER === "1") {
   assert.doesNotMatch(JSON.stringify(allowed.result), /Stopped before a commit/, "after approval the same call goes through once");
   const again = await call("tools/call", pay);
   assert.match(again.result.content[0].text, /Stopped before a commit/, "one approval never covers a second click");
+  const shot = await call("tools/call", { name: "browser_take_screenshot", arguments: { filename: "CLAUDE.md" } });
+  assert.ok(!shot.result.isError, "a bare filename is accepted");
+  assert.ok(readFileSync(join(repoRoot, "CLAUDE.md")).equals(claudeBefore), "the project's CLAUDE.md is untouched even with client roots");
+  assert.ok(existsSync(join(repoRoot, ".astack", "browser", "dedicated", "output", "CLAUDE.md")), "the file lands in the output folder");
+  rmSync(join(repoRoot, ".astack", "browser", "dedicated", "output", "CLAUDE.md"), { force: true });
+  assert.ok(!listed.result.tools.some((tool) => /mouse_click_xy/.test(tool.name)), "no coordinate clicks by default");
+  // A real page with a pay button, described misleadingly by the agent.
+  const site = createServer((request, response) => {
+    response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    response.end("<!doctype html><title>shop</title><button onclick=\"document.title='PAID'\">Pay now</button><a href=\"#next\">Next</a>");
+  });
+  await new Promise((resolveListen) => site.listen(0, "127.0.0.1", resolveListen));
+  const shop = "http://127.0.0.1:" + site.address().port + "/";
+  await call("tools/call", { name: "browser_navigate", arguments: { url: shop } });
+  const snapshot = await call("tools/call", { name: "browser_snapshot", arguments: {} });
+  const payRef = /button "Pay now" \[ref=([A-Za-z0-9_-]+)\]/.exec(JSON.stringify(snapshot.result).replace(/\\"/g, '"'))?.[1];
+  assert.ok(payRef, "the snapshot names the pay button");
+  const disguised = await call("tools/call", { name: "browser_click", arguments: { element: "blue button", ref: payRef } });
+  assert.match(disguised.result.content[0].text, /Stopped before a commit/, "the gate reads the page, not the agent's description");
+  const title = await call("tools/call", { name: "browser_snapshot", arguments: {} });
+  assert.doesNotMatch(JSON.stringify(title.result), /PAID/, "nothing was paid");
+  site.close();
   child.stdin.end();
   await new DedicatedBrowser(repoRoot).stop();
   assert.ok(existsSync(join(repoRoot, ".astack", "browser", "dedicated", "calls.jsonl")), "tool calls are logged");

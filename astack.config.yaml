@@ -415,7 +415,7 @@ browser:
     profile: .astack/browser/dedicated/profile
     headless: false
     window: "1440,1000"
-    caps: "vision,pdf"
+    caps: "pdf"
     allow_code: false
 
 authority:
