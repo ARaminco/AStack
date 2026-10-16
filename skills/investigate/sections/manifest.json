@@ -1,0 +1,11 @@
+{
+  "skill": "investigate",
+  "note": "Passive index. SKILL.md decides when a section is opened; open one file per step, never all.",
+  "sections": [
+    { "id": "patterns", "file": "patterns.md", "title": "Known bug patterns and hypothesis testing", "trigger": "Phase 2, after the root cause hypothesis" },
+    { "id": "flake", "file": "flake.md", "title": "Flaky test recipe", "trigger": "the failure is intermittent or happens only in CI" },
+    { "id": "polluter", "file": "polluter.md", "title": "Test polluter recipe", "trigger": "a test passes alone and fails in the suite or one shard" },
+    { "id": "race", "file": "race.md", "title": "Race condition recipe", "trigger": "timing-dependent failure, concurrent writers, duplicate or lost updates" },
+    { "id": "closing", "file": "closing.md", "title": "3-strike stop, blast-radius question and debug summary", "trigger": "3 failed hypotheses or fixes, a fix over 5 files, or Phase 5" }
+  ]
+}

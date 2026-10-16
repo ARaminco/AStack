@@ -1,0 +1,67 @@
+AStack Enterprise
+Third-party notices
+
+This file lists third-party material that AStack's own files are adapted from.
+Skill packs copied verbatim under skill-packs/<pack>/ carry their own LICENSE
+file next to them.
+
+-------------------------------------------------------------------------------
+gstack
+https://github.com/garrytan/gstack
+Commit 47d639a
+Copyright (c) 2026 Garry Tan
+License: MIT
+
+AStack's practice skills condense and adapt procedures, checklists and
+decision rules from gstack's MIT-licensed skills (review, review/specialists,
+review/checklist.md, review/gate-integrity.md, investigate, qa, plan-ceo-review,
+plan-eng-review, plan-design-review, autoplan, ship, land-and-deploy, canary,
+document-release). No gstack file is copied whole; the text was rewritten,
+shortened and fitted to AStack's trust rules, tools and language policy. No
+Apache-2.0 licensed file of gstack was used.
+
+Adapted AStack files:
+
+  skills/code-review/            (SKILL.md, checklist.md, skill.json, sections/*)
+      from review/SKILL.md.tmpl, review/checklist.md, review/gate-integrity.md,
+      review/specialists/*.md, review/sections/review-army.md
+  skills/investigate/            (SKILL.md, checklist.md, skill.json, sections/*)
+      from investigate/SKILL.md.tmpl, investigate/sections/flake.md,
+      polluter.md, race.md
+  skills/qa/                     (SKILL.md, checklist.md, skill.json, sections/*)
+      from qa/SKILL.md.tmpl, qa/sections/scope.md, exploratory.md,
+      system-functional.md, qa-patterns.md, qa/references/issue-taxonomy.md,
+      qa/templates/qa-report-template.md
+  skills/plan-review/            (SKILL.md, checklist.md, skill.json, sections/*)
+      from plan-ceo-review, plan-eng-review, plan-design-review and
+      autoplan (SKILL.md.tmpl and sections/review-sections.md)
+  skills/ship/                   (SKILL.md, checklist.md, skill.json, sections/*)
+      from ship/SKILL.md.tmpl, ship/sections/tests.md, documentation.md,
+      changelog.md, land-and-deploy/SKILL.md.tmpl, canary/SKILL.md.tmpl,
+      document-release/sections/audit-scope.md
+
+The lazy section convention (a short SKILL.md plus sections/manifest.json and
+section files opened only when their step is reached) follows gstack's
+sections/manifest.json design.
+
+MIT License
+
+Copyright (c) 2026 Garry Tan
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

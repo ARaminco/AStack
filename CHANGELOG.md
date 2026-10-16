@@ -3,6 +3,18 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 3.5.0 — Practices from gstack
+
+Five deep practice skills replace the thin generic development packs. Procedures, checklists and decision rules are condensed from [gstack](https://github.com/garrytan/gstack) (MIT, © 2026 Garry Tan, commit 47d639a) and fitted to AStack's trust rules, tools and language policy; see `NOTICE` and `documentation/Practice-Skills.md`.
+
+- Lazy sections: each skill is a short `SKILL.md` skeleton (about 3 KB) plus `sections/manifest.json` and section files that the skeleton opens only when that step is reached, so a small task loads a fraction of the procedure.
+- New `code-review`: two-pass pre-merge review; specialists (security, performance, data migration, API contract, testing, red team, simplification) load only when the diff triggers them; gate integrity flags weakened, skipped or deleted tests, raised timeouts and lowered thresholds and always asks the owner; fix-first auto-fixes the mechanical and asks once for the rest; a suppressions list; findings by severity with file:line and confidence; Laravel 12 / Livewire 3 / Filament and Next.js 16 items. `security-review`, `laravel-review`, `node-review` and `filament-review` now point to it as the entry point.
+- New `investigate`: no fix without a confirmed root cause, reproduce first, edits kept inside the module under investigation, stop and report after 3 failed hypotheses or fixes; recipes for flaky tests, races and test polluters. `bug-hunter` points to it.
+- New `qa`: exploratory QA that picks the surface first (web, API, CLI, job, webhook), drives the project's dedicated browser through the `browser` MCP tools, writes an evidence note per probe, works inside a time box, writes a regression test that fails before every fix, and reports with an issue taxonomy and health score. It never submits, pays, sends or deletes on a live site without owner approval, uses test accounts, and leaves passwords to the owner.
+- New `plan-review`: scope challenge (expand, selective, hold, reduce), engineering lock-in (architecture, data flow, edge cases, error map, test matrix, rollout) and a seven-dimension design score, decided with six decision principles and one final owner gate. `feature-planner` points to it.
+- New `ship` (text only, no engine code): tests on merged code, `code-review`, docs drift, version and CHANGELOG, bisectable commits, a stop for owner approval before push and deploy (L4), and a deploy section that follows the production-safety rule: only the app's own resources, backup, `nginx -t` before reload, probes before and after, automatic rollback, never `pm2 restart all` or `pm2 kill`.
+- New root `NOTICE` with the gstack MIT notice and the list of adapted files.
+
 ## 3.4.0 — Every project has its own browser
 
 The owner's "dedicated browser" pattern becomes part of AStack: one real Chrome window per project, with its own persistent profile and a stable port, driven by Playwright MCP from Claude Code and Codex and by AStack's own flows. See `documentation/Dedicated-Browser.md`.
