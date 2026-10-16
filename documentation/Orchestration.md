@@ -69,3 +69,26 @@ Delegation matches work items to agents by department, falls back to the team le
 4. Delegate (`lead delegate`).
 5. Dispatch and execute (`agent run-due`, act on each work order, `agent report`).
 6. Supervise (`lead standup`, `lead review`, `project status`).
+
+## Team design (3.3.0)
+
+The planner starts from one agent and adds a seat only when a capability
+cannot share a head:
+
+| Request | Team |
+| --- | --- |
+| "Fix the Laravel login bug" | 1: `engineering-laravel`; security reviewer on demand |
+| "Design an online shop with Laravel" | 4: architect (lead), Laravel engineer, QA, security |
+| "Draft a defence brief" | 1: counsel; independent reviewer on demand before sending |
+
+- Capabilities: architecture, implementation, testing, security, data,
+  operations, content. Small work folds them into one specialist.
+- Specialists come from `roles/enterprise-roles.json`; Persian spellings of
+  common technologies are understood.
+- Processes: `solo`, `sequential` (handoffs in order) and `hierarchical`
+  (the lead delegates and merges). Seats never talk directly; every flow is a
+  structured handoff through the lead and the Chief of Staff.
+- On-demand seats carry a trigger and cost nothing until
+  `TeamPlanner.escalate(plan, role)` brings them in.
+- `astack ask "<request>" --team` prints seats, expected outputs, flows,
+  rationale and the team cost next to the solo cost.

@@ -97,6 +97,9 @@ Installs from 3.0 carry third-party skill packs under `skill-packs/<pack>/` (for
 - Claude Code auto-memory is imported into the shared store at every Claude Code session start (`astack interop import-claude-memory`).
 - Markdown memory (the `memory/` scopes and any folder in `memory.import_paths`) is imported section by section at every session start and by `astack memory import-legacy`; a changed section supersedes its record, credential-like files are never read.
 - Never store secrets, one time codes, card numbers or credentials in memory.
+- Active memory is the small set of blocks always in context: the owner's standing facts, each project's and case's state, and every agent's persona and goals. Read it at the start of a task (`astack memory active --project <id> --case <id> --agent <id>`, MCP `astack_memory_active`) and keep it current yourself: `astack memory block append|replace|set <scope>/<label>` (MCP `astack_memory_block`). Blocks are versioned (`history`, `restore`), never exceed their limit (overflow moves the oldest lines to long-term memory) and refuse secrets and instructions.
+- Working on one project or case, recall only what belongs to it: `astack memory search "<query>" --case <id>` or `--scope project:<id>` (MCP `case` / `scope`). Tag new facts with their case (`--case <id>`) so they never surface in another case.
+- `astack memory reflect` (also nightly after consolidation) promotes the records that matter most into each scope's `key-facts` block and drops superseded ones; it never overwrites a block someone edited by hand.
 
 ## Engagement Protocol
 1. `astack ask "<request>"` — intent, entities, retrieved context, matching skills, tools, runtime, authority and the proposed team, with the estimated token cost.
@@ -148,6 +151,8 @@ Respond to the owner in Persian. Keep code, comments, commands, identifiers, API
 ## Coordination Rule
 Departments and agents never coordinate directly. The Chief of Staff and the Orchestrator activate domains, departments, teams, and agents, merge outputs, review the combined result, and return the final answer. Runtimes follow the same rule: Claude Code and Codex never hand each other transcripts, only structured handoffs through the journal and the shared memory.
 
+Teams are designed capability first: one specialist by default; separate seats only for capabilities that must not share a head (design, build, test, security on large work); the specialist is taken from the role catalog ("Laravel" → the Laravel engineer); reviewers wait on demand until their trigger fires. `astack ask "<request>" --team` shows the seats, what each hands back, the delegation flows through the lead and the team cost next to the solo cost.
+
 ## Verification
-Run `npm test` (six suites) or `astack doctor` after architectural changes. `astack interop status` verifies that both runtimes are wired to the same contract and memory. `npm run test:browser` exercises the internal browser against a real Chromium profile.
+Run `npm test` (fifteen suites) or `astack doctor` after architectural changes. `astack interop status` verifies that both runtimes are wired to the same contract and memory. `npm run test:browser` exercises the internal browser against a real Chromium profile.
 <!-- astack:contract:end -->

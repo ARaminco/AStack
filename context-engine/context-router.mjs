@@ -2,6 +2,7 @@ import { estimateTokens, uniqueTokens } from "../lib/text.mjs";
 
 export const DEFAULT_BUDGETS = {
   ownerCapsule: 800,
+  activeMemory: 1200,
   memory: 2500,
   project: 3500,
   repoMap: 2000,
@@ -82,7 +83,7 @@ export class ContextRouter {
   /**
    * Build the minimal context package for one request.
    */
-  route(request, { domain = null, budgets = {}, asOf = null, includeRepoMap = true, project = null, intent = null } = {}) {
+  route(request, { domain = null, budgets = {}, asOf = null, includeRepoMap = true, project = null, intent = null, agent = null } = {}) {
     const limits = { ...DEFAULT_BUDGETS, ...budgets };
     const started = Date.now();
     const resolvedDomain = domain ?? this.domains?.detect(request)?.id ?? null;
@@ -100,10 +101,35 @@ export class ContextRouter {
       used += capsule.tokens;
     }
 
+    // Task scope: when the request is about a known project or case, recall is
+    // limited to what belongs to it (plus general knowledge), so the memory of
+    // one case never fills the context of another.
+    const cases = entities.filter((entity) => String(entity.type).toLowerCase() === "case").map((entity) => entity.id);
+    const taskScope = matchedProject || cases.length
+      ? [
+          ...(matchedProject ? ["project:" + matchedProject.id] : []),
+          ...cases,
+          ...(cases.length ? entities.map((entity) => entity.id) : []),
+          ...(cases.length ? related.map((entry) => entry.node.id) : [])
+        ]
+      : null;
+
+    const active = this.memory?.active?.({
+      project: matchedProject?.id ?? null,
+      agent,
+      scopes: cases.filter((id) => String(id).startsWith("case:")),
+      budget: limits.activeMemory
+    }) ?? null;
+    if (active?.lines.length) {
+      sections.push({ title: "active memory", lines: active.lines, tokens: active.tokens, source: "memory-blocks" });
+      used += active.tokens;
+    }
+
     const memoryBrief = this.memory?.brief({
       query: request,
       domain: resolvedDomain,
       project: matchedProject?.id ?? null,
+      scope: taskScope,
       budget: limits.memory,
       limit: 14
     }) ?? null;
@@ -160,6 +186,7 @@ export class ContextRouter {
       intent,
       domain: resolvedDomain,
       project: matchedProject?.id ?? null,
+      scope: taskScope,
       entities,
       related: related.map((entry) => ({ id: entry.node.id, name: entry.node.name, via: entry.edge.type })),
       asOf: asOf ?? this.now(),

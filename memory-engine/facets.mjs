@@ -34,6 +34,55 @@ const FACET_DEFAULTS = {
 
 const DAY = 24 * 60 * 60 * 1000;
 
+// Facets that hold general knowledge. Under a task scope an unbound record of
+// these facets is still relevant (a preference, a procedure, a lesson); an
+// unbound record of any other facet, or a record bound to a different
+// project or case, is not.
+export const GENERAL_FACETS = ["identity", "semantic", "entity", "relationship", "procedural", "decision", "preference", "lesson", "calibration"];
+
+/**
+ * The scope ids a record belongs to: its project ("project:<id>"), its
+ * entities ("case:2026-003", "company:acme") and any scope tags.
+ */
+export function recordBindings(record) {
+  const bindings = new Set();
+  if (record.project) {
+    bindings.add("project:" + record.project);
+  }
+  for (const entity of record.entities ?? []) {
+    bindings.add(normalizeScopeId(entity));
+  }
+  for (const tag of record.tags ?? []) {
+    if (/^(project|case):/.test(tag)) {
+      bindings.add(tag);
+    }
+  }
+  return bindings;
+}
+
+/** "entity:company:acme" and "company:acme" name the same scope. */
+export function normalizeScopeId(value) {
+  const text = String(value ?? "").trim();
+  return text.startsWith("entity:") ? text.slice(7) : text;
+}
+
+/**
+ * Task scope filter: a record passes when it is bound to the scope, or when it
+ * is unbound general knowledge.
+ */
+export function inScope(record, scopeSet) {
+  const bindings = recordBindings(record);
+  if (!bindings.size) {
+    return GENERAL_FACETS.includes(record.facet);
+  }
+  for (const binding of bindings) {
+    if (scopeSet.has(binding)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Structured, multi-faceted long term memory.
  *
@@ -275,14 +324,20 @@ export class FacetMemory {
     limit = 12,
     minScore = 0,
     asOf = null,
-    includeSuperseded = false
+    includeSuperseded = false,
+    scope = null
   } = {}) {
     const moment = new Date(asOf ?? this.now()).getTime();
+    // A task scope (project, case, entities) narrows recall to what belongs to
+    // that task plus general knowledge, so one case never pulls in another.
+    const scopeList = (Array.isArray(scope) ? scope : scope ? [scope] : []).map(normalizeScopeId).filter(Boolean);
+    const scopeSet = scopeList.length ? new Set([...scopeList, ...(project ? ["project:" + project] : [])]) : null;
     const pool = facets
       .filter((facet) => memoryFacets.includes(facet))
       .flatMap((facet) => this.all(facet))
       .filter((record) => !domain || !record.domain || record.domain === domain)
       .filter((record) => !project || !record.project || record.project === project)
+      .filter((record) => !scopeSet || inScope(record, scopeSet))
       .filter((record) => !tags.length || tags.every((tag) => record.tags.includes(tag)))
       .filter((record) => !entities.length || (record.entities ?? []).some((entity) => entities.includes(entity)))
       .filter((record) => includeSuperseded || !record.supersededBy || !this.exists(record.facet, record.supersededBy))
@@ -328,13 +383,17 @@ export class FacetMemory {
       .filter((entry) => entry.score > minScore)
       .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
       .slice(0, limit);
-    if (ranked.length || !(domain || project || entities.length)) {
+    if (ranked.length || !(domain || project || entities.length || scopeSet)) {
       return ranked;
     }
     // Nothing matched the words, but the engagement is known: fall back to what
     // belongs to this domain, project or entity, ranked by importance and age.
     return scored
-      .filter((entry) => (domain && entry.domain === domain) || (project && entry.project === project) || entities.some((entity) => (entry.entities ?? []).includes(entity)))
+      .filter((entry) =>
+        (domain && entry.domain === domain) ||
+        (project && entry.project === project) ||
+        entities.some((entity) => (entry.entities ?? []).includes(entity)) ||
+        (scopeSet && [...recordBindings(entry)].some((binding) => scopeSet.has(binding))))
       .map((entry) => ({ ...entry, score: Number(((entry.importance ?? 0.5) * entry.confidence * (0.5 + 0.5 * entry.recency)).toFixed(4)), matchedBy: "engagement" }))
       .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
       .slice(0, limit);
@@ -343,8 +402,8 @@ export class FacetMemory {
   /**
    * Render a recall result as a compact context block that fits a token budget.
    */
-  brief({ query = "", facets = memoryFacets, domain = null, project = null, budget = 900, limit = 12 } = {}) {
-    const hits = this.recall({ query, facets, domain, project, limit });
+  brief({ query = "", facets = memoryFacets, domain = null, project = null, scope = null, budget = 900, limit = 12 } = {}) {
+    const hits = this.recall({ query, facets, domain, project, scope, limit });
     const lines = [];
     let used = 0;
     for (const hit of hits) {

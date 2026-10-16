@@ -637,6 +637,17 @@ export class InteropEngine {
         lines.push("", "(standup unavailable: " + error.message + ")");
       }
     }
+    if (this.memory?.active) {
+      try {
+        const active = this.memory.active({ budget: Math.round(budget / 4) });
+        if (active.lines.length) {
+          lines.push("", "## Active memory (" + active.rendered + " blocks; `astack memory block list`, edit with `astack memory block append|replace`)");
+          lines.push(...active.lines);
+        }
+      } catch {
+        // A damaged block file must not cost the session its start brief.
+      }
+    }
     if (this.memory) {
       const brief = this.memory.brief({ query: "", budget: Math.round(budget / 2), limit: 12 });
       if (brief.lines.length) {

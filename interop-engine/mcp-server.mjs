@@ -72,6 +72,36 @@ function onlineLimitProblem(value) {
   return Number.isFinite(Number(value)) && !String(value).trim().startsWith("-") ? null : "Invalid limit: a positive number.";
 }
 
+// Active memory inputs: block ids and scopes have a fixed shape, so an agent's
+// value can never be read as an option. Free text goes after "--", and the
+// replace pair travels as single --old=/--new= tokens.
+const BLOCK_ID = /^(owner|system|(agent|project|case|role|team|entity):[a-z0-9][a-z0-9._-]{0,63})\/[a-z0-9][a-z0-9-]{0,39}$/;
+const SCOPE_ID = /^(owner|system|(agent|project|case|role|team|entity):[a-z0-9][a-z0-9._:-]{0,95})$/;
+const PLAIN_ID = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+const BLOCK_ACTIONS = ["list", "show", "history", "set", "append", "replace"];
+
+function blockIdProblem(value, { required = true } = {}) {
+  if (!required && (value === undefined || value === null || value === "")) {
+    return null;
+  }
+  return BLOCK_ID.test(String(value ?? "")) ? null : "Invalid block id: use <scope>/<label>, e.g. case:2026-003/state or agent:legal-drafter/goals.";
+}
+
+function scopeListProblem(value) {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+  const parts = String(value).split(",").map((entry) => entry.trim());
+  return parts.every((entry) => SCOPE_ID.test(entry)) ? null : "Invalid scope: comma-separated ids like project:nobatgir or case:2026-003.";
+}
+
+function plainIdProblem(name, value) {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+  return PLAIN_ID.test(String(value)) ? null : "Invalid " + name + ": lowercase letters, digits, dot, dash or underscore.";
+}
+
 /**
  * Tool definitions. `args` maps validated input to a CLI argument vector;
  * `source` is the calling runtime so stored records keep their provenance.
@@ -92,15 +122,20 @@ export const mcpTools = [
         query: text("What to recall"),
         facet: text("Optional facet: identity, semantic, episodic, project, entity, relationship, procedural, decision, preference, working, calibration, lesson"),
         project: text("Optional project id"),
+        case: text("Optional case id: recall only what belongs to this case plus general knowledge"),
+        scope: text("Optional task scope, comma-separated: project:<id>, case:<id> or an entity id. Records of other projects and cases are excluded."),
         asOf: text("Optional ISO date to answer as of that time"),
         limit: number("Maximum results, default 10")
       },
       required: ["query"]
     },
+    validate: (input) => scopeListProblem(input.scope) ?? plainIdProblem("case", input.case),
     args: (input) => [
-      "memory", "search", String(input.query),
+      "memory", "search",
       ...optional("facet", input.facet), ...optional("project", input.project),
-      ...optional("asOf", input.asOf), ...optional("limit", input.limit)
+      ...optional("case", input.case), ...optional("scope", input.scope),
+      ...optional("asOf", input.asOf), ...optional("limit", input.limit),
+      "--", String(input.query)
     ]
   },
   {
@@ -114,14 +149,20 @@ export const mcpTools = [
         facet: text("Facet, default semantic"),
         project: text("Optional project id"),
         domain: text("Optional domain"),
+        case: text("Optional case id the fact belongs to, so it is recalled only for that case"),
+        entities: text("Optional comma-separated entity ids the fact belongs to, e.g. company:acme"),
         importance: number("0..1, default 0.5")
       },
       required: ["title"]
     },
+    validate: (input) => plainIdProblem("case", input.case) ?? (input.entities && String(input.entities).split(",").some((entry) => !SCOPE_ID.test("entity:" + entry.trim()))
+      ? "Invalid entities: comma-separated ids like company:acme or person:john-miller."
+      : null),
     args: (input, source) => [
       "memory", "remember", String(input.title),
       ...optional("body", input.body), ...optional("facet", input.facet), ...optional("project", input.project),
-      ...optional("domain", input.domain), ...optional("importance", input.importance), "--source", source
+      ...optional("domain", input.domain), ...optional("case", input.case), ...optional("entities", input.entities),
+      ...optional("importance", input.importance), "--source", source
     ]
   },
   {
@@ -133,6 +174,84 @@ export const mcpTools = [
       required: ["id", "title"]
     },
     args: (input) => ["memory", "supersede", String(input.id), "--title", String(input.title), ...optional("body", input.body)]
+  },
+  {
+    name: "astack_memory_active",
+    description: "Active memory: the small, always-in-context blocks for an engagement — owner, project, case and the agent's own persona and goals. Read it at the start of a task.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project: text("Optional project id"),
+        case: text("Optional case id"),
+        agent: text("Optional agent id (its persona and goals blocks)"),
+        budget: number("Token cap, default 1200")
+      }
+    },
+    validate: (input) => plainIdProblem("project", input.project) ?? plainIdProblem("case", input.case) ?? plainIdProblem("agent", input.agent),
+    args: (input) => [
+      "memory", "active",
+      ...optional("project", input.project), ...optional("case", input.case),
+      ...optional("agent", input.agent), ...optional("budget", input.budget)
+    ]
+  },
+  {
+    name: "astack_memory_block",
+    description:
+      "Read or edit an active memory block (versioned; earlier versions stay restorable). Actions: list, show, history, set (create or replace the whole value), append (add a line; overflow moves the oldest lines to long-term memory), replace (exact text, must occur once; empty new text deletes it). Facts only — never secrets or instructions. Read-only blocks are refused.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: text("list, show, history, set, append or replace"),
+        id: text("Block id <scope>/<label>, e.g. case:2026-003/state, project:nobatgir/decisions, agent:<id>/goals"),
+        scope: text("For list: optional scope filter"),
+        text: text("For set and append: the text"),
+        old: text("For replace: the exact text to replace"),
+        new: text("For replace: the new text (empty to delete)"),
+        limit: number("For set: character limit, default 1500")
+      },
+      required: ["action"]
+    },
+    validate: (input) => {
+      if (!BLOCK_ACTIONS.includes(String(input.action))) {
+        return "Invalid action: " + BLOCK_ACTIONS.join(", ") + ".";
+      }
+      if (input.action === "list") {
+        return scopeListProblem(input.scope);
+      }
+      if (["set", "append"].includes(input.action) && !String(input.text ?? "").trim()) {
+        return "A text is required for " + input.action + ".";
+      }
+      if (input.action === "replace" && !String(input.old ?? "")) {
+        return "The exact text to replace (old) is required.";
+      }
+      return blockIdProblem(input.id) ?? onlineLimitProblem(input.limit);
+    },
+    args: (input, source) => {
+      const action = String(input.action);
+      if (action === "list") {
+        return ["memory", "block", "list", ...optional("scope", input.scope)];
+      }
+      if (action === "replace") {
+        return ["memory", "block", "replace", "--old=" + String(input.old), "--new=" + String(input.new ?? ""), "--source", source, "--", String(input.id)];
+      }
+      if (action === "set" || action === "append") {
+        return ["memory", "block", action, ...optional("limit", input.limit), "--source", source, "--", String(input.id), String(input.text)];
+      }
+      return ["memory", "block", action, "--", String(input.id)];
+    }
+  },
+  {
+    name: "astack_memory_reflect",
+    description: "Refresh the key-facts blocks from long-term memory: promote what matters most for the owner, a project or a case, drop what was superseded. Never overwrites a block edited by hand.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        scope: text("Optional single scope: owner, project:<id> or case:<id>; default every scope"),
+        dryRun: { type: "boolean", description: "Plan only, write nothing" }
+      }
+    },
+    validate: (input) => (input.scope && String(input.scope).includes(",") ? "One scope at a time." : scopeListProblem(input.scope)),
+    args: (input) => ["memory", "reflect", ...optional("scope", input.scope), ...(input.dryRun === true ? ["--dry-run"] : [])]
   },
   {
     name: "astack_memory_entity",

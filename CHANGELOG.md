@@ -3,6 +3,36 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 3.3.0 — Living memory and right-sized teams
+
+Inspired by Letta (agent-managed memory) and CrewAI / Agency Swarm (delegation and team design). Additive: no stored record changes shape, no migration rewrites data, and every 3.2.0 memory file is read as it is.
+
+### Active memory (Letta-style blocks)
+- New `memory-engine/blocks.mjs`: small, named, size-limited blocks that are always in context — `owner/…`, `project:<id>/…`, `case:<id>/…`, `agent:<id>/persona|goals`. Stored append-only in `.astack/memory/blocks/blocks.jsonl`; every edit is a new version (`history`, `restore`), retiring a block is a tombstone.
+- Agents edit their own memory: `astack memory block set|append|replace|remove|history|restore` and the MCP tool `astack_memory_block` (list, show, history, set, append, replace; no remove over MCP). An append that would overflow moves the oldest lines into long-term memory, bound to the block's project or case, so nothing is lost.
+- Guards: secret shapes (assigned passwords and keys, cards, IBANs, long account numbers, provider tokens, JWTs) and instruction-like text are refused; read-only blocks change only from the CLI with `--force`; a torn line is skipped.
+- `astack memory active` / MCP `astack_memory_active` render the blocks of one engagement inside a token budget and name what was left out. The context router adds an "active memory" section (budget `activeMemory`, default 1200) and the session-start brief shows the owner's blocks.
+
+### Task-scoped recall
+- `recall({ scope })`: under a project or case scope a record is recalled only when it belongs to that scope, or when it is unbound general knowledge (identity, semantic, entity, relationship, procedural, decision, preference, lesson, calibration). Records of another case or project never enter the context.
+- `astack memory search --case <id> | --scope project:<id>,case:<id>`, `astack memory remember --case <id> --entities a,b`, and the same `case` / `scope` / `entities` inputs on the MCP tools.
+- The context router scopes recall automatically when a request resolves to a project or a Case node in the knowledge graph.
+
+### Automatic management
+- `astack memory reflect [--scope …] [--dry-run]` / MCP `astack_memory_reflect`: the deterministic memory-manager pass (Letta's sleep-time agent). It ranks the records that matter most for the owner, each project and each case (importance, proven use, decisions and preferences) into a managed `<scope>/key-facts` block; superseded, forgotten or expired records leave on the next pass and their replacements take their place. It never changes the long-term store and never overwrites a block edited by hand. The nightly `memory-consolidate` job runs it after consolidation.
+
+### Persona and goal continuity
+- Every agent gets `agent:<id>/persona` (role, team, standing rules) and `agent:<id>/goals` (current mission) when it is created; a new brief updates the goals and keeps the persona and whatever the agent added to it.
+
+### Right-sized teams (CrewAI / Agency Swarm)
+- The team planner is capability first: it reads the capabilities a request needs (architecture, implementation, testing, security, data, operations, content) and its scale (small, medium, large), then folds them into the fewest seats. Small work is one specialist; large work gets separate heads only where separation matters (design, build, test, security); the architect leads instead of an extra manager.
+- Specialists come from the 219-role catalog (`roles/enterprise-roles.json`, now used by the planner), including Persian spellings (لاراول → the Laravel engineer); everyday words such as "go live" never pick a specialist.
+- Each seat carries what it covers and its expected output; reviewers that are needed only sometimes are on-demand seats with a trigger (`TeamPlanner.escalate` brings one in); `form()` creates agents only for always-active seats. Plans state the process (solo, sequential, hierarchical), the delegation and handoff flows (always through the lead and the Chief of Staff) and the team cost next to the solo cost. `astack ask "<request>" --team` prints all of it.
+- The intent engine reads "fix", "add", «رفع کن», «اضافه کن» and «طراحی کن» as building work, and in software work treats "online payment", "login page" or "the site" as features of the product, not as a payment to make or a portal to visit.
+
+### Tests
+- New suite `tests/verify-memory-crew.mjs` (also `npm run test:memory`), including a check that a 3.2.0 memory store is read and left byte-for-byte unchanged by the new layer.
+
 ## 3.2.0 — Online skill search
 
 - `astack skill online search "<query>"`: when no local skill fits, search the public skill registries — skills.sh, SkillsMP, ClawHub and GitHub (the official `anthropics/skills` index, plus `gh search code` for `SKILL.md` when `gh` is installed and allowlisted) — in parallel. Results are normalised, de-duplicated across registries (same GitHub repository and folder), ranked by text relevance plus log-popularity and cached for `cache_minutes`; a failing registry is reported on its own line, never fatal.

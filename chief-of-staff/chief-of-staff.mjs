@@ -198,7 +198,16 @@ export class ChiefOfStaff {
   summarize({ intent, team, decision, routing, skills, contextPackage }) {
     const lines = [];
     lines.push("خواسته: " + intent.verb + " | دامنه: " + (intent.domain ?? "نامشخص") + " | پیچیدگی: " + intent.complexity);
-    lines.push("تیم پیشنهادی: " + team.size + " نفر (" + team.seats.map((seat) => seat.role).join("، ") + ") — هزینه تخمینی " + team.estimatedTokens + " توکن");
+    const processName = { solo: "تک‌نفره", sequential: "زنجیره‌ای", hierarchical: "با راهبر" }[team.process] ?? null;
+    lines.push(
+      "تیم پیشنهادی: " + team.size + " نفر (" + team.seats.map((seat) => seat.role + (seat.lead ? " راهبر" : "")).join("، ") + ")" +
+      (processName ? " — شیوه: " + processName : "") +
+      " — هزینه تخمینی " + team.estimatedTokens + " توکن" +
+      (team.size > 1 && team.soloEstimatedTokens ? " (تک‌نفره حدود " + team.soloEstimatedTokens + ")" : "")
+    );
+    if (team.onDemand?.length) {
+      lines.push("در صورت نیاز: " + team.onDemand.map((seat) => seat.role + " — " + seat.trigger).join("؛ "));
+    }
     if (skills.length) {
       lines.push("مهارت آموخته‌شده مرتبط: " + skills[0].id + " با اعتماد " + skills[0].confidence);
     }

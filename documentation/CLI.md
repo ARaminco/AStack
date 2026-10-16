@@ -33,6 +33,11 @@ astack memory search "<query>" [--facet <facet>] [--asOf <date>] [--limit 10]
 astack memory remember "<title>" --facet decision --body "<why>"
 astack memory supersede <id> "<new title>" --object "<value>"
 astack memory entity "<name>" | context "<query>" | consolidate | stats | backup
+astack memory search "<query>" --case <id> | --scope project:<id>,case:<id>
+astack memory active [--project <id>] [--case <id>] [--agent <id>] [--budget 1200]
+astack memory block list|show|history|set|append|replace|remove|restore <scope>/<label> ...
+astack memory reflect [--scope <scope>] [--dry-run]
+astack ask "<request>" --team
 astack graph add "<name>" --type Company
 astack graph relate --from <id> --type works_with --to <id> [--exclusive]
 astack graph resolve "<text>" | neighbours <id> [--asOf <date>] | history <id> | stats | compact

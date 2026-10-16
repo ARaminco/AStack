@@ -73,6 +73,7 @@ export class AgentEngine {
     };
     this.record(agent, "agent-created", { role, team });
     this.save(agent);
+    this.memory?.seedAgent?.(agent);
     this.eventBus?.emit("agent.created", { agentId: id, role, team });
     return agent;
   }
@@ -98,6 +99,7 @@ export class AgentEngine {
     agent.mission = mission;
     this.record(agent, "briefed", {});
     this.save(agent);
+    this.memory?.seedAgent?.(agent);
     return agent;
   }
 

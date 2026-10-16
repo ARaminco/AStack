@@ -85,6 +85,17 @@ export async function runAskCommand({ runtime, i18n, tokens }) {
       ? t("cli.skillHub.askAuxiliary") + ", " + hit.source + ", risk " + hit.risk + (hit.compat === "hermes-runtime" ? ", hermes-runtime" : "")
       : hit.source + ", " + hit.status) + ", score " + hit.score + ") " + hit.path));
   }
+  if (flags.team || brief.team.size > 1 || brief.team.onDemand?.length) {
+    out(t("cli.chief.teamTitle", { process: brief.team.process ?? "-", scale: brief.team.scale ?? "-" }));
+    table(brief.team.seats.map((seat) => seat.role + (seat.lead ? " [lead]" : "") + (seat.covers?.length ? " {" + seat.covers.join(", ") + "}" : "") + " → " + (seat.expectedOutput ?? seat.purpose)));
+    if (brief.team.onDemand?.length) {
+      table(brief.team.onDemand.map((seat) => seat.role + " [on demand] " + seat.trigger));
+    }
+    if (flags.team) {
+      table(brief.team.flows.map((flow) => flow.from + " -" + flow.kind + "-> " + flow.to + ": " + flow.carries));
+      table(brief.team.rationale);
+    }
+  }
   out(t("cli.chief.plannedSteps"));
   table(brief.plan.steps.map((step) => step.title + " (" + (step.authority ?? "L1") + ")"));
   if (flags.context) {
