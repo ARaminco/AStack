@@ -152,6 +152,21 @@ export async function openTarget(port, url = "about:blank") {
   throw new Error("Cannot open a new browser tab on port " + port);
 }
 
+/**
+ * Open a new tab in a running browser and attach to it, leaving the tabs the
+ * owner is working in untouched.
+ */
+export async function openTab(port, url = "about:blank") {
+  const response = await fetch("http://127.0.0.1:" + port + "/json/new?" + encodeURIComponent(url), { method: "PUT", signal: AbortSignal.timeout(10000) });
+  if (!response.ok) {
+    throw new Error("The browser on port " + port + " did not open a tab (" + response.status + ")");
+  }
+  const target = await response.json();
+  const client = new CdpClient(target.webSocketDebuggerUrl);
+  await client.connect();
+  return { client, target };
+}
+
 export async function attachToPage(port, { url = null, timeoutMs = 15000 } = {}) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {

@@ -38,6 +38,7 @@ astack memory active [--project <id>] [--case <id>] [--agent <id>] [--budget 120
 astack memory block list|show|history|set|append|replace|remove|restore <scope>/<label> ...
 astack memory reflect [--scope <scope>] [--dry-run]
 astack ask "<request>" --team
+astack browser dedicated status|start [url]|stop
 astack graph add "<name>" --type Company
 astack graph relate --from <id> --type works_with --to <id> [--exclusive]
 astack graph resolve "<text>" | neighbours <id> [--asOf <date>] | history <id> | stats | compact

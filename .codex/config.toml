@@ -4,4 +4,9 @@ command = "node"
 args = ["bin/astack.mjs", "mcp", "serve"]
 startup_timeout_sec = 30
 default_tools_approval_mode = "approve"
+
+[mcp_servers.browser]
+command = "node"
+args = ["bin/astack-browser-mcp.mjs"]
+startup_timeout_sec = 120
 # <<< astack <<<

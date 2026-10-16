@@ -322,7 +322,12 @@
       "artifacts": "Captured evidence ({count}):",
       "approvalNeeded": "Stopped before \"{action}\" and waiting for owner approval.",
       "evidenceVerify": "Evidence bundle {bundle}: {entries} records — integrity {intact}",
-      "unknownAction": "Unknown browser action: {action}"
+      "unknownAction": "Unknown browser action: {action}",
+      "dedicatedStarted": "The project's browser is open on 127.0.0.1:{port} (profile {profile}). Sign in once; later runs and the Playwright tools reuse this window.",
+      "dedicatedRunning": "The project's browser is already running on 127.0.0.1:{port} (profile {profile}).",
+      "dedicatedStopped": "The project's browser on port {port} was closed; the profile and its sign-ins are kept.",
+      "dedicatedNotStopped": "Nothing was closed: {reason}.",
+      "dedicatedStatus": "Project browser: {state} · port {port} · profile {profile} · {playwright} · browser {binary}"
     },
     "mission": {
       "listTitle": "Missions ({count}):",

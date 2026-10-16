@@ -358,7 +358,8 @@ export function looksLikeInstruction(text) {
   if (ROLE_PREFIX.test(raw)) {
     return true;
   }
-  return raw.split(/\n|(?<=[.!؟?])\s/).some((line) => ((AUTO_ACTION.test(line) && !GATED.test(line)) || (AUTO_ACTION_FA.test(line) && (UNGATED_FA.test(line) || !GATED_FA.test(line)))) && !NEGATION.test(line));
+  // "after review … without approval" is not gated: a "without" phrase wins.
+  return raw.split(/\n|(?<=[.!؟?])\s/).some((line) => ((AUTO_ACTION.test(line) && (!GATED.test(line) || /\bwithout (asking|approval|confirmation|permission)\b/i.test(line))) || (AUTO_ACTION_FA.test(line) && (UNGATED_FA.test(line) || !GATED_FA.test(line)))) && !NEGATION.test(line));
 }
 
 // English credential words only with an explicit assignment ("api_key=…",

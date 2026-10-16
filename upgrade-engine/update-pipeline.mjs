@@ -20,7 +20,7 @@ import { mergeKept, refreshBase, undoMerge } from "./kept-merge.mjs";
 
 export const STAGES = ["preflight", "fetch", "plan", "apply", "merge", "setup", "verify", "record"];
 const LOCK_STALE_MS = 30 * 60 * 1000;
-const SETUP_FLAGS = ["no-graphify", "no-trust-codex", "no-global-skill", "no-hooks", "no-index"];
+const SETUP_FLAGS = ["no-graphify", "no-trust-codex", "no-global-skill", "no-hooks", "no-index", "no-browser"];
 // Files and directories the setup stage writes outside the managed core. They
 // are snapshotted before setup so a rollback restores the project exactly.
 export const WIRING = ["AGENTS.md", "CLAUDE.md", ".mcp.json", ".claude/settings.json", ".codex/config.toml", ".codex/hooks.json", ".gitignore", "graphify-out"];

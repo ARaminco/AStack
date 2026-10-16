@@ -305,6 +305,31 @@ export async function runBrowserCommand({ runtime, i18n, tokens }) {
     table(status.profiles.map((profile) => profile.id + " | sites " + profile.sites + " | last used " + (profile.lastUsedAt ?? "-")));
     return;
   }
+  if (action === "dedicated") {
+    // The project's own window, shared by AStack flows (profile "dedicated")
+    // and the Playwright MCP server "browser" of Claude Code and Codex.
+    const dedicated = browser.dedicated;
+    const sub = positionals[0] ?? "status";
+    if (sub === "start" || sub === "open") {
+      const running = await dedicated.ensure({ url: positionals[1] ?? null, headless: flags.headless ? true : null });
+      out(t(running.started ? "cli.browser.dedicatedStarted" : "cli.browser.dedicatedRunning", { port: running.port, profile: running.profile }));
+      return;
+    }
+    if (sub === "stop") {
+      const result = await dedicated.stop();
+      out(result.stopped ? t("cli.browser.dedicatedStopped", { port: result.port }) : t("cli.browser.dedicatedNotStopped", { reason: result.reason }));
+      return;
+    }
+    const status = await dedicated.status();
+    out(t("cli.browser.dedicatedStatus", {
+      state: status.running ? "running" : status.foreignPort ? "port taken by another browser" : "stopped",
+      port: status.port,
+      profile: status.profile,
+      playwright: status.playwright,
+      binary: status.binary ?? "-"
+    }));
+    return;
+  }
   if (action === "profile") {
     if (positionals[0] === "create") {
       const profile = browser.createProfile({ id: positionals[1], name: flags.name ? String(flags.name) : null, headless: !flags.headed });
