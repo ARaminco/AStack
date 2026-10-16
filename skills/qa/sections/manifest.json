@@ -1,0 +1,12 @@
+{
+  "skill": "qa",
+  "note": "Passive index. SKILL.md decides when a section is opened; open one file per step, never all.",
+  "sections": [
+    { "id": "scope", "file": "scope.md", "title": "Surface, isolation and trust boundaries", "trigger": "step 1, before any probe" },
+    { "id": "browser", "file": "browser.md", "title": "Web probes with the project's dedicated browser", "trigger": "the selected surface includes a web UI" },
+    { "id": "functional", "file": "functional.md", "title": "API, CLI, job and webhook contract probes", "trigger": "the selected surface includes an API, CLI, job, queue or webhook" },
+    { "id": "issue-taxonomy", "file": "issue-taxonomy.md", "title": "Severity, categories and health score", "trigger": "step 5, classifying findings" },
+    { "id": "fix-loop", "file": "fix-loop.md", "title": "Regression test before fix, verify, commit locally", "trigger": "step 6, fixing issues in the selected tier" },
+    { "id": "templates", "file": "templates.md", "title": "QA output template", "trigger": "step 8, writing the result" }
+  ]
+}
