@@ -7,8 +7,9 @@ Look-only tools run without a prompt; clicking and typing ask. The proxy also
 enforces: only http/https pages, no typing into password or code fields (the
 owner types those), and a click that submits, pays, sends, deletes or
 publishes — and every upload or accepted dialog — stops with an approval id:
-tell the owner exactly what will be submitted, wait for
-`astack approval approve <id>`, then repeat the same call. A project that runs
+tell the owner exactly what will be submitted and wait until the owner
+approves it (the owner runs `astack approval approve <id>`, or uses the console
+or the gateway; an agent never grants it), then repeat the same call. A project that runs
 its own Playwright server (for example `browser` on a shared port) uses that
 one instead.
 

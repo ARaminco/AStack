@@ -16,7 +16,8 @@ Open a file in `sections/` only when its step is reached
 3. Read the code path from symptom back to cause. Ask the graph before grepping:
    `astack graphify path "<entry>" "<symbol>"`.
 4. Recent changes: `git log --oneline -20 -- <files>`. Worked before? The cause is
-   probably in that diff; `git bisect` when the range is wide.
+   probably in that diff; `git bisect` when the range is wide (on a clean tree:
+   stash or commit first, and finish with `git bisect reset`).
 5. **Reproduce deterministically** before going further. No reproduction: gather
    more evidence (logs, data, timing), never guess.
 6. Write: `Root cause hypothesis: <specific, testable claim>`.
