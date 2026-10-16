@@ -9,7 +9,7 @@
         "serve"
       ]
     },
-    "browser": {
+    "astack-browser": {
       "type": "stdio",
       "command": "node",
       "args": [

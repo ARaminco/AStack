@@ -78,7 +78,7 @@ const mcp = readJson(join(workspace, ".mcp.json"));
 assert.equal(mcp.mcpServers.other.command, "other", "owner MCP servers are kept");
 assert.deepEqual(mcp.mcpServers.astack.args, ["bin/astack.mjs", "mcp", "serve"]);
 const settings = readJson(join(workspace, ".claude", "settings.json"));
-assert.deepEqual(settings.permissions.allow, ["Bash(ls)", "mcp__astack", ...BROWSER_READ_TOOLS.map((tool) => "mcp__browser__" + tool)], "owner permissions are kept, the astack tools and the browser tools that only look allowed");
+assert.deepEqual(settings.permissions.allow, ["Bash(ls)", "mcp__astack", ...BROWSER_READ_TOOLS.map((tool) => "mcp__astack-browser__" + tool)], "owner permissions are kept, the astack tools and the browser tools that only look allowed");
 assert.equal(settings.hooks.SessionStart.length, 2, "owner hooks are kept beside the astack hook");
 assert.ok(settings.enabledMcpjsonServers.includes("astack"));
 const codexConfig = readFileSync(join(workspace, ".codex", "config.toml"), "utf8");

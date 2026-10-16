@@ -5,7 +5,7 @@ Chromium) window with a persistent profile under the project's `.astack/`,
 on a stable debugging port derived from the project's path. Two things drive
 that same window:
 
-- **Claude Code and Codex**, through the `browser` MCP server (Playwright MCP,
+- **Claude Code and Codex**, through the `astack-browser` MCP server (Playwright MCP,
   pinned version, attached over CDP). `astack setup` and `astack update` wire
   it into `.mcp.json` and `.codex/config.toml` automatically.
 - **AStack flows**, with `astack browser run … --profile dedicated`: the flow
@@ -29,6 +29,7 @@ astack browser dedicated stop            # close it; the profile and sign-ins st
 | --- | --- |
 | Window, profile, port, start/stop | `browser-engine/dedicated.mjs` |
 | MCP server launched by the runtimes | `bin/astack-browser-mcp.mjs` |
+| Rules enforced on every call | `browser-engine/browser-policy.mjs` |
 | Wiring for Claude Code and Codex | `interop-engine/interop-engine.mjs` |
 | Setup prefetch of the pinned package | `installer/setup.mjs` (`--no-browser` skips) |
 
@@ -43,9 +44,23 @@ astack browser dedicated stop            # close it; the profile and sign-ins st
 
 ## Trust
 
-- In Claude Code, tools that only look (snapshot, screenshot, tabs, console,
-  network, wait, navigate, resize) are allowed without a prompt; clicking,
-  typing, uploads and running code still ask.
+The proxy enforces these on every call, in every permission mode (bypass
+included):
+
+- Only `http`, `https` and `about` addresses are opened; `javascript:`,
+  `data:` and `file:` are refused.
+- A `filename` is a bare name written inside the output folder (Playwright
+  runs with that folder as its working directory); paths are refused, so no
+  tool can overwrite a project file.
+- No typing into password, PIN or one-time-code fields: the owner types those
+  in the window.
+- A click, Enter, form fill or selection whose target reads like a commit
+  (submit, pay, send, delete, publish, ثبت, پرداخت, ارسال, حذف …), every file
+  upload and every accepted dialog stops with an approval id. The owner
+  approves it (`astack approval approve <id>`, the console or the gateway) and
+  the same call, made again with the same arguments, runs once.
+- In Claude Code, tools that only look (snapshot, screenshot, console,
+  network, wait, navigate, resize) are allowed without a prompt.
 - Tools that run arbitrary code in the page (`browser_evaluate`,
   `browser_run_code_unsafe`) are hidden and refused unless
   `browser.dedicated.allow_code: true`.
@@ -71,6 +86,8 @@ browser:
     allow_code: false             # true exposes browser_evaluate / run_code
 ```
 
-A project whose `.mcp.json` (or `.codex/config.toml`) already declares its own
-`browser` server keeps it untouched; AStack adds its server only where none
-exists.
+A project that already runs its own Playwright MCP server (in `.mcp.json` or
+`.codex/config.toml`, under any name) keeps it untouched, and AStack adds no
+browser server for either runtime, so both stay on one window. Existing
+installs receive the `browser.dedicated` block in `astack.config.yaml` from a
+migration, so the setting is visible and can be turned off.
