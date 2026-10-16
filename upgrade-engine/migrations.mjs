@@ -256,7 +256,7 @@ export const migrations = [
         "    profile: .astack/browser/dedicated/profile",
         "    headless: false",
         "    window: \"1440,1000\"",
-        "    caps: \"vision,pdf\"",
+        "    caps: \"pdf\"",
         "    allow_code: false"
       ];
       lines.splice(end, 0, ...block);

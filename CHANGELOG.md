@@ -39,6 +39,8 @@ The owner's "dedicated browser" pattern becomes part of AStack: one real Chrome 
 ### Review fixes before release
 An independent review of the first cut found two blockers — a `javascript:` address ran code in the signed-in page, and the look-only screenshot/snapshot tools could overwrite project files such as CLAUDE.md — plus Codex and Claude Code ending up on different browsers, invalid Codex TOML with some owner shapes, auto-allows carrying over to an owner's server, no technical stop on commit clicks in bypass mode, and query strings in the log. All are fixed as described above, each with a test.
 
+A re-check then showed that Claude Code's MCP `roots` made Playwright use the project as its working folder again. The proxy now removes `roots` from `initialize` (and drops roots notifications) and rewrites every `filename` to an absolute path in the output folder. The commit gate reads the page's own text for the targeted element from the latest snapshot, so a misleading description of a "Pay now" button does not pass; coordinate clicks always need approval, and the default capabilities are `pdf` only (no coordinate tools). The e2e test now declares roots, writes a screenshot named CLAUDE.md, and clicks a disguised pay button on a real page.
+
 ## 3.3.0 — Living memory and right-sized teams
 
 Inspired by Letta (agent-managed memory) and CrewAI / Agency Swarm (delegation and team design). Additive: no stored record changes shape, no migration rewrites data, and every 3.2.0 memory file is read as it is.
