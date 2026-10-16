@@ -293,6 +293,16 @@ export class InteropEngine {
     return !this.codexOwnsBrowser();
   }
 
+  /** True when .mcp.json has a server of that name that is not AStack's. */
+  ownerHasServer(name) {
+    try {
+      const entry = existsSync(this.path(".mcp.json")) ? readJson(this.path(".mcp.json"), {})?.mcpServers?.[name] : null;
+      return Boolean(entry) && !JSON.stringify(entry).includes(BROWSER_MARKER);
+    } catch {
+      return true;
+    }
+  }
+
   /** An owner's Playwright server declared only for Codex counts too. */
   codexOwnsBrowser() {
     const path = this.path(".codex", "config.toml");
@@ -322,8 +332,12 @@ export class InteropEngine {
     // browser; they are removed otherwise, so they can never carry over to a
     // server the owner adds later.
     const browser = this.browserManaged();
-    const ownAllow = (entry) => String(entry).startsWith("mcp__" + BROWSER_SERVER_ID + "__");
-    const enabled = (next.enabledMcpjsonServers ?? []).filter((name) => name !== BROWSER_SERVER_ID);
+    // A 3.4 pre-release wired the server as "browser": its entries go too,
+    // unless "browser" in .mcp.json is the owner's own server.
+    const legacy = !this.ownerHasServer("browser");
+    const legacyAllow = new Set(BROWSER_READ_TOOLS.concat(["browser_tabs"]).map((tool) => "mcp__browser__" + tool));
+    const ownAllow = (entry) => String(entry).startsWith("mcp__" + BROWSER_SERVER_ID + "__") || (legacy && legacyAllow.has(String(entry)));
+    const enabled = (next.enabledMcpjsonServers ?? []).filter((name) => name !== BROWSER_SERVER_ID && !(legacy && name === "browser"));
     next.enabledMcpjsonServers = [...new Set([...enabled, MCP_SERVER_ID, ...(browser ? [BROWSER_SERVER_ID] : [])])];
     const permissions = next.permissions ?? {};
     const browserReads = browser ? BROWSER_READ_TOOLS.map((tool) => "mcp__" + BROWSER_SERVER_ID + "__" + tool) : [];

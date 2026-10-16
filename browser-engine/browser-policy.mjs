@@ -22,6 +22,27 @@ export const ALLOWED_PROTOCOLS = new Set(["http:", "https:", "about:"]);
 const COMMIT_WORDS = /\b(submit|pay|payment|checkout|purchase|buy|order|place order|confirm|send|delete|remove|destroy|publish|post|transfer|wire|sign|approve|accept|finali[sz]e|file it|apply)\b|ثبت|پرداخت|ارسال|بفرست|حذف|تایید|تأیید|انتشار|منتشر|واریز|انتقال|امضا|خرید|سفارش|نهایی|إرسال|دفع|حذف|تأكيد|نشر/i;
 const SECRET_FIELDS = /\b(password|passcode|passwd|pin|otp|one[- ]time|2fa|mfa|verification code|security code|cvv|cvc|card number)\b|رمز|گذرواژه|پسورد|کد تایید|کد تأیید|کد یکبار|کلمه عبور|كلمة المرور|رمز التحقق/i;
 const ACTING_TOOLS = new Set(["browser_click", "browser_type", "browser_fill_form", "browser_select_option", "browser_press_key", "browser_drag", "browser_drop"]);
+const COORDINATE_TOOLS = new Set(["browser_mouse_click_xy", "browser_mouse_drag_xy", "browser_mouse_down", "browser_mouse_up"]);
+
+/** Every element ref a call targets. */
+export function targetRefs(args = {}) {
+  const refs = [args.ref, args.startRef, args.endRef, ...(Array.isArray(args.fields) ? args.fields.map((field) => field?.ref) : [])];
+  return refs.filter((ref) => typeof ref === "string" && ref);
+}
+
+/**
+ * Lines of a Playwright snapshot by ref ("- button \"Pay now\" [ref=e12]"),
+ * so the gate can read what an element really says.
+ */
+export function indexSnapshotRefs(text, into = new Map()) {
+  for (const match of String(text ?? "").matchAll(/^[^\n]*\[ref=([A-Za-z0-9_-]+)\][^\n]*$/gm)) {
+    into.set(match[1], match[0].trim().slice(0, 300));
+  }
+  while (into.size > 4000) {
+    into.delete(into.keys().next().value);
+  }
+  return into;
+}
 
 function strings(value, out = []) {
   if (typeof value === "string") {
@@ -96,17 +117,24 @@ export function secretFieldProblem(tool, args = {}) {
  * always count: an upload sends a file away, and a dialog is usually the
  * "are you sure?" of a delete or a payment.
  */
-export function commitTarget(tool, args = {}) {
+export function commitTarget(tool, args = {}, pageText = "") {
   if (tool === "browser_file_upload" && Array.isArray(args.paths) && args.paths.length) {
     return "upload " + args.paths.length + " file(s): " + args.paths.map((path) => String(path).split(/[\\/]/).pop()).join(", ");
   }
   if (tool === "browser_handle_dialog" && args.accept === true) {
     return "accept a page dialog" + (args.promptText ? " with text" : "");
   }
+  if (COORDINATE_TOOLS.has(tool)) {
+    // A click by coordinates names no element, so nothing shows what it hits.
+    return tool.replace("browser_", "") + " at " + [args.x, args.y].filter((value) => value !== undefined).join(",");
+  }
   if (!ACTING_TOOLS.has(tool)) {
     return null;
   }
-  const described = strings({ element: args.element, values: args.values, fields: args.fields, startElement: args.startElement, endElement: args.endElement }).join(" ");
+  // The agent's own description and the page's real text for the refs it
+  // targets (from the latest snapshot): renaming a "Pay now" button in the
+  // description does not get past the gate.
+  const described = [strings({ element: args.element, values: args.values, fields: args.fields, startElement: args.startElement, endElement: args.endElement }).join(" "), String(pageText ?? "")].join(" ").trim();
   const pressesEnter = tool === "browser_press_key" && /^(enter|return)$/i.test(String(args.key ?? ""));
   const submits = (tool === "browser_type" && args.submit === true) || pressesEnter;
   if (COMMIT_WORDS.test(described) || (submits && COMMIT_WORDS.test(described + " submit"))) {

@@ -12,12 +12,12 @@
  * text or query strings) in .astack/browser/dedicated/calls.jsonl.
  */
 import { spawn } from "node:child_process";
-import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ConfigurationEngine } from "../configuration-engine/configuration.mjs";
 import { DedicatedBrowser, npxCommand } from "../browser-engine/dedicated.mjs";
-import { CODE_TOOLS, actionKey, commitTarget, filenameProblem, logEntry, secretFieldProblem, urlProblem } from "../browser-engine/browser-policy.mjs";
+import { CODE_TOOLS, actionKey, commitTarget, filenameProblem, indexSnapshotRefs, logEntry, secretFieldProblem, targetRefs, urlProblem } from "../browser-engine/browser-policy.mjs";
 import { ApprovalEngine } from "../trust-engine/approvals.mjs";
 import { estimateTokens } from "../lib/text.mjs";
 
@@ -156,7 +156,9 @@ function rewrite(line) {
     measure(message.result.tools);
     return JSON.stringify(message);
   }
-  if (callRequests.delete(message.id) && Array.isArray(message.result?.content)) {
+  if (callRequests.has(message.id) && Array.isArray(message.result?.content)) {
+    callRequests.delete(message.id);
+    learnRefs(message.result.content);
     message.result.content = [{ type: "text", text: UNTRUSTED_NOTE }, ...message.result.content];
     return JSON.stringify(message);
   }
@@ -207,6 +209,17 @@ async function forward(line) {
     send({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "Batch requests are not supported by the AStack browser." } });
     return;
   }
+  if (message?.method === "initialize" && message.params?.capabilities?.roots) {
+    // A client root would become Playwright's working folder (the project),
+    // where a bare filename could overwrite project files. Without roots,
+    // Playwright writes only into its output folder.
+    delete message.params.capabilities.roots;
+    child.stdin.write(JSON.stringify(message) + "\n");
+    return;
+  }
+  if (message?.method === "notifications/roots/list_changed") {
+    return;
+  }
   if (message?.method === "tools/list") {
     listRequests.add(message.id);
   }
@@ -224,7 +237,8 @@ async function forward(line) {
       refuse(message.id, problem);
       return;
     }
-    const target = commitTarget(tool, args);
+    const pageText = targetRefs(args).map((ref) => refText.get(ref) ?? "").join(" ");
+    const target = commitTarget(tool, args, pageText);
     let approval = null;
     if (target) {
       const gate = commitGate(tool, args, target);
@@ -243,6 +257,38 @@ async function forward(line) {
     }
     callRequests.add(message.id);
     record(tool, args, approval ? { approval } : {});
+    if (typeof args.filename === "string" && args.filename) {
+      // Whatever Playwright's working folder turns out to be, the file lands
+      // in the output folder.
+      args.filename = join(browser.outputDir(), basename(args.filename));
+      child.stdin.write(JSON.stringify(message) + "\n");
+      return;
+    }
   }
   child.stdin.write(line + "\n");
+}
+
+/** What each element ref says, from tool results and saved snapshots. */
+const refText = new Map();
+function learnRefs(content) {
+  for (const part of content) {
+    if (part?.type !== "text" || typeof part.text !== "string") {
+      continue;
+    }
+    indexSnapshotRefs(part.text, refText);
+    for (const match of part.text.matchAll(/\(([^()\n]+\.ya?ml)\)/g)) {
+      const candidates = [resolve(browser.outputDir(), match[1]), resolve(root, match[1])];
+      const file = candidates.find((path) => {
+        const inside = relative(browser.outputDir(), path);
+        return !inside.startsWith("..") && !isAbsolute(inside) && existsSync(path);
+      });
+      if (file) {
+        try {
+          indexSnapshotRefs(readFileSync(file, "utf8"), refText);
+        } catch {
+          // An unreadable snapshot only means the gate relies on the description.
+        }
+      }
+    }
+  }
 }
