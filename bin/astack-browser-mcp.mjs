@@ -11,7 +11,8 @@
  * text) in .astack/browser/dedicated/calls.jsonl.
  */
 import { spawn } from "node:child_process";
-import { appendFileSync, mkdirSync } from "node:fs";
+import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { estimateTokens } from "../lib/text.mjs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ConfigurationEngine } from "../configuration-engine/configuration.mjs";
@@ -39,6 +40,16 @@ function record(message) {
     }) + "\n", "utf8");
   } catch {
     // The log is evidence, never a reason to fail a call.
+  }
+}
+
+/** What the tool list costs every session, for `astack context bill`. */
+function measure(tools) {
+  try {
+    mkdirSync(dirname(callLog), { recursive: true });
+    writeFileSync(join(dirname(callLog), "tools.json"), JSON.stringify({ count: tools.length, tokens: estimateTokens(JSON.stringify(tools)), at: new Date().toISOString() }) + "\n", "utf8");
+  } catch {
+    // Measuring never blocks the list.
   }
 }
 
@@ -93,8 +104,11 @@ function rewrite(line) {
   } catch {
     return line;
   }
-  if (message?.id !== undefined && listRequests.delete(message.id) && Array.isArray(message.result?.tools) && !allowCode) {
-    message.result.tools = message.result.tools.filter((tool) => !CODE_TOOLS.has(tool.name));
+  if (message?.id !== undefined && listRequests.delete(message.id) && Array.isArray(message.result?.tools)) {
+    if (!allowCode) {
+      message.result.tools = message.result.tools.filter((tool) => !CODE_TOOLS.has(tool.name));
+    }
+    measure(message.result.tools);
     return JSON.stringify(message);
   }
   if (message?.id !== undefined && callRequests.delete(message.id) && Array.isArray(message.result?.content)) {

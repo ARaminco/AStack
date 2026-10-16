@@ -221,6 +221,23 @@ export const migrations = [
       writeFileSync(path, current.replace(/\s*$/, "\n") + rules.join("\n") + "\n", "utf8");
       return "added " + rules.length + " ignore rules for 3.0 state";
     }
+  },
+  {
+    id: "2026.9-ignore-guard-state",
+    description: "Keep the guard's decision log and freeze state out of git (3.5.0).",
+    appliesTo: (root) => {
+      if (!existsSync(join(root, ".gitignore"))) {
+        return false;
+      }
+      const current = readFileSync(join(root, ".gitignore"), "utf8");
+      return !/^\/?\.astack\/?\s*$/m.test(current) && !current.includes(".astack/guard/");
+    },
+    run: (root) => {
+      const path = join(root, ".gitignore");
+      const current = readFileSync(path, "utf8");
+      writeFileSync(path, current.replace(/\s*$/, "\n") + ".astack/guard/\n", "utf8");
+      return "added .astack/guard/ to .gitignore";
+    }
   }
 ];
 

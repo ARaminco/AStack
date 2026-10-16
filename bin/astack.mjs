@@ -7,6 +7,7 @@ import { runProjectCommand } from "../delivery-engine/cli.mjs";
 import { runAgentCommand, runDomainCommand, runLeadCommand, runTeamCommand } from "../cli/orchestration-cli.mjs";
 import { runContextCommand, runGraphCommand, runLearningCommand, runMemoryCommand, runSkillCommand } from "../cli/intelligence-cli.mjs";
 import { runBrowserCommand, runMissionCommand, runScheduleCommand, runSignalCommand } from "../cli/operations-cli.mjs";
+import { runGuardCommand } from "../cli/guard-cli.mjs";
 import { runApprovalCommand, runAuditCommand, runAuthorityCommand, runRuntimeCommand, runSecretCommand, runToolCommand } from "../cli/trust-cli.mjs";
 import { runAskCommand, runOwnerCommand, runStandupCommand } from "../cli/chief-cli.mjs";
 import { runInteropCommand, runMcpCommand } from "../cli/interop-cli.mjs";
@@ -31,7 +32,7 @@ const runtime = createRuntime();
 const COMMANDS = [
   "setup", "init", "install", "doctor", "update", "upgrade", "review", "ask", "standup", "owner",
   "context", "memory", "graph", "learn", "skill",
-  "mission", "schedule", "signal", "browser",
+  "mission", "schedule", "signal", "browser", "guard",
   "authority", "approval", "audit", "secret", "tool", "runtime", "interop", "mcp", "graphify",
   "domain", "team", "agent", "lead", "project", "workflow", "provider", "plugin", "knowledge", "backup",
   "search",
@@ -228,6 +229,9 @@ async function run() {
       return;
     case "approval":
       runApprovalCommand(context);
+      return;
+    case "guard":
+      runGuardCommand(context);
       return;
     case "audit":
       runAuditCommand(context);
