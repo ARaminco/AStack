@@ -131,6 +131,27 @@ function plainIdProblem(name, value) {
   return PLAIN_ID.test(String(value)) ? null : "Invalid " + name + ": lowercase letters, digits, dot, dash or underscore.";
 }
 
+// Session titles: a session id has a fixed shape; a title is one short line.
+const SESSION_REF = /^[0-9a-f][0-9a-f-]{7,35}$/i;
+
+function sessionTitleProblem(input) {
+  if (!SESSION_REF.test(String(input.session ?? ""))) {
+    return "Invalid session: the Claude Code session id (at least 8 hex characters), as given in the title reminder.";
+  }
+  const title = String(input.title ?? "");
+  if (/[\r\n\t]/.test(title)) {
+    return "A title is one line.";
+  }
+  // The project limit (session_titles.max_length, 60 by default) is checked by the CLI.
+  const length = title.replace(/\s+/g, " ").trim().length;
+  return length >= 3 && length <= 120 ? null : "A title needs 3 to 60 characters.";
+}
+
+function sessionQueryProblem(input) {
+  const query = String(input.query ?? "").trim();
+  return query.length >= 2 && query.length <= 300 ? null : "A query of 2 to 300 characters is required.";
+}
+
 /**
  * Tool definitions. `args` maps validated input to a CLI argument vector;
  * `source` is the calling runtime so stored records keep their provenance.
@@ -399,6 +420,34 @@ export const mcpTools = [
     },
     validate: (input) => onlineIdProblem(input.id) ?? onlinePackProblem(input.pack),
     args: (input, source) => ["skill", "online", "get", "--from-search", ...optional("pack", input.pack), ...(input.dryRun === true ? ["--dry-run"] : []), "--requester=" + source, "--", String(input.id)]
+  },
+  {
+    name: "astack_session_title",
+    description: "Give the current Claude Code chat a precise title («<subject> · <what is being done>», at most 60 characters) when AStack's title reminder asks for it. Keeps titles the owner set by hand; also updates the phone/web copy of a Remote Control chat.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        session: text("Session id from the title reminder"),
+        title: text("The new title")
+      },
+      required: ["session", "title"]
+    },
+    validate: sessionTitleProblem,
+    args: (input, source) => ["session", "title", "--session=" + String(input.session), "--runtime=" + source, "--", String(input.title)]
+  },
+  {
+    name: "astack_session_find",
+    description: "Find earlier Claude Code chats on the same subject (client, case, site, system) by their titles, so work continues in the existing chat instead of a new one. Read-only; current project unless all is true.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: text("Subject words, e.g. a client name or case number"),
+        all: { type: "boolean", description: "Search every project on this machine" }
+      },
+      required: ["query"]
+    },
+    validate: sessionQueryProblem,
+    args: (input) => ["session", "find", ...(input.all === true ? ["--all"] : []), "--", String(input.query)]
   },
   {
     name: "astack_handoff_write",

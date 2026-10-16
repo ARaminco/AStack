@@ -34,6 +34,17 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/bin/astack-title-hook.mjs\" interop hook prompt --runtime claude-code",
+            "timeout": 15
+          }
+        ]
+      }
     ]
   },
   "enabledMcpjsonServers": [

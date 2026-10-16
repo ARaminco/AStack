@@ -216,6 +216,12 @@ export class InteropEngine {
     return "node \"$CLAUDE_PROJECT_DIR/" + this.cli() + "\" " + HOOK_MARKER + " " + event + " --runtime claude-code";
   }
 
+  /** The chat-title hook runs a light entry point: it fires on every prompt. */
+  claudePromptHookCommand() {
+    const hook = this.cli().replace(/astack\.mjs$/, "astack-title-hook.mjs");
+    return "node \"$CLAUDE_PROJECT_DIR/" + hook + "\" " + HOOK_MARKER + " prompt --runtime claude-code";
+  }
+
   codexHookCommand(event) {
     return "node " + this.cli() + " " + HOOK_MARKER + " " + event + " --runtime codex";
   }
@@ -345,6 +351,19 @@ export class InteropEngine {
       : [...keptPreToolUse, { matcher: "Bash|PowerShell|Edit|Write|MultiEdit|NotebookEdit", hooks: [{ type: "command", command: guardCommand, timeout: 10 }] }];
     if (!hooks.PreToolUse.length) {
       delete hooks.PreToolUse;
+    }
+    // Chat titles: watch every prompt; the hook speaks only when a title is due.
+    if (this.sessionTitlesEnabled()) {
+      hooks.UserPromptSubmit = this.mergeHooks(hooks, "UserPromptSubmit", {
+        hooks: [{ type: "command", command: this.claudePromptHookCommand(), timeout: 15 }]
+      });
+    } else if (Array.isArray(hooks.UserPromptSubmit)) {
+      const kept = this.mergeHooks(hooks, "UserPromptSubmit", null).filter(Boolean);
+      if (kept.length) {
+        hooks.UserPromptSubmit = kept;
+      } else {
+        delete hooks.UserPromptSubmit;
+      }
     }
     next.hooks = hooks;
     // Our enable and allow entries exist only while AStack manages the
@@ -829,6 +848,16 @@ export class InteropEngine {
       imported,
       output: { hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: context } }
     };
+  }
+
+  sessionTitlesEnabled() {
+    return this.sessionTitles ? this.sessionTitles.config.enabled : true;
+  }
+
+  /** Claude Code UserPromptSubmit: extra context for this prompt, or null. */
+  promptSubmit({ payload = {} } = {}) {
+    const context = this.sessionTitles?.promptHook(payload) ?? null;
+    return context ? { hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: context } } : null;
   }
 
   sessionEnd({ runtime, payload = {} } = {}) {

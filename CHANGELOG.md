@@ -3,6 +3,21 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 3.6.0 — Chat titles that say what the chat is
+
+Claude Code chats get clear, consistent titles, so the owner finds and continues the chat that already holds a client, a case or a system instead of opening a new one. See `documentation/Session-Titles.md`.
+
+- New `interop-engine/session-titles.mjs`: reads Claude Code transcripts (`~/.claude/projects`), tells automatic, owner and AStack titles apart through a shared history (`~/.astack/session-titles/history.jsonl`), and appends the same `custom-title` record `/rename` writes — never editing a line and keeping the file's dates so chat lists keep their order. Titles the owner set by hand are never replaced without `--force`; secret-like titles are refused.
+- Watching: a `UserPromptSubmit` hook (light entry point `bin/astack-title-hook.mjs`, about 60 ms, which loads only this engine and the configuration), added by `astack setup` / `interop sync` beside any owner hook. It keeps cheap per-session counters and asks the agent in the chat to set a title after 3 prompts or 15 minutes, re-checks once at prompts 12 and 40, repeats an ignored first reminder at most 3 times, and stays silent for owner titles (looking again only every 10 prompts).
+- Earlier chats: on a new chat's first prompt the hook matches the request against the project's titles (rare words such as a client name or case number weigh most) and has the agent point the owner to the existing chat.
+- Phone and web: a Remote Control chat's claude.ai copy gets the same title through the endpoint Claude Code's own rename uses, with the machine's Claude Code sign-in (read only inside the call). `astack session sync` re-sends titles; a chat the owner renamed since is left alone.
+- `astack session status|list|digest|title|apply|undo|find|sync` and the MCP tools `astack_session_title` and `astack_session_find` (validated, single-token options, free text after `--`).
+- Every chat on the machine: `astack session hook install` adds one user-level prompt hook to `~/.claude/settings.json` (backup first, other settings and hooks kept) that runs the canonical core; it stays silent in projects that have their own AStack prompt hook.
+- Undo restores only chats still on the title it replaced, gives a restored owner title back to the owner, takes only a full or unique 8-character session id, and re-sends only the restored chats to the phone. Any title AStack ever wrote for a chat counts as its own, so Claude Code re-appending an older one does not silence the hook. A torn last transcript line never swallows a title record.
+- Contract: a "Chat Titles" section — set the title when the hook asks, the naming rules, legal labels first.
+- Configuration `session_titles` (enabled, first_after_turns, first_after_minutes, recheck_turns, max_length, language, hint, suggest_existing, sync_remote); all optional.
+- New suite `tests/verify-session-titles.mjs`.
+
 ## 3.5.0 — Practices from gstack
 
 Five deep practice skills replace the thin generic development packs. Procedures, checklists and decision rules are condensed from [gstack](https://github.com/garrytan/gstack) (MIT, © 2026 Garry Tan, commit 47d639a) and fitted to AStack's trust rules, tools and language policy; see `NOTICE` and `documentation/Practice-Skills.md`.

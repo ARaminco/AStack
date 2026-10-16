@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { parseArgs } from "../delivery-engine/cli.mjs";
 import { detectRuntime } from "../interop-engine/interop-engine.mjs";
 import { serveMcp } from "../interop-engine/mcp-server.mjs";
+import { projectHasPromptHook } from "../interop-engine/session-titles.mjs";
 
 const out = (line) => console.log(line);
 
@@ -93,6 +94,14 @@ export async function runInteropCommand({ runtime, i18n, tokens }) {
         out(JSON.stringify(result.output));
       } else if (event === "session-end") {
         interop.sessionEnd({ runtime: runtimeId, payload });
+      } else if (event === "prompt") {
+        // The user-level hook (every chat on the machine) leaves a project
+        // with its own AStack prompt hook to that hook.
+        const projectDir = process.env.CLAUDE_PROJECT_DIR || payload.cwd || null;
+        const output = flags.scope === "user" && projectHasPromptHook(projectDir) ? null : interop.promptSubmit({ payload });
+        if (output) {
+          out(JSON.stringify(output));
+        }
       } else {
         throw new Error("unknown hook event: " + event);
       }

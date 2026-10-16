@@ -15,6 +15,15 @@ Claude Code and Codex are two hands of the same operator. They share one contrac
 
 Run `astack interop sync` after cloning to (re)generate the runtime wiring: `.mcp.json` and `.claude/settings.json` for Claude Code, `.codex/config.toml` and `.codex/hooks.json` for Codex. `astack setup` does it for you.
 
+## Chat Titles
+Claude Code chats carry clear titles, so the owner finds and continues the existing chat for a client, case or system instead of opening a new one.
+
+- When AStack's prompt hook says a title is due (after a few prompts, and again when the chat has grown), set it before you end the turn: the `astack_session_title` MCP tool or `astack session title --session=<id> -- "<title>"`.
+- Shape: «<subject> · <what is being done>», in the owner's language, at most 60 characters. The subject is what the owner would search for: project, client, case, site or system. For legal work the party or case label comes first, and a court number appears only with its label and only when it is in the chat. Never secrets or amounts.
+- A title the owner set by hand is never replaced. A Remote Control chat gets the same title on the phone and the web.
+- When the hook lists earlier chats on the same subject, tell the owner in one line that they can continue there. `astack session find "<words>"` (MCP `astack_session_find`) searches titles on demand; `astack session sync` re-sends titles to the phone.
+- Codex threads are not renamed yet.
+
 ## Install, Setup and Update Requests
 Both kinds of request always go through the canonical core at `~/.astack/core`, a git clone of the AStack repository (`upgrade.source`, by default https://github.com/ARaminco/AStack.git). Refresh it first — it works whether the clone is on a branch or on a release:
 

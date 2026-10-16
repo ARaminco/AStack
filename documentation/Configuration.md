@@ -146,6 +146,7 @@ defaults below apply, so an upgraded 2.5 configuration keeps working as is.
 | `skills.packs` | `skill-hub/` | enabled by default; packs rank below built-in skills |
 | `skills.online` (3.2) | `skill-hub/online/` | enabled, but nothing happens until `astack skill online search` is run |
 | `console` | `console/` | `astack console start` or the daemon |
+| `session_titles` (3.6) | `interop-engine/session-titles.mjs` | on by default; the prompt hook speaks only when a title is due |
 | `board` | `board-engine/` | `astack board create` |
 | `sandbox` | `sandbox-engine/` | Docker running; routing needs `astack sandbox require` |
 | `vault` | `trust-engine/vault.mjs` | a reference registered with a `vault:*` source |

@@ -370,6 +370,18 @@ interop:
       mcp: .codex/config.toml
       hooks: .codex/hooks.json
 
+# Chat titles for Claude Code sessions (3.6). Defaults shown; uncomment to change.
+# session_titles:
+#   enabled: true
+#   first_after_turns: 3        # first title after this many prompts...
+#   first_after_minutes: 15     # ...or after this many minutes
+#   recheck_turns: 12, 40       # look again as the chat grows
+#   max_length: 60
+#   language: fa
+#   hint: ""                    # project naming hint, e.g. "client · court number · task"
+#   suggest_existing: true      # point to an earlier chat on the same subject
+#   sync_remote: true           # also rename the phone/web copy of Remote Control chats
+
 tools:
   registry: tool-registry/tool-registry.mjs
   manifest: tool-registry/tools.json
