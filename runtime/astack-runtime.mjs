@@ -45,6 +45,7 @@ import { SearchEngine } from "../search-engine/search-engine.mjs";
 import { BoardEngine } from "../board-engine/board-engine.mjs";
 import { SandboxEngine } from "../sandbox-engine/sandbox-engine.mjs";
 import { A2AServer } from "../interop-engine/a2a-server.mjs";
+import { SessionTitles } from "../interop-engine/session-titles.mjs";
 import { GatewayEngine } from "../gateway-engine/gateway-engine.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -226,6 +227,15 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
     graphify,
     standup: () => chief.standup()
   });
+  // Chat titles for Claude Code sessions: the prompt hook says when a title is
+  // due, the agent in the session names it, Remote Control copies follow.
+  const sessionTitles = new SessionTitles({
+    projectRoot: interop.projectRoot,
+    config: configuration.section("session_titles", {}),
+    clock,
+    cli: join(root, "bin", "astack.mjs")
+  });
+  interop.sessionTitles = sessionTitles;
 
   // AStack 3.0 (P6): multi-agent board, Docker sandbox, A2A endpoint. The
   // board and A2A reach the runner and gateway through the finished runtime
@@ -303,6 +313,7 @@ export function createRuntime({ clock, workspaceRoot = root } = {}) {
     orchestrator,
     search,
     sandbox,
+    sessionTitles,
     get board() {
       return board.bind(this);
     },

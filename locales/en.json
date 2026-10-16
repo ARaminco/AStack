@@ -69,7 +69,8 @@
       "sandbox": "Docker-isolated command execution: status, images, require, exec -- <command>.",
       "a2a": "Agent-to-Agent (A2A) endpoint: serve, card, status.",
       "gateway": "Owner messaging gateway: commands from WhatsApp and Telegram, reports and approvals on the phone, local Persian voice notes.",
-      "console": "Aramin console: installable app for conversations, approvals, missions and monitoring (open | start | token | status | user)."
+      "console": "Aramin console: installable app for conversations, approvals, missions and monitoring (open | start | token | status | user).",
+      "session": "Chat titles for Claude Code sessions: status, list, digest, title, apply, undo, find, sync (phone/web copies)."
     },
     "project": {
       "usage": "Project commands: init, demo, list, status, board, backlog, add, move, start, done, block, unblock, charter, milestone, sprint, risk, gate, advance, baseline, critical-path, forecast, next, digest, decision, scaffold, raci, report, templates",
@@ -681,6 +682,43 @@
       "frozen": "Edits are frozen to {dir}; edits elsewhere are refused until astack guard unfreeze.",
       "unfrozen": "Edit freeze lifted.",
       "unknownAction": "Unknown guard action: {action}"
+    },
+    "session": {
+      "statusTitle": "Chat titles: {state}",
+      "on": "on",
+      "off": "off",
+      "projects": "Claude Code projects: {projects}",
+      "counts": "{total} chats: {astack} titled by AStack, {owner} by the owner, {ai} automatic, {none} untitled",
+      "rules": "First title after {turns} prompts or {minutes} minutes; re-check at prompts {recheck}; at most {length} characters",
+      "remoteSetting": "Phone/web copies of Remote Control chats: {state}",
+      "history": "Renamed so far: {renamed} (last batch {batch})",
+      "untitled": "untitled",
+      "listed": "{count} chats.",
+      "digestWritten": "{count} chats → {path}",
+      "titleUsage": "Usage: astack session title --session=<id> -- <title>",
+      "applyUsage": "Usage: astack session apply <titles.json> [--dry-run] [--force]",
+      "findUsage": "Usage: astack session find [--all] -- <subject words>",
+      "renamed": "renamed {id}: «{from}» → «{title}»",
+      "wouldRename": "would rename {id}: «{from}» → «{title}»",
+      "keptOwner": "kept {id}: the owner's title «{title}» stays (use --force only on the owner's order)",
+      "restored": "restored {id}: «{from}» → «{title}»",
+      "error": "skipped {id}: {error}",
+      "skipped": "skipped {id}: {reason}",
+      "applied": "{renamed} of {total} renamed (batch {batch}); undo with astack session undo --batch=<batch>",
+      "nothingToUndo": "Nothing to undo.",
+      "noMatch": "No earlier chat on this subject.",
+      "remoteLocal": "local chat only (not opened through Remote Control)",
+      "remotePushed": "phone/web copy updated ({pushed})",
+      "remoteFailed": "phone/web copy not updated ({failed}): {reason}",
+      "remoteTotals": "phone/web copies: {pushed} updated, {failed} failed",
+      "synced": "{sessions} chats checked, {localOnly} local only: {pushed} phone/web copies updated, {failed} failed",
+      "unknownAction": "Unknown session action: {action} (status | list | digest | title | apply | undo | find | sync | hook)",
+      "userHookOn": "Watching every chat on this machine: on ({path})",
+      "userHookOff": "Watching every chat on this machine: off — astack session hook install",
+      "userHookInstalled": "User-level chat title hook installed in {path} (backup {backup})",
+      "userHookRemoved": "User-level chat title hook removed from {path} (backup {backup})",
+      "userHookUnchanged": "Nothing to change in {path}",
+      "hookUsage": "Usage: astack session hook status|install|remove [--dry-run]"
     }
   },
   "delivery": {

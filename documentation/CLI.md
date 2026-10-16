@@ -124,6 +124,21 @@ astack interop hook session-start|session-end --runtime <id>   # called by the r
 astack mcp serve | tools
 ```
 
+## Chat titles (3.6)
+
+```bash
+astack session status [--project <slug>|--all]
+astack session list [--weak] [--project <slug>|--all]
+astack session digest [--weak] [--out digest.json]        # compact evidence to name from
+astack session title --session=<id> -- "<subject> · <task>" [--force] [--dry-run]
+astack session apply titles.json [--dry-run] [--force]   # [{ "id": "...", "title": "..." }]
+astack session undo [--batch=<id>|--session=<id>]
+astack session find [--all] -- <subject words>
+astack session sync [--all]                               # phone/web copies of Remote Control chats
+astack session hook status|install|remove [--dry-run]    # user-level hook: every chat on this machine
+astack interop hook prompt --runtime claude-code          # called by Claude Code on every prompt
+```
+
 ## Setup and update
 
 ```bash

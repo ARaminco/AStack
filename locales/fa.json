@@ -69,7 +69,8 @@
       "sandbox": "اجرای فرمان در محیط ایزوله داکر: status، images، require، exec -- <فرمان>.",
       "a2a": "درگاه گفت‌وگوی عامل با عامل (A2A): serve، card، status.",
       "gateway": "پیام‌رسان مالک: فرمان از واتس‌اپ و تلگرام، گزارش و تأیید از گوشی، پیام صوتی فارسی محلی.",
-      "console": "کنسول آرامین: اپ نصب‌شدنی برای گفت‌وگوها، تأییدها، مأموریت‌ها و پایش (open | start | token | status | user)."
+      "console": "کنسول آرامین: اپ نصب‌شدنی برای گفت‌وگوها، تأییدها، مأموریت‌ها و پایش (open | start | token | status | user).",
+      "session": "نام گفت‌وگوهای Claude Code: وضعیت، فهرست، خلاصه، نام‌گذاری، اعمال دسته‌ای، برگرداندن، یافتن گفت‌وگوی قبلی، هم‌گام‌سازی با موبایل."
     },
     "project": {
       "usage": "فرمان‌های پروژه: init، demo، list، status، board، backlog، add، move، start، done، block، unblock، charter، milestone، sprint، risk، gate، advance، baseline، critical-path، forecast، next، digest، decision، scaffold، raci، report، templates",
@@ -681,6 +682,43 @@
       "frozen": "ویرایش به {dir} محدود شد؛ تا astack guard unfreeze ویرایش جای دیگر رد می‌شود.",
       "unfrozen": "محدودیت ویرایش برداشته شد.",
       "unknownAction": "کار ناشناخته برای نگهبان: {action}"
+    },
+    "session": {
+      "statusTitle": "نام گفت‌وگوها: {state}",
+      "on": "روشن",
+      "off": "خاموش",
+      "projects": "پروژه‌های Claude Code: {projects}",
+      "counts": "{total} گفت‌وگو: {astack} با نام ای‌استک، {owner} با نام دستی مالک، {ai} نام خودکار، {none} بی‌نام",
+      "rules": "اولین نام پس از {turns} پیام یا {minutes} دقیقه؛ بازبینی در پیام‌های {recheck}؛ حداکثر {length} حرف",
+      "remoteSetting": "به‌روزرسانی نسخهٔ موبایل و وب گفت‌وگوهای کنترل از راه دور: {state}",
+      "history": "تا حالا {renamed} نام‌گذاری (آخرین دسته {batch})",
+      "untitled": "بی‌نام",
+      "listed": "{count} گفت‌وگو.",
+      "digestWritten": "{count} گفت‌وگو ← {path}",
+      "titleUsage": "روش استفاده: astack session title --session=<id> -- <title>",
+      "applyUsage": "روش استفاده: astack session apply <titles.json> [--dry-run] [--force]",
+      "findUsage": "روش استفاده: astack session find [--all] -- <کلمه‌های موضوع>",
+      "renamed": "نام {id} عوض شد: «{from}» ← «{title}»",
+      "wouldRename": "نام {id} عوض می‌شود: «{from}» ← «{title}»",
+      "keptOwner": "{id} دست نخورد: نام دستی مالک «{title}» می‌ماند (--force فقط با دستور مالک)",
+      "restored": "{id} برگشت: «{from}» ← «{title}»",
+      "error": "{id} رد شد: {error}",
+      "skipped": "{id} رد شد: {reason}",
+      "applied": "{renamed} از {total} نام عوض شد (دسته {batch})؛ برگرداندن با astack session undo --batch=<batch>",
+      "nothingToUndo": "چیزی برای برگرداندن نیست.",
+      "noMatch": "گفت‌وگوی قبلی با این موضوع پیدا نشد.",
+      "remoteLocal": "فقط روی این کامپیوتر (از راه کنترل از راه دور باز نشده)",
+      "remotePushed": "نسخهٔ موبایل و وب هم عوض شد ({pushed})",
+      "remoteFailed": "نسخهٔ موبایل و وب عوض نشد ({failed}): {reason}",
+      "remoteTotals": "نسخه‌های موبایل و وب: {pushed} عوض شد، {failed} ناموفق",
+      "synced": "{sessions} گفت‌وگو بررسی شد، {localOnly} فقط محلی: {pushed} نسخهٔ موبایل و وب عوض شد، {failed} ناموفق",
+      "unknownAction": "عملیات session ناشناخته: {action} (status | list | digest | title | apply | undo | find | sync | hook)",
+      "userHookOn": "نظارت بر همهٔ گفت‌وگوهای این کامپیوتر: روشن ({path})",
+      "userHookOff": "نظارت بر همهٔ گفت‌وگوهای این کامپیوتر: خاموش — astack session hook install",
+      "userHookInstalled": "قلاب سراسری نام گفت‌وگوها در {path} نصب شد (پشتیبان {backup})",
+      "userHookRemoved": "قلاب سراسری نام گفت‌وگوها از {path} برداشته شد (پشتیبان {backup})",
+      "userHookUnchanged": "در {path} چیزی برای تغییر نبود",
+      "hookUsage": "روش استفاده: astack session hook status|install|remove [--dry-run]"
     }
   },
   "delivery": {
