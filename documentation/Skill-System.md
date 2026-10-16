@@ -20,7 +20,16 @@ packs.
 | financial-close | reconciliation, adjustments, trial balance, report | L2 |
 | tax-filing | traceable calculation, portal filing, receipt | L4 |
 | contract-review | obligations, risk table, redline proposals | L2 |
+| plan-review | scope challenge, engineering lock-in, design score | L1 |
+| code-review | two-pass pre-merge review, lazy specialists, gate integrity | L2 |
+| investigate | root cause first, regression test, flaky/race/polluter recipes | L2 |
+| qa | exploratory web, API and CLI testing with the project's browser | L3 |
+| ship | tests, review, docs, version, approved push and safe deploy | L4 |
 | 25 review packs | security, architecture, performance, SEO and more | L1 |
+
+The five practice skills use lazy sections: a short `SKILL.md` that opens
+`sections/<name>.md` only when a step needs it. See
+[Practice Skills](Practice-Skills.md).
 
 ## Learned skills
 

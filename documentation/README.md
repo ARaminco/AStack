@@ -28,6 +28,7 @@ AStack is a personal AI operating system for any practice — software, legal, f
 - [Knowledge Graph](Knowledge-Graph.md) — temporal entities and relationships
 - [Learning Engine](Learning-Engine.md) — experience to skills, with reinforcement
 - [Skill System](Skill-System.md) — built in and learned skills, progressive disclosure
+- [Practice Skills](Practice-Skills.md) — plan-review, code-review, investigate, qa and ship, with lazy sections (3.5)
 - [Skill Hub](Skill-Hub.md) — auxiliary skill packs below the built-in skills (3.0)
 - [Agent Runtimes](Agent-Runtimes.md) — the runtime abstraction and model router
 - [Tool System](Tool-System.md) — the tool registry and gated invocation

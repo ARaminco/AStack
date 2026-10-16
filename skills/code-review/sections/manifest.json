@@ -1,0 +1,20 @@
+{
+  "skill": "code-review",
+  "note": "Passive index. SKILL.md decides when a section is opened; open one file per step, never all.",
+  "sections": [
+    { "id": "pass1-critical", "file": "pass1-critical.md", "title": "Pass 1: critical categories and the sideways sweep", "trigger": "every review, step 3" },
+    { "id": "gate-integrity", "file": "gate-integrity.md", "title": "Gate integrity: weakened, skipped or deleted checks", "trigger": "the diff touches a test, CI, lint, snapshot, threshold or config file" },
+    { "id": "pass2-informational", "file": "pass2-informational.md", "title": "Pass 2: informational categories", "trigger": "every review, step 4" },
+    { "id": "stack-laravel", "file": "stack-laravel.md", "title": "Laravel 12, Livewire 3 and Filament items", "trigger": "PHP, Blade, Livewire or Filament files changed" },
+    { "id": "stack-nextjs", "file": "stack-nextjs.md", "title": "Next.js 16 items", "trigger": "a Next.js app (next.config.*, app/, pages/) changed" },
+    { "id": "security", "file": "security.md", "title": "Security specialist", "trigger": "auth, sessions, roles, uploads, webhooks, crypto, secrets, raw SQL or shell; or backend diff > 100 lines" },
+    { "id": "performance", "file": "performance.md", "title": "Performance specialist", "trigger": "queries, loops over collections, list endpoints, caching, bundles or rendering" },
+    { "id": "data-migration", "file": "data-migration.md", "title": "Data migration specialist", "trigger": "migrations, schema changes, backfills" },
+    { "id": "api-contract", "file": "api-contract.md", "title": "API contract specialist", "trigger": "routes, controllers, response shapes, webhooks, public SDK" },
+    { "id": "testing", "file": "testing.md", "title": "Testing specialist", "trigger": "diff of 50+ lines, or test files changed" },
+    { "id": "red-team", "file": "red-team.md", "title": "Red team (adversarial)", "trigger": "diff of 200+ lines, or the security specialist found a critical" },
+    { "id": "simplification", "file": "simplification.md", "title": "Simplification (advisory)", "trigger": "diff of 100+ lines" },
+    { "id": "suppressions", "file": "suppressions.md", "title": "What not to flag", "trigger": "before scoring findings, step 7" },
+    { "id": "fix-first", "file": "fix-first.md", "title": "Fix-first, confidence and re-review", "trigger": "after findings are collected, step 8" }
+  ]
+}

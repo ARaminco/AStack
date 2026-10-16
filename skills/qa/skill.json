@@ -1,0 +1,68 @@
+{
+  "id": "qa",
+  "name": "QA",
+  "nameFa": "تست اکتشافی و تضمین کیفیت",
+  "source": "builtin",
+  "status": "trusted",
+  "version": 1,
+  "confidence": 0.85,
+  "domains": [
+    "software"
+  ],
+  "keywords": [
+    "qa",
+    "test",
+    "testing",
+    "exploratory",
+    "browser",
+    "website",
+    "api",
+    "webhook",
+    "cli",
+    "regression",
+    "smoke",
+    "console",
+    "تست",
+    "کیفیت",
+    "آزمون",
+    "مرورگر",
+    "سایت"
+  ],
+  "description": "تست اکتشافی سایت، API، CLI و وب‌هوک با مرورگر اختصاصی پروژه؛ ثبت شواهد هر probe، تست بازگشتی پیش از اصلاح و گزارش سلامت.",
+  "capabilities": [
+    "surface-selection",
+    "browser-probes",
+    "contract-probes",
+    "evidence-notes",
+    "regression-test",
+    "health-score"
+  ],
+  "requiredTools": [
+    "browser",
+    "shell",
+    "filesystem",
+    "http",
+    "trust"
+  ],
+  "requiredCredentials": [],
+  "riskLevel": "L3",
+  "approvalLevel": "owner",
+  "compatibleRuntimes": [
+    "claude-code",
+    "codex",
+    "cli"
+  ],
+  "sections": "sections/manifest.json",
+  "adaptedFrom": "gstack qa (MIT, commit 47d639a); see NOTICE",
+  "procedure": [
+    { "order": 1, "label": "سطح تست (وب، API، CLI، صف یا وب‌هوک) را انتخاب کن و مقصد واقعی داده‌ها و پیام‌ها را روشن کن.", "required": true, "share": 1 },
+    { "order": 2, "label": "مرزها، سطح و سقف زمانی را پیش از اولین probe به فارسی اعلام کن.", "required": true, "share": 1 },
+    { "order": 3, "label": "probeها را یکی‌یکی اجرا کن و پیش از probe بعدی یادداشت شاهد بنویس؛ رمز را فقط مالک وارد می‌کند.", "required": true, "share": 1 },
+    { "order": 4, "label": "هیچ ارسال، پرداخت، حذف یا انتشار روی سایت زنده بدون تأیید صریح مالک انجام نشود.", "required": true, "share": 1 },
+    { "order": 5, "label": "یافته‌ها را با شدت و دسته طبقه‌بندی کن و وضعیت پایه را پیش از اصلاح گزارش بده.", "required": true, "share": 1 },
+    { "order": 6, "label": "برای هر اصلاح اول تست بازگشتی که شکست بخورد، بعد اصلاح کوچک، تست دوباره و commit محلی.", "required": true, "share": 1 },
+    { "order": 7, "label": "بازبینی نهایی را اجرا کن و گزارش QA را با بخش‌های پوشش‌داده‌نشده تحویل بده.", "required": true, "share": 1 }
+  ],
+  "createdAt": "2026-10-17T00:00:00.000Z",
+  "updatedAt": "2026-10-17T00:00:00.000Z"
+}

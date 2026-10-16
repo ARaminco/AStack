@@ -1,0 +1,69 @@
+{
+  "id": "ship",
+  "name": "Ship",
+  "nameFa": "انتشار و استقرار امن",
+  "source": "builtin",
+  "status": "trusted",
+  "version": 1,
+  "confidence": 0.85,
+  "domains": [
+    "software"
+  ],
+  "keywords": [
+    "ship",
+    "release",
+    "deploy",
+    "deployment",
+    "push",
+    "changelog",
+    "version",
+    "rollback",
+    "canary",
+    "production",
+    "nginx",
+    "pm2",
+    "انتشار",
+    "استقرار",
+    "دیپلوی",
+    "ریلیز",
+    "نسخه"
+  ],
+  "description": "چک‌لیست انتشار: تست، بازبینی کد، به‌روزی مستندات، نسخه و CHANGELOG، commit و push با تأیید مالک، استقرار امن با بازگشت خودکار.",
+  "capabilities": [
+    "release-checklist",
+    "docs-drift",
+    "changelog",
+    "safe-deploy",
+    "post-deploy-verify"
+  ],
+  "requiredTools": [
+    "shell",
+    "filesystem",
+    "browser",
+    "ssh",
+    "trust"
+  ],
+  "requiredCredentials": [],
+  "riskLevel": "L4",
+  "approvalLevel": "owner",
+  "compatibleRuntimes": [
+    "claude-code",
+    "codex",
+    "cli"
+  ],
+  "sections": "sections/manifest.json",
+  "adaptedFrom": "gstack ship, land-and-deploy, canary, document-release (MIT, commit 47d639a); see NOTICE",
+  "procedure": [
+    { "order": 1, "label": "شاخه پایه را دریافت و ادغام کن و تغییرات و commitها را فهرست کن.", "required": true, "share": 1 },
+    { "order": 2, "label": "همه مسیرهای تست اعلام‌شده را اجرا کن؛ اجرای بدون تست شکست حساب می‌شود و هیچ تستی تضعیف نمی‌شود.", "required": true, "share": 1 },
+    { "order": 3, "label": "بازبینی کد را روی نسخه نهایی اجرا کن و برای هر یافته گیت تصمیم مالک را بگیر.", "required": true, "share": 1 },
+    { "order": 4, "label": "ناهماهنگی مستندات را بررسی و موارد واقعی کهنه را اصلاح کن.", "required": true, "share": 1 },
+    { "order": 5, "label": "نسخه را یک‌بار بالا ببر و مدخل CHANGELOG را در قالب پروژه بنویس.", "required": true, "share": 1 },
+    { "order": 6, "label": "commitهای قابل bisect بساز و پیش از هر commit محتوای stage را برای اسرار بررسی کن.", "required": true, "share": 1 },
+    { "order": 7, "label": "پیش از push و استقرار متوقف شو و خلاصه را برای تأیید مالک بفرست.", "required": true, "share": 1 },
+    { "order": 8, "label": "بدون force push کن و در استقرار فقط منابع همین برنامه را لمس کن: پشتیبان، nginx -t، probe قبل و بعد، بازگشت خودکار.", "required": true, "share": 1 },
+    { "order": 9, "label": "سلامت پس از استقرار را بررسی کن، حکم را از شواهد انتخاب کن و تجربه و handoff را ثبت کن.", "required": true, "share": 1 }
+  ],
+  "createdAt": "2026-10-17T00:00:00.000Z",
+  "updatedAt": "2026-10-17T00:00:00.000Z"
+}

@@ -1,0 +1,11 @@
+{
+  "skill": "plan-review",
+  "note": "Passive index. SKILL.md decides when a section is opened; open one file per step, never all.",
+  "sections": [
+    { "id": "principles", "file": "principles.md", "title": "Six decision principles and decision classes", "trigger": "step 2, once per review" },
+    { "id": "scope-challenge", "file": "scope-challenge.md", "title": "Scope challenge: expand, selective, hold, reduce", "trigger": "mode A, step 3" },
+    { "id": "engineering", "file": "engineering.md", "title": "Engineering lock-in: architecture, data flow, edge cases, test matrix", "trigger": "mode B, step 4" },
+    { "id": "design-score", "file": "design-score.md", "title": "Design score: seven dimensions rated 0-10", "trigger": "mode C, the plan has a user interface" },
+    { "id": "outputs", "file": "outputs.md", "title": "Required outputs and the final gate brief", "trigger": "step 6 and 7" }
+  ]
+}
