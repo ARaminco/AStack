@@ -202,7 +202,17 @@ async function memoryConsolidate(job, context) {
     return failed("memory engine is not available");
   }
   const report = memory.consolidate(job.payload ?? {});
-  return ok("merged " + report.merged + ", decayed " + report.decayed + ", dropped " + report.dropped + ", kept " + report.kept, { metrics: report });
+  // After consolidation the active window is refreshed from what survived.
+  let reflected = null;
+  try {
+    reflected = memory.reflect ? memory.reflect() : null;
+  } catch (error) {
+    reflected = { error: error.message };
+  }
+  const reflection = reflected?.error ? ", reflect failed: " + reflected.error : reflected ? ", key-facts blocks written " + reflected.written : "";
+  return ok("merged " + report.merged + ", decayed " + report.decayed + ", dropped " + report.dropped + ", kept " + report.kept + reflection, {
+    metrics: { ...report, reflectWritten: reflected?.written ?? 0 }
+  });
 }
 
 async function projectDigest(job, context) {

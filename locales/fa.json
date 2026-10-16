@@ -188,7 +188,18 @@
       "consolidated": "تجمیع حافظه: {merged} ادغام، {decayed} کاهش وزن، {dropped} حذف، {kept} باقی‌مانده.",
       "statsTitle": "حافظه: {total} رکورد، حدود {tokens} توکن.",
       "unknownAction": "فرمان ناشناخته برای memory: {action}",
-      "legacyImported": "حافظه قدیمی: {files} فایل، {sections} بخش ({added} جدید، {updated} به‌روز، {retired} بازنشسته، {unchanged} فایل بدون تغییر؛ ردشده: {skippedStock} قالب پیش‌فرض، {skippedSecret} مشابه اطلاعات محرمانه، {skippedExcluded} مستثنا). حافظه خودکار Claude Code: {claude} ورود یا به‌روزرسانی."
+      "legacyImported": "حافظه قدیمی: {files} فایل، {sections} بخش ({added} جدید، {updated} به‌روز، {retired} بازنشسته، {unchanged} فایل بدون تغییر؛ ردشده: {skippedStock} قالب پیش‌فرض، {skippedSecret} مشابه اطلاعات محرمانه، {skippedExcluded} مستثنا). حافظه خودکار Claude Code: {claude} ورود یا به‌روزرسانی.",
+      "scoped": "محدود به: {scope} (حافظهٔ پروژه‌ها و پرونده‌های دیگر کنار گذاشته شد).",
+      "activeTitle": "حافظهٔ فعال: {rendered} از {blocks} بلوک، حدود {tokens} توکن.",
+      "activeEmpty": "(هنوز بلوک فعالی نیست — بساز با: astack memory block set <scope>/<label> <text>)",
+      "reflected": "بازنگری حافظه ({mode}): {written} بلوک «نکات کلیدی» نوشته شد، {unchanged} بدون تغییر، {skipped} رد شد.",
+      "blockSaved": "بلوک {id} در نسخهٔ {version} ذخیره شد ({size}/{limit} نویسه).",
+      "blockEvicted": "{count} خط قدیمی برای ماندن در سقف به حافظهٔ بلندمدت منتقل شد ({record}).",
+      "blockListTitle": "بلوک‌های حافظهٔ فعال: {count}",
+      "blockIdRequired": "شناسهٔ بلوک لازم است: <scope>/<label>، مثلاً case:2026-003/state",
+      "blockUnknown": "بلوک ناشناخته: {id}",
+      "blockOldRequired": "متن دقیقی را که باید عوض شود با --old=\"...\" بدهید (و متن تازه را با --new=\"...\").",
+      "blockRemoved": "بلوک {id} بازنشسته شد؛ سابقه‌اش می‌ماند (memory block history / restore)."
     },
     "graph": {
       "statsTitle": "گراف دانش: {nodes} گره، {edges} یال ({active} فعال، {superseded} جایگزین‌شده).",
@@ -382,7 +393,8 @@
       "pendingApprovals": "در انتظار تأیید شما ({count}):",
       "learning": "یادگیری: {skills} skill، {candidates} نامزد آماده، {episodes} تجربه.",
       "jobs": "کارهای پس‌زمینه: {jobs} کار، {due} سررسیدشده، {incidents} حادثه باز.",
-      "signals": "هوک‌ها: {hooks} مورد، {queued} رویداد در صف، {received} دریافت‌شده."
+      "signals": "هوک‌ها: {hooks} مورد، {queued} رویداد در صف، {received} دریافت‌شده.",
+      "teamTitle": "تیم ({process}، اندازهٔ کار {scale}) — اعضا مستقیم با هم حرف نمی‌زنند؛ هر تحویل از راهبر و رئیس دفتر می‌گذرد:"
     },
     "owner": {
       "capsuleTitle": "کپسول هویت مالک ({tokens} از {budget} توکن):",

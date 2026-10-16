@@ -130,14 +130,19 @@ export function runMemoryCommand({ runtime, i18n, tokens }) {
     return;
   }
   if (action === "search" || action === "recall") {
+    const scope = scopeFlags(flags);
     const hits = memory.recall({
       query,
       facets: flags.facet ? [String(flags.facet)] : undefined,
       domain: flags.domain ? String(flags.domain) : null,
       project: flags.project ? String(flags.project) : null,
+      scope: scope.length ? scope : null,
       asOf: flags.asOf ? String(flags.asOf) : null,
       limit: Number(flags.limit ?? 10)
     });
+    if (scope.length) {
+      out(t("cli.memory.scoped", { scope: scope.join(", ") }));
+    }
     out(t("cli.memory.searchTitle", { query, count: hits.length }));
     for (const hit of hits) {
       out("- [" + hit.facet + " " + hit.score + "] " + hit.title + (hit.body ? " — " + hit.body.split("\n")[0].slice(0, 120) : ""));
@@ -153,6 +158,10 @@ export function runMemoryCommand({ runtime, i18n, tokens }) {
       domain: flags.domain ? String(flags.domain) : null,
       project: flags.project ? String(flags.project) : null,
       scope: flags.scope ? String(flags.scope) : null,
+      entities: [
+        ...(flags.case ? [caseScope(flags.case)] : []),
+        ...(flags.entities ? String(flags.entities).split(",").map((entry) => entry.trim()).filter(Boolean) : [])
+      ],
       importance: flags.importance ? Number(flags.importance) : undefined,
       confidence: flags.confidence ? Number(flags.confidence) : undefined,
       source: flags.source ? String(flags.source) : "cli"
@@ -204,6 +213,42 @@ export function runMemoryCommand({ runtime, i18n, tokens }) {
     out(t("cli.memory.consolidated", report));
     return;
   }
+  if (action === "active") {
+    const active = memory.active({
+      project: flags.project ? String(flags.project) : null,
+      caseId: flags.case ? String(flags.case) : null,
+      agent: flags.agent ? String(flags.agent) : null,
+      role: flags.role ? String(flags.role) : null,
+      team: flags.team ? String(flags.team) : null,
+      budget: Number(flags.budget ?? 1200)
+    });
+    out(t("cli.memory.activeTitle", { rendered: active.rendered, blocks: active.blocks, tokens: active.tokens }));
+    if (!active.lines.length) {
+      out(t("cli.memory.activeEmpty"));
+    }
+    for (const line of active.lines) {
+      out(line);
+    }
+    return;
+  }
+  if (action === "block" || action === "blocks") {
+    runBlockCommand({ memory, t, tokens: rest });
+    return;
+  }
+  if (action === "reflect") {
+    const report = memory.reflect({
+      scope: flags.scope ? String(flags.scope) : flags.case ? caseScope(flags.case) : flags.project ? "project:" + flags.project : null,
+      dryRun: Boolean(flags.dryRun),
+      limit: Number(flags.limit ?? 8)
+    });
+    out(t("cli.memory.reflected", { written: report.written, unchanged: report.unchanged, skipped: report.skipped, mode: flags.dryRun ? "dry-run" : "applied" }));
+    for (const entry of report.scopes) {
+      out("- " + entry.scope + ": " + entry.status + (entry.block ? " " + entry.block : "") +
+        (entry.added !== undefined ? " (+" + entry.added + " / -" + entry.removed + ", " + entry.records + " lines)" : "") +
+        (entry.reason ? " — " + entry.reason : ""));
+    }
+    return;
+  }
   if (action === "stats") {
     const stats = memory.stats();
     out(t("cli.memory.statsTitle", { total: stats.total, tokens: stats.tokens }));
@@ -217,6 +262,97 @@ export function runMemoryCommand({ runtime, i18n, tokens }) {
     return;
   }
   throw new Error(t("cli.memory.unknownAction", { action }));
+}
+
+function caseScope(value) {
+  const text = String(value).trim();
+  return text.startsWith("case:") ? text : "case:" + text;
+}
+
+/** --scope a,b plus --case and --project shortcuts, as recall scope ids. */
+function scopeFlags(flags) {
+  return [
+    ...(flags.scope ? String(flags.scope).split(",").map((entry) => entry.trim()).filter(Boolean) : []),
+    ...(flags.case ? [caseScope(flags.case)] : [])
+  ];
+}
+
+/**
+ * astack memory block list|show|set|append|replace|remove|history|restore.
+ * Free text comes after the block id (or after "--"); --old=/--new= carry the
+ * replacement pair. Read-only blocks change only with --force.
+ */
+function runBlockCommand({ memory, t, tokens }) {
+  const [action = "list", ...rest] = tokens;
+  const { positionals, flags } = parseArgs(rest);
+  const blocks = memory.blocks;
+  const source = flags.source ? String(flags.source) : "cli";
+  const force = Boolean(flags.force);
+  const [id, ...words] = positionals;
+  const text = words.join(" ");
+  const report = (result) => {
+    out(t("cli.memory.blockSaved", { id: result.block.id, version: result.block.version, size: result.block.value.length, limit: result.block.limit }));
+    if (result.evicted?.length) {
+      out(t("cli.memory.blockEvicted", { count: result.evicted.length, record: result.archived ?? "-" }));
+    }
+  };
+  if (action === "list") {
+    const list = blocks.list({ scope: flags.scope ? String(flags.scope) : null });
+    out(t("cli.memory.blockListTitle", { count: list.length }));
+    for (const block of list) {
+      out("- " + block.id + " v" + block.version + " (" + block.value.length + "/" + block.limit + (block.readOnly ? ", read-only" : "") + (block.managed ? ", managed" : "") + ")" + (block.description ? " — " + block.description : ""));
+    }
+    return;
+  }
+  if (!id) {
+    throw new Error(t("cli.memory.blockIdRequired"));
+  }
+  if (action === "show") {
+    const block = blocks.get(id);
+    if (!block) {
+      throw new Error(t("cli.memory.blockUnknown", { id }));
+    }
+    out("### " + block.id + " v" + block.version + " (" + block.value.length + "/" + block.limit + ", " + block.source + ", " + block.at + ")");
+    out(block.value);
+    return;
+  }
+  if (action === "set" || action === "create") {
+    report(blocks.set(id, flags.value !== undefined ? String(flags.value) : text, {
+      limit: flags.limit ? Number(flags.limit) : null,
+      description: flags.description ? String(flags.description) : null,
+      readOnly: flags.readOnly !== undefined ? flags.readOnly === true || flags.readOnly === "true" : null,
+      source,
+      force
+    }));
+    return;
+  }
+  if (action === "append") {
+    report(blocks.append(id, text, { source, force, limit: flags.limit ? Number(flags.limit) : null }));
+    return;
+  }
+  if (action === "replace") {
+    if (flags.old === undefined) {
+      throw new Error(t("cli.memory.blockOldRequired"));
+    }
+    report(blocks.replace(id, String(flags.old), flags.new === undefined || flags.new === true ? "" : String(flags.new), { source, force }));
+    return;
+  }
+  if (action === "remove" || action === "delete") {
+    const block = blocks.remove(id, { source, force });
+    out(t("cli.memory.blockRemoved", { id: block.id }));
+    return;
+  }
+  if (action === "history") {
+    for (const entry of blocks.history(id)) {
+      out("- v" + entry.version + " " + entry.at + " " + entry.source + (entry.deleted ? " (removed)" : "") + (entry.restoredFrom ? " (restored from v" + entry.restoredFrom + ")" : "") + " — " + String(entry.value ?? "").split("\n")[0].slice(0, 100));
+    }
+    return;
+  }
+  if (action === "restore") {
+    report(blocks.restore(id, words[0], { source, force }));
+    return;
+  }
+  throw new Error(t("cli.memory.unknownAction", { action: "block " + action }));
 }
 
 export function runGraphCommand({ runtime, i18n, tokens }) {

@@ -188,7 +188,18 @@
       "consolidated": "Consolidation: {merged} merged, {decayed} decayed, {dropped} dropped, {kept} kept.",
       "statsTitle": "Memory: {total} records, about {tokens} tokens.",
       "unknownAction": "Unknown memory action: {action}",
-      "legacyImported": "Legacy memory: {files} files, {sections} sections ({added} new, {updated} updated, {retired} retired, {unchanged} files unchanged; skipped {skippedStock} stock, {skippedSecret} credential-like, {skippedExcluded} excluded). Claude Code auto-memory: {claude} imported or updated."
+      "legacyImported": "Legacy memory: {files} files, {sections} sections ({added} new, {updated} updated, {retired} retired, {unchanged} files unchanged; skipped {skippedStock} stock, {skippedSecret} credential-like, {skippedExcluded} excluded). Claude Code auto-memory: {claude} imported or updated.",
+      "scoped": "Scoped to: {scope} (records of other projects and cases are excluded).",
+      "activeTitle": "Active memory: {rendered} of {blocks} blocks, about {tokens} tokens.",
+      "activeEmpty": "(no active blocks yet — create one with: astack memory block set <scope>/<label> <text>)",
+      "reflected": "Reflection ({mode}): {written} key-facts blocks written, {unchanged} unchanged, {skipped} skipped.",
+      "blockSaved": "Block {id} saved as version {version} ({size}/{limit} characters).",
+      "blockEvicted": "{count} oldest lines moved to long-term memory ({record}) to stay within the limit.",
+      "blockListTitle": "Active memory blocks: {count}",
+      "blockIdRequired": "A block id is required: <scope>/<label>, for example case:2026-003/state",
+      "blockUnknown": "Unknown block: {id}",
+      "blockOldRequired": "Give the exact text to replace with --old=\"...\" (and the new text with --new=\"...\").",
+      "blockRemoved": "Block {id} retired; its history stays (memory block history / restore)."
     },
     "graph": {
       "statsTitle": "Knowledge graph: {nodes} nodes, {edges} edges ({active} active, {superseded} superseded).",
@@ -382,7 +393,8 @@
       "pendingApprovals": "Waiting for your approval ({count}):",
       "learning": "Learning: {skills} skills, {candidates} ready candidates, {episodes} episodes.",
       "jobs": "Background jobs: {jobs} jobs, {due} due, {incidents} open incidents.",
-      "signals": "Hooks: {hooks}, {queued} queued events, {received} received."
+      "signals": "Hooks: {hooks}, {queued} queued events, {received} received.",
+      "teamTitle": "Team ({process}, scale {scale}) — seats never talk directly; every handoff goes through the lead and the Chief of Staff:"
     },
     "owner": {
       "capsuleTitle": "Owner identity capsule ({tokens} of {budget} tokens):",

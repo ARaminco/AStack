@@ -6,12 +6,17 @@ const VERBS = [
   { verb: "analyze", level: "L1", patterns: [/analy[sz]e|review|audit|assess|check|تحلیل|بازبینی|حسابرسی|ارزیابی|بررسی/] },
   { verb: "explain", level: "L1", patterns: [/explain|what is|status|tell me|توضیح|وضعیت|چیست|بگو/] },
   { verb: "draft", level: "L2", patterns: [/draft|prepare|write|compose|report|پیش ?نویس|تنظیم کن|بنویس|گزارش|آماده کن|تهیه کن/] },
-  { verb: "build", level: "L2", patterns: [/build|create|implement|develop|بساز|ایجاد|پیاده ?سازی|توسعه/] },
+  { verb: "build", level: "L2", patterns: [/build|create|implement|develop|\bdesign (a|an|the)\b|بساز|ایجاد|پیاده ?سازی|توسعه|طراحی کن|راه ?اندازی کن|refactor|\b(fix|add)\b|رفع کن|اضافه کن|اصلاح کن|درست کن/] },
   { verb: "fill", level: "L3", patterns: [/fill|complete the form|enter|update|پر کن|تکمیل کن|وارد کن|به ?روزرسانی/] },
   { verb: "submit", level: "L4", patterns: [/submit|file it|send it|pay|transfer|delete|publish|ارسال کن|ثبت کن|ثبت نهایی|پرداخت|حذف کن|منتشر|سابمیت/] }
 ];
 
 const LEVELS = ["L0", "L1", "L2", "L3", "L4", "L5"];
+
+// Software work that changes the product (3.3.0): fixing, adding and
+// refactoring are building too.
+const BUILD = /build|create|implement|develop|design|refactor|\b(fix|add)\b|بساز|ایجاد|پیاده ?سازی|توسعه|طراحی|رفع کن|اضافه کن|اصلاح کن|درست کن/;
+const FEATURE_WORDS = /\b(online |card )?pay(ments?)?\b|checkout|\blogin\b|\bsite\b|website|portal|پرداخت|درگاه|صفحه ?(ی )?ورود|ورود|سایت|پورتال/g;
 
 const EXTERNAL = /portal|website|site|login|browser|url|http|سایت|پورتال|سامانه|لینک|ورود/;
 const PAST_REFERENCE = /same as|like last time|previously|again|as before|قبل|قبلا|دفعه قبل|همان ?طور|مثل قبل|دوباره/;
@@ -35,13 +40,18 @@ export class IntentEngine {
   analyze(request, { domain = null } = {}) {
     const text = normalizeText(request ?? "");
     const tokens = uniqueTokens(request ?? "");
+    const resolvedDomain = domain ?? this.domains?.detect(request)?.id ?? null;
+    // Building software: "online payment", "the login page" or "the site" are
+    // features of the thing being built, not a payment to make or a portal to
+    // visit.
+    const building = resolvedDomain === "software" && BUILD.test(text);
+    const verbText = building ? text.replace(FEATURE_WORDS, " ") : text;
     const matched = VERBS.map((entry, index) => ({ ...entry, index }))
-      .filter((entry) => entry.patterns.some((pattern) => pattern.test(text)))
+      .filter((entry) => entry.patterns.some((pattern) => pattern.test(verbText)))
       .sort((a, b) => LEVELS.indexOf(b.level) - LEVELS.indexOf(a.level) || a.index - b.index);
     const primary = matched[0] ?? { verb: "explain", level: "L1" };
-    const resolvedDomain = domain ?? this.domains?.detect(request)?.id ?? null;
     const stepHints = (text.match(MULTI_STEP) ?? []).length;
-    const external = EXTERNAL.test(text);
+    const external = EXTERNAL.test(building ? verbText : text);
     const past = PAST_REFERENCE.test(text);
     const deadline = TIME_HINT.test(text);
     const words = tokens.length;
