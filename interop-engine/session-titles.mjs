@@ -905,7 +905,9 @@ export class SessionTitles {
       }
       const current = this.titleOf(readFileSync(file, "utf8"), entry.id);
       if (current.title !== entry.newTitle) {
-        continue; // renamed again by the owner since; theirs wins
+        if (current.source === "owner" || !this.healTitle(entry.id, file)) {
+          continue; // renamed again by the owner since; theirs wins
+        }
       }
       totals.sessions += 1;
       const result = await this.pushRemote(file, entry.newTitle);
@@ -1118,7 +1120,13 @@ export class SessionTitles {
         return null;
       }
       const state = this.readState(id);
-      const title = this.titleOf(readFileSync(file, "utf8"), id);
+      let title = this.titleOf(readFileSync(file, "utf8"), id);
+      if (title.source === "ai" || title.source === "none") {
+        const healed = this.healTitle(id, file);
+        if (healed) {
+          title = { title: healed, source: "astack" };
+        }
+      }
       if (
         state.reminderTurn !== null && state.reminderTurn === state.turns && state.enforcedTurn !== state.turns &&
         payload.stop_hook_active !== true && title.source !== "astack" && title.source !== "owner"
@@ -1139,6 +1147,25 @@ export class SessionTitles {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Claude Code sometimes rewrites a transcript from the title it holds in
+   * memory, which drops a title AStack appended. When a chat is back on an
+   * automatic or missing title, put AStack's latest title back. Never for a
+   * title restored to the owner. Returns the title written, or null.
+   */
+  healTitle(id, file) {
+    const latest = this.history().filter((entry) => entry.id === id).at(-1);
+    if (!latest?.newTitle || (latest.reason === "undo" && latest.restoredSource === "owner")) {
+      return null;
+    }
+    const current = this.titleOf(readFileSync(file, "utf8"), id);
+    if (current.source !== "ai" && current.source !== "none") {
+      return null;
+    }
+    appendTitle(file, id, latest.newTitle);
+    return latest.newTitle;
   }
 
   /** Push an AStack title to the phone copy, or take the owner's phone rename. */
