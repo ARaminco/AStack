@@ -1219,8 +1219,9 @@ export class SessionTitles {
     let remotes = this.remoteIds(file);
     if (!remotes.length && !state.listTried) {
       // A chat opened on the phone after the last list refresh: look once per chat.
-      state.listTried = true;
-      await this.refreshRemoteList({ pages: 2 });
+      // Marked only when a refresh really ran; a still-fresh list is looked at again later.
+      const refresh = await this.refreshRemoteList({ pages: 2 });
+      state.listTried = refresh.refreshed;
       remotes = this.remoteIds(file);
     }
     if (!remotes.length) {
