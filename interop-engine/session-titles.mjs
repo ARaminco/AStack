@@ -293,14 +293,15 @@ export class SessionTitles {
    * own, because Claude Code may re-append an older title it still holds in
    * memory; a title restored for the owner stays the owner's.
    */
-  ourTitles() {
+  ourTitles(history = this.history()) {
     const titles = new Map();
-    for (const entry of this.history()) {
+    for (const entry of history) {
       if (!entry?.id || typeof entry.newTitle !== "string") {
         continue;
       }
       const info = titles.get(entry.id) ?? { titles: new Set(), owner: null, signature: "" };
-      if (entry.reason === "undo" && entry.restoredSource === "owner") {
+      // An owner title AStack wrote back (an undo, or a rename pulled from the phone) stays the owner's.
+      if ((entry.reason === "undo" || entry.reason === "remote-owner") && entry.restoredSource === "owner") {
         info.owner = entry.newTitle;
       } else {
         info.titles.add(entry.newTitle);
@@ -774,6 +775,20 @@ export class SessionTitles {
     return join(this.stateRoot, "remote-sessions.json");
   }
 
+  /**
+   * Every API call shares one budget inside a hook (Claude Code kills a hook
+   * at its timeout): each request gets at most requestTimeoutMs and never
+   * runs past the deadline.
+   */
+  requestSignal() {
+    const left = this.deadline ? Math.max(1, this.deadline - Date.now()) : Infinity;
+    return AbortSignal.timeout(Math.min(this.requestTimeoutMs ?? 10000, left));
+  }
+
+  pastDeadline() {
+    return Boolean(this.deadline) && Date.now() >= this.deadline - 250;
+  }
+
   /** Cache the account's Remote Control session ids (at most every maxAgeMs). */
   async refreshRemoteList({ maxAgeMs = 10 * 60000, pages = 20 } = {}) {
     const cached = readJson(this.remoteListPath(), {});
@@ -786,10 +801,17 @@ export class SessionTitles {
     }
     const ids = new Set(cached?.ids ?? []);
     let cursor = null;
+    const save = () => {
+      try {
+        writeJsonAtomic(this.remoteListPath(), { at: this.now().toISOString(), ids: [...ids] });
+      } catch {
+        // A cache.
+      }
+    };
     try {
-      for (let page = 0; page < pages; page += 1) {
+      for (let page = 0; page < pages && !this.pastDeadline(); page += 1) {
         const url = this.apiBase + "/v1/code/sessions?limit=100" + (cursor ? "&cursor=" + encodeURIComponent(cursor) : "");
-        const response = await this.fetch(url, { method: "GET", headers: { Authorization: "Bearer " + token, "anthropic-version": "2023-06-01" }, signal: AbortSignal.timeout(10000) });
+        const response = await this.fetch(url, { method: "GET", headers: { Authorization: "Bearer " + token, "anthropic-version": "2023-06-01" }, signal: this.requestSignal() });
         if (response.status !== 200) {
           break;
         }
@@ -799,6 +821,7 @@ export class SessionTitles {
             ids.add(session.id);
           }
         }
+        save(); // newest sessions come first: a hook stopped mid-way still keeps them
         cursor = body?.next_cursor ?? null;
         if (!cursor || !(body?.data ?? []).length) {
           break;
@@ -807,17 +830,16 @@ export class SessionTitles {
     } catch {
       // Keep what we had.
     }
-    try {
-      writeJsonAtomic(this.remoteListPath(), { at: this.now().toISOString(), ids: [...ids] });
-    } catch {
-      // A cache.
-    }
+    save();
     this.remoteMapCache = null;
     return { refreshed: true, count: ids.size };
   }
 
   /** The phone/web copy's current title, or null when it cannot be read. */
   async remoteTitle(remoteId) {
+    if (this.pastDeadline()) {
+      return null;
+    }
     const { token } = this.accessToken();
     if (!token || typeof this.fetch !== "function") {
       return null;
@@ -826,7 +848,7 @@ export class SessionTitles {
       const response = await this.fetch(this.apiBase + "/v1/code/sessions/" + remoteId, {
         method: "GET",
         headers: { Authorization: "Bearer " + token, "anthropic-version": "2023-06-01" },
-        signal: AbortSignal.timeout(8000)
+        signal: this.requestSignal()
       });
       if (response.status !== 200) {
         return null;
@@ -868,12 +890,17 @@ export class SessionTitles {
     let failed = 0;
     let lastStatus = null;
     for (const id of ids) {
+      if (this.pastDeadline()) {
+        failed += 1;
+        lastStatus = "deadline";
+        continue;
+      }
       try {
         const response = await this.fetch(this.apiBase + "/v1/code/sessions/" + id, {
           method: "PUT",
           headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", "anthropic-version": "2023-06-01" },
           body: JSON.stringify({ title }),
-          signal: AbortSignal.timeout(10000)
+          signal: this.requestSignal()
         });
         lastStatus = response.status;
         response.status === 200 ? (pushed += 1) : (failed += 1);
@@ -943,7 +970,9 @@ export class SessionTitles {
       enforcedTurn: Number.isFinite(state.enforcedTurn) ? state.enforcedTurn : null,
       pushedTitle: typeof state.pushedTitle === "string" ? state.pushedTitle : null,
       pushTriedTurn: Number.isFinite(state.pushTriedTurn) ? state.pushTriedTurn : null,
-      pushTriedTitle: typeof state.pushTriedTitle === "string" ? state.pushTriedTitle : null
+      pushTriedTitle: typeof state.pushTriedTitle === "string" ? state.pushTriedTitle : null,
+      pullTurn: Number.isFinite(state.pullTurn) ? state.pullTurn : null,
+      listTried: state.listTried === true
     };
   }
 
@@ -1110,6 +1139,9 @@ export class SessionTitles {
    * Returns { block: reason } or null. Never throws.
    */
   async stopHook(payload = {}) {
+    // One budget for every network call in this hook, well inside its timeout.
+    this.deadline = Date.now() + 12000;
+    this.requestTimeoutMs = 4000;
     try {
       if (!this.config.enabled) {
         return null;
@@ -1120,11 +1152,15 @@ export class SessionTitles {
         return null;
       }
       const state = this.readState(id);
-      let title = this.titleOf(readFileSync(file, "utf8"), id);
+      const history = this.history();
+      const ours = this.ourTitles(history);
+      let text = readFileSync(file, "utf8");
+      let title = this.titleOf(text, id, ours);
       if (title.source === "ai" || title.source === "none") {
-        const healed = this.healTitle(id, file);
+        const healed = this.healTitle(id, file, { history, current: title });
         if (healed) {
-          title = { title: healed, source: "astack" };
+          text = readFileSync(file, "utf8");
+          title = this.titleOf(text, id, this.ourTitles());
         }
       }
       if (
@@ -1140,55 +1176,84 @@ export class SessionTitles {
         };
       }
       if (this.config.sync_remote && (title.source === "astack" || state.pushedTitle)) {
-        await this.syncOne(id, file, title, state);
+        await this.syncOne(id, file, title, state, { text, history });
       }
       this.writeState(id, state);
       return null;
     } catch {
       return null;
+    } finally {
+      this.deadline = null;
+      this.requestTimeoutMs = null;
     }
   }
 
   /**
    * Claude Code sometimes rewrites a transcript from the title it holds in
    * memory, which drops a title AStack appended. When a chat is back on an
-   * automatic or missing title, put AStack's latest title back. Never for a
-   * title restored to the owner. Returns the title written, or null.
+   * automatic or missing title, write back the latest title in the history:
+   * AStack's, or the owner's when the latest record is an owner title AStack
+   * restored or pulled from the phone (it stays the owner's). Returns the
+   * title written, or null.
    */
-  healTitle(id, file) {
-    const latest = this.history().filter((entry) => entry.id === id).at(-1);
-    if (!latest?.newTitle || (latest.reason === "undo" && latest.restoredSource === "owner")) {
+  healTitle(id, file, { history = this.history(), current = null } = {}) {
+    const latest = history.filter((entry) => entry.id === id).at(-1);
+    if (!latest?.newTitle) {
       return null;
     }
-    const current = this.titleOf(readFileSync(file, "utf8"), id);
-    if (current.source !== "ai" && current.source !== "none") {
+    const now = current ?? this.titleOf(readFileSync(file, "utf8"), id);
+    if (now.source !== "ai" && now.source !== "none") {
       return null;
     }
     appendTitle(file, id, latest.newTitle);
     return latest.newTitle;
   }
 
-  /** Push an AStack title to the phone copy, or take the owner's phone rename. */
-  async syncOne(id, file, title, state) {
+  /**
+   * Push AStack's title to the phone copy, or take the owner's phone rename.
+   * A rename is accepted only from a single linked copy, only after a push
+   * that reached every copy, only when it is a valid title and not one of
+   * Claude Code's automatic titles; it is recorded as the owner's.
+   */
+  async syncOne(id, file, title, state, { text = readFileSync(file, "utf8"), history = this.history() } = {}) {
     let remotes = this.remoteIds(file);
-    if (!remotes.length) {
-      // A chat opened on the phone after the last list refresh.
-      await this.refreshRemoteList();
+    if (!remotes.length && !state.listTried) {
+      // A chat opened on the phone after the last list refresh: look once per chat.
+      state.listTried = true;
+      await this.refreshRemoteList({ pages: 2 });
       remotes = this.remoteIds(file);
     }
     if (!remotes.length) {
       return;
     }
+    const latest = history.filter((entry) => entry.id === id).at(-1);
     if (state.pushedTitle && title.title === state.pushedTitle) {
-      // Pull: the owner may have renamed the chat on the phone since.
+      if (remotes.length !== 1 || (state.pullTurn !== null && state.turns - state.pullTurn < 3)) {
+        return;
+      }
+      state.pullTurn = state.turns;
       const remoteTitle = await this.remoteTitle(remotes[0]);
-      if (remoteTitle && remoteTitle !== state.pushedTitle && remoteTitle.trim().length >= TITLE_MIN && !looksSecret(remoteTitle)) {
-        appendTitle(file, id, remoteTitle.replace(/\s+/g, " ").trim());
-        state.pushedTitle = remoteTitle;
+      const clean = String(remoteTitle ?? "").replace(/\s+/g, " ").trim();
+      const automatic = new Set([...text.matchAll(/"aiTitle":"((?:[^"\\]|\\.)*)"/g)].map((match) => {
+        try {
+          return JSON.parse('"' + match[1] + '"');
+        } catch {
+          return match[1];
+        }
+      }));
+      if (clean && clean !== state.pushedTitle && !automatic.has(clean) && !this.titleProblem(clean)) {
+        appendTitle(file, id, clean);
+        mkdirSync(this.stateRoot, { recursive: true });
+        appendFileSync(this.historyPath, JSON.stringify({
+          at: this.now().toISOString(), batch: "remote-" + this.newBatch(), id, project: basename(dirname(file)),
+          oldTitle: title.title, oldSource: title.source, newTitle: clean, restoredSource: "owner", reason: "remote-owner"
+        }) + "\n");
+        state.pushedTitle = clean;
       }
       return;
     }
-    if (title.source !== "astack") {
+    // Only AStack's own current title goes to the phone, never an owner's.
+    if (title.source !== "astack" || latest?.newTitle !== title.title || latest?.restoredSource === "owner") {
       return;
     }
     // A failed push of the same title is retried every few replies, not every one.
@@ -1198,7 +1263,7 @@ export class SessionTitles {
     state.pushTriedTurn = state.turns;
     state.pushTriedTitle = title.title;
     const result = await this.pushRemote(file, title.title);
-    if (result.pushed) {
+    if (result.pushed && !result.failed) {
       state.pushedTitle = title.title;
     }
   }
