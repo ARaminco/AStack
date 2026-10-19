@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync, appendFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { SessionTitles, titleTokens, claudeSlug, projectHasPromptHook, projectTitleConfig } from "../interop-engine/session-titles.mjs";
+import { SessionTitles, titleTokens, claudeSlug, projectHasPromptHook, projectTitleConfig, remoteLocalId } from "../interop-engine/session-titles.mjs";
 import { InteropEngine } from "../interop-engine/interop-engine.mjs";
 import { mcpTools } from "../interop-engine/mcp-server.mjs";
 import { runSessionCommand } from "../cli/session-cli.mjs";
@@ -193,7 +193,11 @@ const titles = new SessionTitles({ home, projectRoot, clock, cli: "/core/bin/ast
 // ------------------------------------------------------------- remote copies
 {
   const calls = [];
+  // PUTs are recorded; the session list (GET) is empty here.
   const fakeFetch = async (url, options) => {
+    if (options.method === "GET") {
+      return { status: 200, json: async () => ({ data: [], next_cursor: null }) };
+    }
     calls.push({ url, options });
     return { status: 200 };
   };
@@ -382,13 +386,16 @@ const titles = new SessionTitles({ home, projectRoot, clock, cli: "/core/bin/ast
   assert.ok(installed.changed && installed.backup, "a backup is written before the first change");
   const after = JSON.parse(readFileSync(settingsPath, "utf8"));
   assert.equal(after.theme, "dark", "other settings are kept");
-  assert.equal(after.hooks.Stop.length, 1, "other hooks are kept");
+  assert.equal(after.hooks.Stop.length, 2, "the owner's stop hook stays beside AStack's");
+  assert.equal(after.hooks.Stop[0].hooks[0].command, "node stop.mjs");
+  assert.match(after.hooks.Stop[1].hooks[0].command, /astack-title-hook\.mjs" interop hook stop --runtime claude-code --scope=user$/);
   assert.equal(after.hooks.UserPromptSubmit.length, 2, "the owner's prompt hook stays beside AStack's");
   assert.equal(after.hooks.UserPromptSubmit[1].hooks[0].command, "node \"" + join(fakeCore, "astack-title-hook.mjs").split("\\").join("/") + "\" interop hook prompt --runtime claude-code --scope=user");
   assert.equal(user.installUserHook().changed, false, "installing twice changes nothing");
   assert.equal(user.userHookStatus().installed, true);
   user.installUserHook({ remove: true });
   assert.deepEqual(JSON.parse(readFileSync(settingsPath, "utf8")).hooks.UserPromptSubmit, original.hooks.UserPromptSubmit, "remove takes only AStack's entry");
+  assert.deepEqual(JSON.parse(readFileSync(settingsPath, "utf8")).hooks.Stop, original.hooks.Stop, "remove takes only AStack's stop entry");
   writeFileSync(settingsPath, "{ broken");
   assert.throws(() => user.installUserHook(), /not valid JSON/);
 
@@ -440,6 +447,94 @@ const titles = new SessionTitles({ home, projectRoot, clock, cli: "/core/bin/ast
   const second = engine.undo({ session: W });
   assert.equal(engine.sessions().find((entry) => entry.id === W).title, "عنوان مالک", "a second undo does not bring the forced title back");
   assert.ok(second.results.every((result) => result.status !== "restored"));
+}
+
+// ------------------------------------------------------------- 3.7: phone chats and the stop hook
+{
+  // The exact id Claude Code gives a chat resumed from a Remote Control session.
+  assert.equal(remoteLocalId("cse_019xUzSKsss8gAB9C6opvhrk"), "a355971f-7878-5cd4-b3ce-aa38ff5c53bc");
+
+  const phoneHome = sandbox("phone-home");
+  const phoneProjects = join(phoneHome, ".claude", "projects", slug);
+  mkdirSync(phoneProjects, { recursive: true });
+  const remote = "cse_01PHONEPHONEPHONEPHONE01";
+  const id = remoteLocalId(remote);
+  const fileP = join(phoneProjects, id + ".jsonl");
+  writeFileSync(fileP, user("سفارش جدید برای سیروان"));
+  writeFileSync(join(phoneHome, ".claude", ".credentials.json"), JSON.stringify({ claudeAiOauth: { accessToken: "tok-9", expiresAt: now.getTime() + 3600000 } }));
+
+  const requests = [];
+  let phoneTitle = "auto from phone";
+  let listIds = [];
+  const fake = async (url, options) => {
+    requests.push({ url, method: options.method, body: options.body });
+    if (options.method === "PUT") {
+      phoneTitle = JSON.parse(options.body).title;
+      return { status: 200 };
+    }
+    if (url.includes("/v1/code/sessions?")) {
+      return { status: 200, json: async () => ({ data: listIds.map((value) => ({ id: value })), next_cursor: null }) };
+    }
+    return { status: 200, json: async () => ({ id: remote, title: phoneTitle }) };
+  };
+  const engine = new SessionTitles({ home: phoneHome, projectRoot, clock, fetchImpl: fake, apiBase: "https://api.test" });
+
+  // linked through a Remote Control log name …
+  assert.deepEqual(engine.remoteIds(fileP), [], "unknown until a log or the session list names it");
+  const logs = join(phoneHome, ".astack", "remote-control");
+  mkdirSync(logs, { recursive: true });
+  writeFileSync(join(logs, "cohub.pro-" + remote + ".log"), "log");
+  engine.remoteMapCache = null;
+  assert.deepEqual(engine.remoteIds(fileP), [remote], "a server log name links the phone chat");
+  // … or through the account's session list
+  rmSync(join(logs, "cohub.pro-" + remote + ".log"));
+  engine.remoteMapCache = null;
+  listIds = [remote, "cse_01OTHEROTHEROTHEROTHER1"];
+  assert.equal((await engine.refreshRemoteList({ maxAgeMs: 0 })).count, 2);
+  assert.deepEqual(engine.remoteIds(fileP), [remote], "the session list links the phone chat");
+  assert.equal((await engine.refreshRemoteList()).refreshed, false, "the list is cached for a while");
+
+  // stop hook: a reminder that was ignored is enforced once, in the same reply
+  const stop = (extra = {}) => engine.stopHook({ session_id: id, transcript_path: fileP, ...extra });
+  for (let turn = 1; turn <= 3; turn += 1) {
+    engine.promptHook({ session_id: id, transcript_path: fileP, prompt: "p" });
+  }
+  const enforced = await stop();
+  assert.match(enforced.block, /set this chat's title/);
+  assert.match(enforced.block, new RegExp("session=" + id));
+  assert.equal(await stop({ stop_hook_active: true }), null, "never blocks while continuing for a stop hook");
+  assert.equal(await stop(), null, "never twice in one turn");
+
+  // the agent sets the title; the stop hook pushes it to the phone
+  requests.length = 0;
+  engine.setTitle(id, "سیروان · سفارش فسنجون و بریانی");
+  await stop();
+  const puts = requests.filter((request) => request.method === "PUT");
+  assert.equal(puts.length, 1);
+  assert.equal(puts[0].url, "https://api.test/v1/code/sessions/" + remote);
+  assert.equal(phoneTitle, "سیروان · سفارش فسنجون و بریانی");
+  requests.length = 0;
+  await stop();
+  assert.equal(requests.filter((request) => request.method === "PUT").length, 0, "no push when nothing changed");
+
+  // the owner renames the chat on the phone: it comes back as the owner's title
+  phoneTitle = "سیروان · نام دستی از موبایل";
+  await stop();
+  const back = engine.sessions().find((entry) => entry.id === id);
+  assert.equal(back.title, "سیروان · نام دستی از موبایل");
+  assert.equal(back.source, "owner", "a phone rename is the owner's title here");
+  assert.equal(engine.setTitle(id, "سیروان · دوباره").status, "kept-owner");
+
+  // re-checks are never enforced; disabled means silent
+  const quiet = new SessionTitles({ home: phoneHome, projectRoot, clock, fetchImpl: fake, config: { enabled: false } });
+  assert.equal(await quiet.stopHook({ session_id: id, transcript_path: fileP }), null);
+
+  // project wiring has the stop hook beside an owner stop hook
+  const interop = new InteropEngine(sandbox("wiring-37"), { home: sandbox("wiring-37-home"), env: {} });
+  const settings = interop.plannedClaudeSettings({ hooks: { Stop: [{ hooks: [{ type: "command", command: "node .claude/hooks/astack-wrapup.mjs" }] }] } });
+  assert.equal(settings.hooks.Stop.length, 2);
+  assert.match(settings.hooks.Stop[1].hooks[0].command, /astack-title-hook\.mjs" interop hook stop --runtime claude-code$/);
+  assert.equal(interop.plannedClaudeSettings(settings).hooks.Stop.length, 2, "never duplicated");
 }
 
 console.log("verify-session-titles: ok");

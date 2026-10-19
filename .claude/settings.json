@@ -45,6 +45,17 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/bin/astack-title-hook.mjs\" interop hook stop --runtime claude-code",
+            "timeout": 20
+          }
+        ]
+      }
     ]
   },
   "enabledMcpjsonServers": [

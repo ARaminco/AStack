@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// Claude Code UserPromptSubmit hook for chat titles.
+// Claude Code UserPromptSubmit and Stop hooks for chat titles.
 //
 // It runs on every prompt, so it loads only the session-titles engine and the
 // configuration, not the whole AStack runtime (about 300 ms per prompt).
 // Usage (written by `astack interop sync` and `astack session hook install`):
-//   node bin/astack-title-hook.mjs interop hook prompt --runtime claude-code [--scope=user]
+//   node bin/astack-title-hook.mjs interop hook prompt|stop --runtime claude-code [--scope=user]
 // The words after the script are kept so the commands carry the same marker
 // as the other AStack hooks.
 //
@@ -49,9 +49,18 @@ try {
       config = { ...config, ...project };
     }
     const titles = new SessionTitles({ projectRoot: projectDir ?? root, config, cli: join(root, "bin", "astack.mjs") });
-    const context = titles.promptHook(payload);
-    if (context) {
-      process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: context } }));
+    if (process.argv.includes("stop")) {
+      // End of a reply: name the chat now if it was asked and skipped, and
+      // keep the phone copy in step.
+      const result = await titles.stopHook(payload);
+      if (result?.block) {
+        process.stdout.write(JSON.stringify({ decision: "block", reason: result.block }));
+      }
+    } else {
+      const context = titles.promptHook(payload);
+      if (context) {
+        process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: context } }));
+      }
     }
   }
 } catch {

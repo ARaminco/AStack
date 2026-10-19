@@ -1,7 +1,7 @@
 import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, renameSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { looksSecret } from "../memory-engine/blocks.mjs";
 import { parseYaml } from "../configuration-engine/configuration.mjs";
 
@@ -120,6 +120,7 @@ function writeJsonAtomicText(path, text) {
 
 /** The user-level hook's command tail; the project hook is "interop hook prompt --runtime claude-code". */
 export const USER_HOOK_MARKER = "interop hook prompt --runtime claude-code --scope=user";
+export const USER_STOP_MARKER = "interop hook stop --runtime claude-code --scope=user";
 
 /**
  * True when a Claude Code project has AStack's own prompt hook, in which case
@@ -205,6 +206,21 @@ function appendTitle(file, id, title) {
   } catch {
     // Dates are cosmetic; the title is written.
   }
+}
+
+/**
+ * The local id Claude Code gives a chat it resumes from a Remote Control
+ * session: a UUID v5 of the session's URL in a fixed namespace (the same
+ * computation Claude Code makes for --resume=<url>).
+ */
+const REMOTE_SESSION_NAMESPACE = "3ab19d7e-9f35-45c2-926e-75e271cc60b3";
+export function remoteLocalId(remote, apiBase = "https://api.anthropic.com") {
+  const href = new URL(apiBase + "/v1/code/sessions/" + remote).href;
+  const hash = createHash("sha1").update(Buffer.from(REMOTE_SESSION_NAMESPACE.replace(/-/g, ""), "hex")).update(Buffer.from(href, "utf8")).digest();
+  hash[6] = (hash[6] & 0x0f) | 0x50;
+  hash[8] = (hash[8] & 0x3f) | 0x80;
+  const hex = hash.subarray(0, 16).toString("hex");
+  return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20, 32);
 }
 
 /** Claude Code's folder name for a project path (case differs between launchers). */
@@ -684,7 +700,143 @@ export class SessionTitles {
    */
   remoteIds(file) {
     const text = readFileSync(file, "utf8");
-    return [...new Set([...text.matchAll(/"bridgeSessionId":"(cse_[A-Za-z0-9]{8,64})"/g)].map((match) => match[1]))];
+    const ids = new Set([...text.matchAll(/"bridgeSessionId":"(cse_[A-Za-z0-9]{8,64})"/g)].map((match) => match[1]));
+    // A chat started from the phone runs in a process the Remote Control
+    // server spawned; its transcript carries only a local id derived from
+    // the cse_ id, so the link comes from the server's per-chat logs.
+    for (const remote of this.remoteMap().get(basename(file, ".jsonl")) ?? []) {
+      ids.add(remote);
+    }
+    return [...ids];
+  }
+
+  /** Folders where Remote Control servers write their per-chat logs (`--debug-file`). */
+  remoteLogDirs() {
+    const machine = readJson(this.machineConfigPath(), {});
+    const dirs = [join(this.home, ".astack", "remote-control"), ...(Array.isArray(machine.remoteLogDirs) ? machine.remoteLogDirs : []), ...(this.config.remote_log_dirs ?? [])];
+    return [...new Set(dirs.map((dir) => String(dir)))].filter((dir) => existsSync(dir));
+  }
+
+  machineConfigPath() {
+    return join(this.stateRoot, "config.json");
+  }
+
+  /** Remember a folder of Remote Control logs for every AStack install on this machine. */
+  addRemoteLogDir(dir) {
+    const path = String(dir ?? "").trim();
+    if (!path || !existsSync(path)) {
+      throw new Error("Folder not found: " + (path || "-"));
+    }
+    const machine = readJson(this.machineConfigPath(), {});
+    const dirs = new Set(Array.isArray(machine.remoteLogDirs) ? machine.remoteLogDirs : []);
+    dirs.add(path);
+    writeJsonAtomic(this.machineConfigPath(), { ...machine, remoteLogDirs: [...dirs] });
+    return [...dirs];
+  }
+
+  /**
+   * local session id → Set of cse_ ids. A chat the Remote Control server
+   * spawns for the phone is stored under a local id that Claude Code derives
+   * from its cse_ id (remoteLocalId), so the link is computed, never guessed.
+   * The cse_ ids come from the servers' per-chat log names and from the
+   * account's session list (refreshRemoteList), both cached.
+   */
+  remoteMap() {
+    if (this.remoteMapCache) {
+      return this.remoteMapCache;
+    }
+    const candidates = new Set(readJson(this.remoteListPath(), {})?.ids ?? []);
+    for (const dir of this.remoteLogDirs()) {
+      try {
+        for (const name of readdirSync(dir)) {
+          const match = /(cse_[A-Za-z0-9]{8,64}).(log|jsonl)$/.exec(name);
+          if (match) {
+            candidates.add(match[1]);
+          }
+        }
+      } catch {
+        // An unreadable folder adds nothing.
+      }
+    }
+    const map = new Map();
+    for (const remote of candidates) {
+      const id = remoteLocalId(remote);
+      if (!map.has(id)) {
+        map.set(id, new Set());
+      }
+      map.get(id).add(remote);
+    }
+    this.remoteMapCache = map;
+    return map;
+  }
+
+  remoteListPath() {
+    return join(this.stateRoot, "remote-sessions.json");
+  }
+
+  /** Cache the account's Remote Control session ids (at most every maxAgeMs). */
+  async refreshRemoteList({ maxAgeMs = 10 * 60000, pages = 20 } = {}) {
+    const cached = readJson(this.remoteListPath(), {});
+    if (cached?.at && this.now().getTime() - Date.parse(cached.at) < maxAgeMs) {
+      return { refreshed: false, count: cached.ids?.length ?? 0 };
+    }
+    const { token } = this.accessToken();
+    if (!token || typeof this.fetch !== "function") {
+      return { refreshed: false, count: cached?.ids?.length ?? 0 };
+    }
+    const ids = new Set(cached?.ids ?? []);
+    let cursor = null;
+    try {
+      for (let page = 0; page < pages; page += 1) {
+        const url = this.apiBase + "/v1/code/sessions?limit=100" + (cursor ? "&cursor=" + encodeURIComponent(cursor) : "");
+        const response = await this.fetch(url, { method: "GET", headers: { Authorization: "Bearer " + token, "anthropic-version": "2023-06-01" }, signal: AbortSignal.timeout(10000) });
+        if (response.status !== 200) {
+          break;
+        }
+        const body = await response.json();
+        for (const session of body?.data ?? []) {
+          if (typeof session?.id === "string" && /^cse_[A-Za-z0-9]{8,64}$/.test(session.id)) {
+            ids.add(session.id);
+          }
+        }
+        cursor = body?.next_cursor ?? null;
+        if (!cursor || !(body?.data ?? []).length) {
+          break;
+        }
+      }
+    } catch {
+      // Keep what we had.
+    }
+    try {
+      writeJsonAtomic(this.remoteListPath(), { at: this.now().toISOString(), ids: [...ids] });
+    } catch {
+      // A cache.
+    }
+    this.remoteMapCache = null;
+    return { refreshed: true, count: ids.size };
+  }
+
+  /** The phone/web copy's current title, or null when it cannot be read. */
+  async remoteTitle(remoteId) {
+    const { token } = this.accessToken();
+    if (!token || typeof this.fetch !== "function") {
+      return null;
+    }
+    try {
+      const response = await this.fetch(this.apiBase + "/v1/code/sessions/" + remoteId, {
+        method: "GET",
+        headers: { Authorization: "Bearer " + token, "anthropic-version": "2023-06-01" },
+        signal: AbortSignal.timeout(8000)
+      });
+      if (response.status !== 200) {
+        return null;
+      }
+      const body = await response.json();
+      const title = body?.title ?? body?.session?.title;
+      return typeof title === "string" ? title : null;
+    } catch {
+      return null;
+    }
   }
 
   /** The Claude Code sign-in token, read only here and never returned, logged or stored. */
@@ -735,6 +887,7 @@ export class SessionTitles {
 
   /** Push the current titles AStack wrote (latest per session) to their Remote Control copies. */
   async syncRemote({ project = null, all = false, session = null } = {}) {
+    await this.refreshRemoteList({ maxAgeMs: 0 });
     const latest = new Map();
     for (const entry of this.history()) {
       latest.set(entry.id, entry);
@@ -783,7 +936,12 @@ export class SessionTitles {
       firstNudges: Number(state.firstNudges) || 0,
       firstNudgedTurn: Number.isFinite(state.firstNudgedTurn) ? state.firstNudgedTurn : null,
       checked: Number(state.checked) || 0,
-      ownerSeenTurn: Number.isFinite(state.ownerSeenTurn) ? state.ownerSeenTurn : null
+      ownerSeenTurn: Number.isFinite(state.ownerSeenTurn) ? state.ownerSeenTurn : null,
+      reminderTurn: Number.isFinite(state.reminderTurn) ? state.reminderTurn : null,
+      enforcedTurn: Number.isFinite(state.enforcedTurn) ? state.enforcedTurn : null,
+      pushedTitle: typeof state.pushedTitle === "string" ? state.pushedTitle : null,
+      pushTriedTurn: Number.isFinite(state.pushTriedTurn) ? state.pushTriedTurn : null,
+      pushTriedTitle: typeof state.pushTriedTitle === "string" ? state.pushTriedTitle : null
     };
   }
 
@@ -917,6 +1075,7 @@ export class SessionTitles {
           if (step?.kind === "first") {
             state.firstNudges += 1;
             state.firstNudgedTurn = state.turns;
+            state.reminderTurn = state.turns;
           } else if (step?.kind === "recheck") {
             state.checked = step.checkpoint;
           } else {
@@ -936,6 +1095,87 @@ export class SessionTitles {
     }
   }
 
+  /**
+   * Claude Code Stop hook, at the end of every reply.
+   *
+   * 1. A first title was asked for in this turn and the agent did not set it:
+   *    block the stop once with the exact command, so the chat is named in
+   *    the same reply. Never twice in one turn, never while Claude Code is
+   *    already continuing because of a stop hook.
+   * 2. Phone/web copy: push a new AStack title; pull a title the owner set on
+   *    the phone since our last push (it becomes the owner's title here).
+   *
+   * Returns { block: reason } or null. Never throws.
+   */
+  async stopHook(payload = {}) {
+    try {
+      if (!this.config.enabled) {
+        return null;
+      }
+      const id = String(payload.session_id ?? "");
+      const file = payload.transcript_path ? String(payload.transcript_path) : null;
+      if (!SESSION_ID.test(id) || !file || !existsSync(file)) {
+        return null;
+      }
+      const state = this.readState(id);
+      const title = this.titleOf(readFileSync(file, "utf8"), id);
+      if (
+        state.reminderTurn !== null && state.reminderTurn === state.turns && state.enforcedTurn !== state.turns &&
+        payload.stop_hook_active !== true && title.source !== "astack" && title.source !== "owner"
+      ) {
+        state.enforcedTurn = state.turns;
+        this.writeState(id, state);
+        const command = "node \"" + this.cli + "\" session title --session=" + id + " -- \"<title>\"";
+        return {
+          block: "Before finishing, set this chat's title (it is " + (title.title ? "still «" + title.title + "»" : "untitled") + "): call astack_session_title (session=" + id + ") or run `" + command + "`. " +
+            "Shape «<subject> · <what is being done>», plain " + (LANGUAGE_NAMES[this.config.language] ?? this.config.language) + ", at most " + this.config.max_length + " characters; legal work: party or case label first. Then stop; say nothing about it."
+        };
+      }
+      if (this.config.sync_remote && (title.source === "astack" || state.pushedTitle)) {
+        await this.syncOne(id, file, title, state);
+      }
+      this.writeState(id, state);
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Push an AStack title to the phone copy, or take the owner's phone rename. */
+  async syncOne(id, file, title, state) {
+    let remotes = this.remoteIds(file);
+    if (!remotes.length) {
+      // A chat opened on the phone after the last list refresh.
+      await this.refreshRemoteList();
+      remotes = this.remoteIds(file);
+    }
+    if (!remotes.length) {
+      return;
+    }
+    if (state.pushedTitle && title.title === state.pushedTitle) {
+      // Pull: the owner may have renamed the chat on the phone since.
+      const remoteTitle = await this.remoteTitle(remotes[0]);
+      if (remoteTitle && remoteTitle !== state.pushedTitle && remoteTitle.trim().length >= TITLE_MIN && !looksSecret(remoteTitle)) {
+        appendTitle(file, id, remoteTitle.replace(/\s+/g, " ").trim());
+        state.pushedTitle = remoteTitle;
+      }
+      return;
+    }
+    if (title.source !== "astack") {
+      return;
+    }
+    // A failed push of the same title is retried every few replies, not every one.
+    if (state.pushTriedTitle === title.title && state.pushTriedTurn !== null && state.turns - state.pushTriedTurn < 3) {
+      return;
+    }
+    state.pushTriedTurn = state.turns;
+    state.pushTriedTitle = title.title;
+    const result = await this.pushRemote(file, title.title);
+    if (result.pushed) {
+      state.pushedTitle = title.title;
+    }
+  }
+
   // ------------------------------------------------------------- user hook
 
   /**
@@ -948,17 +1188,19 @@ export class SessionTitles {
     return join(this.home, ".claude", "settings.json");
   }
 
-  userHookCommand(cli = this.cli) {
-    // The light entry point beside the CLI: it fires on every prompt.
+  userHookCommand(cli = this.cli, step = "prompt") {
+    // The light entry point beside the CLI: it fires on every prompt and reply.
     const hook = String(cli).replace(/\\/g, "/").replace(/astack\.mjs$/, "astack-title-hook.mjs");
-    return "node \"" + hook + "\" " + USER_HOOK_MARKER;
+    return "node \"" + hook + "\" " + (step === "stop" ? USER_STOP_MARKER : USER_HOOK_MARKER);
   }
 
   userHookStatus() {
     const settings = readJson(this.userSettingsPath(), {});
-    const entries = (settings?.hooks?.UserPromptSubmit ?? []).flatMap((group) => group?.hooks ?? []);
-    const ours = entries.filter((hook) => String(hook?.command ?? "").includes(USER_HOOK_MARKER));
-    return { installed: ours.length > 0, command: ours[0]?.command ?? null, path: this.userSettingsPath() };
+    const commands = (event) => (settings?.hooks?.[event] ?? []).flatMap((group) => group?.hooks ?? []).map((hook) => String(hook?.command ?? ""));
+    const prompt = commands("UserPromptSubmit").find((command) => command.includes(USER_HOOK_MARKER)) ?? null;
+    const stop = commands("Stop").find((command) => command.includes(USER_STOP_MARKER)) ?? null;
+    // Installed means both halves; a 3.6 install has only the prompt hook.
+    return { installed: Boolean(prompt && stop), prompt: Boolean(prompt), stop: Boolean(stop), command: prompt, path: this.userSettingsPath() };
   }
 
   /** Add (or refresh) the user-level hook; every other setting and hook is kept. A backup is written first. */
@@ -979,16 +1221,18 @@ export class SessionTitles {
       }
     }
     const hooks = { ...(settings.hooks ?? {}) };
-    const groups = (Array.isArray(hooks.UserPromptSubmit) ? hooks.UserPromptSubmit : [])
-      .map((group) => ({ ...group, hooks: (group.hooks ?? []).filter((hook) => !String(hook?.command ?? "").includes(USER_HOOK_MARKER)) }))
-      .filter((group) => group.hooks.length);
-    if (!remove) {
-      groups.push({ hooks: [{ type: "command", command: this.userHookCommand(cli), timeout: 15 }] });
-    }
-    if (groups.length) {
-      hooks.UserPromptSubmit = groups;
-    } else {
-      delete hooks.UserPromptSubmit;
+    for (const [event, step, marker, timeout] of [["UserPromptSubmit", "prompt", USER_HOOK_MARKER, 15], ["Stop", "stop", USER_STOP_MARKER, 20]]) {
+      const groups = (Array.isArray(hooks[event]) ? hooks[event] : [])
+        .map((group) => ({ ...group, hooks: (group.hooks ?? []).filter((hook) => !String(hook?.command ?? "").includes(marker)) }))
+        .filter((group) => group.hooks.length);
+      if (!remove) {
+        groups.push({ hooks: [{ type: "command", command: this.userHookCommand(cli, step), timeout }] });
+      }
+      if (groups.length) {
+        hooks[event] = groups;
+      } else {
+        delete hooks[event];
+      }
     }
     const next = { ...settings, hooks };
     if (!Object.keys(hooks).length) {
