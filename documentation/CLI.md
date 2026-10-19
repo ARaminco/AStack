@@ -135,7 +135,8 @@ astack session apply titles.json [--dry-run] [--force]   # [{ "id": "...", "titl
 astack session undo [--batch=<id>|--session=<id>]
 astack session find [--all] -- <subject words>
 astack session sync [--all]                               # phone/web copies of Remote Control chats
-astack session hook status|install|remove [--dry-run]    # user-level hook: every chat on this machine
+astack session hook status|install|remove [--dry-run]    # user-level hooks (prompt + stop): every chat on this machine
+astack session remote-logs list|add <dir>                # Remote Control log folders that link phone chats
 astack interop hook prompt --runtime claude-code          # called by Claude Code on every prompt
 ```
 

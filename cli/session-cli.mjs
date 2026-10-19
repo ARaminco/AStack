@@ -167,6 +167,19 @@ export async function runSessionCommand({ runtime, i18n, tokens }) {
     out(t(result.changed ? (step === "remove" ? "cli.session.userHookRemoved" : "cli.session.userHookInstalled") : "cli.session.userHookUnchanged", { path: result.path, backup: result.backup ?? "-" }));
     return;
   }
+  if (action === "remote-logs") {
+    // astack session remote-logs list|add <dir> — where Remote Control servers
+    // write their per-chat logs (--debug-file); phone chats are linked from them.
+    const step = positionals[0] ?? "list";
+    if (step === "add") {
+      titles.addRemoteLogDir(positionals[1]);
+    } else if (step !== "list") {
+      throw new Error(t("cli.session.remoteLogsUsage"));
+    }
+    const map = titles.remoteMap();
+    out(t("cli.session.remoteLogs", { dirs: titles.remoteLogDirs().join(", ") || "-", linked: map.size }));
+    return;
+  }
   if (action === "sync") {
     const totals = await titles.syncRemote({ ...scopeOf(flags), session: flags.session ? String(flags.session) : null });
     out(t("cli.session.synced", totals));

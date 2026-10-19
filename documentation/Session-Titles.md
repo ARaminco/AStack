@@ -32,6 +32,21 @@ instead of opening a new one.
    never printed or stored). `astack session sync` re-sends every AStack title;
    a chat the owner renamed since is left alone.
 
+## Phone chats and the stop hook (3.7)
+
+- A chat the Remote Control server spawns for the phone is stored under a local
+  id that Claude Code derives from its `cse_` id: a UUID v5 of
+  `https://api.anthropic.com/v1/code/sessions/<cse_id>` in a fixed namespace.
+  AStack computes the same id (`remoteLocalId`) from the `cse_` ids it knows: the
+  servers' per-chat log names (`~/.astack/remote-control`, more folders with
+  `astack session remote-logs add <dir>`) and the account's session list,
+  cached for ten minutes.
+- A `Stop` hook runs at the end of every reply. When a first title was asked
+  for in this turn and the agent did not set it, it holds the reply once with
+  the exact command, so the chat is named in that reply. It also pushes a new
+  AStack title to the phone copy and brings back a title the owner set on the
+  phone (it becomes the owner's title here).
+
 ## Every chat on the machine
 
 Projects without AStack (or with an older core) have no project hook. One

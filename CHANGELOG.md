@@ -3,6 +3,13 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 3.7.0 — Phone chats in step, titles set in the same reply
+
+- Phone and web chats are linked exactly: a chat the Remote Control server spawns is stored under a local id that Claude Code derives from its `cse_` id (a UUID v5 of the session URL); `remoteLocalId()` computes the same id. The `cse_` ids come from the servers' per-chat log names (`~/.astack/remote-control`, plus `astack session remote-logs add <dir>`) and the account's session list (cached ten minutes). 804 of 804 sessions on the owner's account resolved; phone-started chats now get their titles on the phone too.
+- New Stop hook (same light entry point, `interop hook stop`), added by `astack setup` / `interop sync` and by `astack session hook install` beside any owner stop hook: when a first title was asked for in this turn and the agent skipped it, the reply is held once with the exact command, so every chat is named in the reply that was due; never twice in a turn, never while a stop hook is already continuing, never for re-checks.
+- The stop hook keeps the phone copy in step: a new AStack title is pushed (a failed push is retried every few replies), and a title the owner set on the phone since the last push comes back as the owner's title here.
+- `astack session sync` refreshes the session list first; `astack session remote-logs list|add`; `session hook status` reports both halves (a 3.6 install has only the prompt hook — run `astack session hook install` again).
+
 ## 3.6.0 — Chat titles that say what the chat is
 
 Claude Code chats get clear, consistent titles, so the owner finds and continues the chat that already holds a client, a case or a system instead of opening a new one. See `documentation/Session-Titles.md`.

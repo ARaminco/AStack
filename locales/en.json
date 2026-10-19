@@ -712,13 +712,15 @@
       "remoteFailed": "phone/web copy not updated ({failed}): {reason}",
       "remoteTotals": "phone/web copies: {pushed} updated, {failed} failed",
       "synced": "{sessions} chats checked, {localOnly} local only: {pushed} phone/web copies updated, {failed} failed",
-      "unknownAction": "Unknown session action: {action} (status | list | digest | title | apply | undo | find | sync | hook)",
+      "unknownAction": "Unknown session action: {action} (status | list | digest | title | apply | undo | find | sync | hook | remote-logs)",
       "userHookOn": "Watching every chat on this machine: on ({path})",
       "userHookOff": "Watching every chat on this machine: off — astack session hook install",
       "userHookInstalled": "User-level chat title hook installed in {path} (backup {backup})",
       "userHookRemoved": "User-level chat title hook removed from {path} (backup {backup})",
       "userHookUnchanged": "Nothing to change in {path}",
-      "hookUsage": "Usage: astack session hook status|install|remove [--dry-run]"
+      "hookUsage": "Usage: astack session hook status|install|remove [--dry-run]",
+      "remoteLogs": "Remote Control log folders: {dirs} · phone chats linked: {linked}",
+      "remoteLogsUsage": "Usage: astack session remote-logs list|add <dir>"
     }
   },
   "delivery": {

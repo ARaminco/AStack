@@ -20,7 +20,8 @@ Claude Code chats carry clear titles, so the owner finds and continues the exist
 
 - When AStack's prompt hook says a title is due (after a few prompts, and again when the chat has grown), set it before you end the turn: the `astack_session_title` MCP tool or `astack session title --session=<id> -- "<title>"`.
 - Shape: «<subject> · <what is being done>», in the owner's language, at most 60 characters. The subject is what the owner would search for: project, client, case, site or system. For legal work the party or case label comes first, and a court number appears only with its label and only when it is in the chat. Never secrets or amounts.
-- A title the owner set by hand is never replaced. A Remote Control chat gets the same title on the phone and the web.
+- If the stop hook says the title is still missing, set it and end the reply without mentioning it.
+- A title the owner set by hand is never replaced. Chats opened from the phone or the web (Remote Control) keep the same title on both sides automatically; a rename on the phone becomes the owner's title here.
 - When the hook lists earlier chats on the same subject, tell the owner in one line that they can continue there. `astack session find "<words>"` (MCP `astack_session_find`) searches titles on demand; `astack session sync` re-sends titles to the phone.
 - Codex threads are not renamed yet.
 

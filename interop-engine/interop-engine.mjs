@@ -217,9 +217,9 @@ export class InteropEngine {
   }
 
   /** The chat-title hook runs a light entry point: it fires on every prompt. */
-  claudePromptHookCommand() {
+  claudePromptHookCommand(step = "prompt") {
     const hook = this.cli().replace(/astack\.mjs$/, "astack-title-hook.mjs");
-    return "node \"$CLAUDE_PROJECT_DIR/" + hook + "\" " + HOOK_MARKER + " prompt --runtime claude-code";
+    return "node \"$CLAUDE_PROJECT_DIR/" + hook + "\" " + HOOK_MARKER + " " + step + " --runtime claude-code";
   }
 
   codexHookCommand(event) {
@@ -352,17 +352,20 @@ export class InteropEngine {
     if (!hooks.PreToolUse.length) {
       delete hooks.PreToolUse;
     }
-    // Chat titles: watch every prompt; the hook speaks only when a title is due.
-    if (this.sessionTitlesEnabled()) {
-      hooks.UserPromptSubmit = this.mergeHooks(hooks, "UserPromptSubmit", {
-        hooks: [{ type: "command", command: this.claudePromptHookCommand(), timeout: 15 }]
-      });
-    } else if (Array.isArray(hooks.UserPromptSubmit)) {
-      const kept = this.mergeHooks(hooks, "UserPromptSubmit", null).filter(Boolean);
-      if (kept.length) {
-        hooks.UserPromptSubmit = kept;
-      } else {
-        delete hooks.UserPromptSubmit;
+    // Chat titles: the prompt hook says when a title is due; the stop hook
+    // makes sure it is set in the same reply and keeps the phone copy in step.
+    for (const [event, step, timeout] of [["UserPromptSubmit", "prompt", 15], ["Stop", "stop", 20]]) {
+      if (this.sessionTitlesEnabled()) {
+        hooks[event] = this.mergeHooks(hooks, event, {
+          hooks: [{ type: "command", command: this.claudePromptHookCommand(step), timeout }]
+        });
+      } else if (Array.isArray(hooks[event])) {
+        const kept = this.mergeHooks(hooks, event, null).filter(Boolean);
+        if (kept.length) {
+          hooks[event] = kept;
+        } else {
+          delete hooks[event];
+        }
       }
     }
     next.hooks = hooks;

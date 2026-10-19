@@ -712,13 +712,15 @@
       "remoteFailed": "نسخهٔ موبایل و وب عوض نشد ({failed}): {reason}",
       "remoteTotals": "نسخه‌های موبایل و وب: {pushed} عوض شد، {failed} ناموفق",
       "synced": "{sessions} گفت‌وگو بررسی شد، {localOnly} فقط محلی: {pushed} نسخهٔ موبایل و وب عوض شد، {failed} ناموفق",
-      "unknownAction": "عملیات session ناشناخته: {action} (status | list | digest | title | apply | undo | find | sync | hook)",
+      "unknownAction": "عملیات session ناشناخته: {action} (status | list | digest | title | apply | undo | find | sync | hook | remote-logs)",
       "userHookOn": "نظارت بر همهٔ گفت‌وگوهای این کامپیوتر: روشن ({path})",
       "userHookOff": "نظارت بر همهٔ گفت‌وگوهای این کامپیوتر: خاموش — astack session hook install",
       "userHookInstalled": "قلاب سراسری نام گفت‌وگوها در {path} نصب شد (پشتیبان {backup})",
       "userHookRemoved": "قلاب سراسری نام گفت‌وگوها از {path} برداشته شد (پشتیبان {backup})",
       "userHookUnchanged": "در {path} چیزی برای تغییر نبود",
-      "hookUsage": "روش استفاده: astack session hook status|install|remove [--dry-run]"
+      "hookUsage": "روش استفاده: astack session hook status|install|remove [--dry-run]",
+      "remoteLogs": "پوشه‌های گزارش کنترل از راه دور: {dirs} · گفت‌وگوهای موبایلِ پیوندخورده: {linked}",
+      "remoteLogsUsage": "روش استفاده: astack session remote-logs list|add <dir>"
     }
   },
   "delivery": {
