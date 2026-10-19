@@ -518,12 +518,41 @@ const titles = new SessionTitles({ home, projectRoot, clock, cli: "/core/bin/ast
   assert.equal(requests.filter((request) => request.method === "PUT").length, 0, "no push when nothing changed");
 
   // the owner renames the chat on the phone: it comes back as the owner's title
+  // (the phone is read at most every three replies)
+  const advance = (count = 3) => {
+    for (let index = 0; index < count; index += 1) {
+      engine.promptHook({ session_id: id, transcript_path: fileP, prompt: "p" });
+    }
+  };
+  // invalid or automatic phone titles are never taken
+  advance();
+  phoneTitle = "x".repeat(300) + "\u0001";
+  await stop();
+  assert.equal(engine.sessions().find((entry) => entry.id === id).title, "سیروان · سفارش فسنجون و بریانی", "an invalid phone title is refused");
+  appendFileSync(fileP, line({ type: "ai-title", aiTitle: "Sirvan order from phone", sessionId: id }));
+  engine.setTitle(id, "سیروان · سفارش فسنجون و بریانی"); // still current
+  advance();
+  phoneTitle = "Sirvan order from phone";
+  await stop();
+  assert.equal(engine.sessions().find((entry) => entry.id === id).title, "سیروان · سفارش فسنجون و بریانی", "Claude Code's automatic title is not an owner rename");
+  advance();
   phoneTitle = "سیروان · نام دستی از موبایل";
   await stop();
   const back = engine.sessions().find((entry) => entry.id === id);
   assert.equal(back.title, "سیروان · نام دستی از موبایل");
   assert.equal(back.source, "owner", "a phone rename is the owner's title here");
   assert.equal(engine.setTitle(id, "سیروان · دوباره").status, "kept-owner");
+  // Claude Code then drops it from the transcript: the owner's phone title comes back, never AStack's older one
+  writeFileSync(fileP, user("سفارش جدید برای سیروان") + line({ type: "ai-title", aiTitle: "auto", sessionId: id }));
+  requests.length = 0;
+  advance();
+  await stop();
+  const healed = engine.sessions().find((entry) => entry.id === id);
+  assert.equal(healed.title, "سیروان · نام دستی از موبایل", "self-repair restores the owner's phone rename");
+  assert.equal(healed.source, "owner");
+  advance();
+  await stop();
+  assert.equal(requests.filter((request) => request.method === "PUT").length, 0, "an owner title is never pushed over the phone");
 
   // Claude Code rewrites the transcript without our title: the stop hook puts it back
   const H = "12121212-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -536,6 +565,23 @@ const titles = new SessionTitles({ home, projectRoot, clock, cli: "/core/bin/ast
   appendFileSync(fileH, line({ type: "custom-title", customTitle: "عنوان مالک", sessionId: H }));
   await engine.stopHook({ session_id: H, transcript_path: fileH });
   assert.equal(engine.sessions().find((entry) => entry.id === H).title, "عنوان مالک", "an owner title is never healed over");
+
+  // a push that reached only some copies is not counted as done
+  const twoHome = sandbox("two-copies");
+  const twoProjects = join(twoHome, ".claude", "projects", slug);
+  mkdirSync(join(twoHome, ".astack", "remote-control"), { recursive: true });
+  mkdirSync(twoProjects, { recursive: true });
+  writeFileSync(join(twoHome, ".claude", ".credentials.json"), JSON.stringify({ claudeAiOauth: { accessToken: "t", expiresAt: now.getTime() + 3600000 } }));
+  const remoteA = "cse_01AAAAAAAAAAAAAAAAAAAAAAAA";
+  const idA = remoteLocalId(remoteA);
+  const fileA2 = join(twoProjects, idA + ".jsonl");
+  writeFileSync(fileA2, user("دو نسخه") + line({ bridgeSessionId: "cse_01BBBBBBBBBBBBBBBBBBBBBBBB", type: "system" }));
+  writeFileSync(join(twoHome, ".astack", "remote-control", "hq-" + remoteA + ".log"), "log");
+  const partial = new SessionTitles({ home: twoHome, projectRoot, clock, apiBase: "https://api.test", fetchImpl: async (url, options) => (options.method === "PUT" ? { status: url.includes("AAAA") ? 500 : 200 } : { status: 200, json: async () => ({ data: [] }) }) });
+  assert.equal(partial.remoteIds(fileA2).length, 2);
+  partial.setTitle(idA, "دو نسخه · آزمون");
+  await partial.stopHook({ session_id: idA, transcript_path: fileA2 });
+  assert.equal(partial.readState(idA).pushedTitle, null, "not every copy took the title, so it is not marked as pushed");
 
   // re-checks are never enforced; disabled means silent
   const quiet = new SessionTitles({ home: phoneHome, projectRoot, clock, fetchImpl: fake, config: { enabled: false } });
