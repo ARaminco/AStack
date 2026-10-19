@@ -525,6 +525,18 @@ const titles = new SessionTitles({ home, projectRoot, clock, cli: "/core/bin/ast
   assert.equal(back.source, "owner", "a phone rename is the owner's title here");
   assert.equal(engine.setTitle(id, "سیروان · دوباره").status, "kept-owner");
 
+  // Claude Code rewrites the transcript without our title: the stop hook puts it back
+  const H = "12121212-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const fileH = join(phoneProjects, H + ".jsonl");
+  writeFileSync(fileH, user("پرونده"));
+  engine.setTitle(H, "بخیته · سرکشی پرتال");
+  writeFileSync(fileH, user("پرونده") + line({ type: "ai-title", aiTitle: "auto again", sessionId: H }));
+  await engine.stopHook({ session_id: H, transcript_path: fileH });
+  assert.equal(engine.sessions().find((entry) => entry.id === H).title, "بخیته · سرکشی پرتال", "a lost AStack title is restored");
+  appendFileSync(fileH, line({ type: "custom-title", customTitle: "عنوان مالک", sessionId: H }));
+  await engine.stopHook({ session_id: H, transcript_path: fileH });
+  assert.equal(engine.sessions().find((entry) => entry.id === H).title, "عنوان مالک", "an owner title is never healed over");
+
   // re-checks are never enforced; disabled means silent
   const quiet = new SessionTitles({ home: phoneHome, projectRoot, clock, fetchImpl: fake, config: { enabled: false } });
   assert.equal(await quiet.stopHook({ session_id: id, transcript_path: fileP }), null);
