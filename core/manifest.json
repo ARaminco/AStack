@@ -1,6 +1,6 @@
 {
   "id": "astack-core",
-  "version": "3.7.0",
+  "version": "3.8.0",
   "layers": [
     "agent-engine",
     "bin",
@@ -34,6 +34,7 @@
     "tests",
     "upgrade-engine",
     "workflow-engine",
-    "workflows"
+    "workflows",
+    "economy-engine"
   ]
 }

@@ -70,7 +70,9 @@
       "a2a": "Agent-to-Agent (A2A) endpoint: serve, card, status.",
       "gateway": "Owner messaging gateway: commands from WhatsApp and Telegram, reports and approvals on the phone, local Persian voice notes.",
       "console": "Aramin console: installable app for conversations, approvals, missions and monitoring (open | start | token | status | user).",
-      "session": "Chat titles for Claude Code sessions: status, list, digest, title, apply, undo, find, sync (phone/web copies)."
+      "session": "Chat titles for Claude Code sessions: status, list, digest, title, apply, undo, find, sync (phone/web copies).",
+      "economy": "Usage, quota pressure and model routing",
+      "delegate": "Delegate bounded work to Codex or a local model"
     },
     "project": {
       "usage": "Project commands: init, demo, list, status, board, backlog, add, move, start, done, block, unblock, charter, milestone, sprint, risk, gate, advance, baseline, critical-path, forecast, next, digest, decision, scaffold, raci, report, templates",
@@ -721,6 +723,31 @@
       "hookUsage": "Usage: astack session hook status|install|remove [--dry-run]",
       "remoteLogs": "Remote Control log folders: {dirs} · phone chats linked: {linked}",
       "remoteLogsUsage": "Usage: astack session remote-logs list|add <dir>"
+    },
+    "economy": {
+      "status": "Economy: {state}\nClaude: 5h {five}% · 7d {week}% ({source}, age {age} min)\nPressure: {pressure} · burn last hour: {burn} weighted units\nTop consumers:",
+      "official": "official",
+      "estimate": "estimated",
+      "unknown": "unknown; treated as green",
+      "green": "green",
+      "amber": "amber",
+      "red": "red",
+      "critical": "critical",
+      "on": "on",
+      "off": "off",
+      "live": "Live sub-agents: {count}",
+      "codex": "Codex: {percent}% · {available}",
+      "available": "available",
+      "unavailable": "unavailable",
+      "local": "Local text models: {models}",
+      "routes": "Routing: {routes}",
+      "saved": "Saved {key} = {value}",
+      "invalidSetting": "Provide a valid setting key and value.",
+      "invalidSince": "Provide a valid ISO timestamp for --since.",
+      "unknownAction": "Unknown economy action: {action}",
+      "delegateFailed": "Delegation unavailable: {reason}. Continue in the calling runtime.",
+      "delegated": "Engine: {engine} · usage: {usage}",
+      "notChecked": "not checked"
     }
   },
   "delivery": {

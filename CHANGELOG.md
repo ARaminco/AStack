@@ -3,6 +3,16 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 3.8.0 — Economy: automatic model routing and usage control
+
+- Account-wide incremental Claude/Codex usage meter, official limit capture, pressure-aware routing and weighted burn reports.
+- Claude hooks cap parallel sub-agents and context, preserve the owner's statusline, and keep legal work on opus.
+- Bounded Codex and local Ollama delegation through CLI/MCP, with usage receipts and caller review.
+- Pressure follows pace as well as level: 40% of the week used on its first day is amber.
+- Legal work (opus minimum) is recognised from the agent type, the description or unmistakable legal words, never from "case" or "contract" in a coding prompt.
+- A sub-agent at its context budget may still write its result file; it may not read more.
+- Dependency-free economy layer, configurable policy and isolated regression fixtures.
+
 ## 3.7.0 — Phone chats in step, titles set in the same reply
 
 - Phone and web chats are linked exactly: a chat the Remote Control server spawns is stored under a local id that Claude Code derives from its `cse_` id (a UUID v5 of the session URL); `remoteLocalId()` computes the same id. The `cse_` ids come from the servers' per-chat log names (`~/.astack/remote-control`, plus `astack session remote-logs add <dir>`) and the account's session list (cached ten minutes). 804 of 804 sessions on the owner's account resolved; phone-started chats now get their titles on the phone too.

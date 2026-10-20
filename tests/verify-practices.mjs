@@ -69,7 +69,7 @@ assert.equal(JSON.parse(hook(null, "not json").stdout).hookSpecificOutput.permis
 const project = sandbox("guard-wiring");
 mkdirSync(join(project, ".claude"), { recursive: true });
 writeFileSync(join(project, ".claude", "settings.json"), JSON.stringify({ hooks: { PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "node owner-check.mjs" }] }] } }));
-const settings = (options) => JSON.parse(new InteropEngine(repoRoot, { workspaceRoot: project, projectRoot: project, ...options }).plan().find((entry) => entry.path === ".claude/settings.json").content);
+const settings = (options) => JSON.parse(new InteropEngine(repoRoot, { workspaceRoot: project, projectRoot: project, economy: { enabled: false }, ...options }).plan().find((entry) => entry.path === ".claude/settings.json").content);
 const wired = settings({}).hooks.PreToolUse;
 assert.ok(wired.some((group) => group.hooks.some((entry) => entry.command === "node owner-check.mjs")), "the owner's hook is kept");
 assert.ok(wired.some((group) => /Bash\|PowerShell\|Edit/.test(group.matcher) && group.hooks.some((entry) => entry.command.includes("astack-guard.mjs"))), "the guard is wired");

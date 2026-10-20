@@ -76,6 +76,15 @@ This is a hard requirement, not a preference.
 6. When something does not fit a budget, say what was omitted and how to reveal it.
 7. Report savings honestly: `astack context stats` measures them.
 
+## Economy (models, sub-agents, Codex)
+- Sub-agents use the cheapest model that does the job well: search → haiku; bulk-read/build/write/other → sonnet; review/plan/legal → opus. Legal keeps an opus minimum.
+- The economy hooks lower expensive choices as account pressure rises; never exceed the current parallel cap (green 4, amber 3, red 2, critical 1).
+- Sub-agents stop and report at their context budget (160k/120k/90k/90k tokens); the lead starts a fresh agent for remaining work.
+- Read images and pages in one-shot calls; never accumulate them in long-lived contexts or reread whole documents at every step.
+- Give bulk build/read/test work and first drafts to Codex through astack_delegate (short jobs) or `astack delegate "<task>" --mode write` run in the background from the shell (long builds); Claude reviews the result before using it. `astack economy status` shows whether Codex has quota.
+- Use local Ollama for classification, OCR text processing and extraction of supplied text; image OCR needs a capable caller or Codex.
+- Suggest /compact when the main chat passes 250k input tokens, and use astack economy status to check usage, pressure and routes.
+
 ## Code Graph (Graphify)
 Graphify turns the workspace into a knowledge graph (`graphify-out/graph.json`) with tree-sitter, locally and without model calls. AStack drives it for both runtimes; never run `graphify claude install` or `graphify codex install`, which would write different, machine-specific guidance per runtime.
 

@@ -70,6 +70,7 @@ architecture:
     - delivery-engine
     - team-engine
     - agent-engine
+    - economy-engine
     - interop-engine
     - upgrade-engine
     - localization-engine
@@ -704,3 +705,57 @@ secrets:
 #     partial_messages: true # stream text as it is written
 #     command: null          # null = runner.claude.command or claude; must pass the automation policy
 #     claude_home: null      # null = CLAUDE_CONFIG_DIR or ~/.claude
+
+# Account-wide usage control; project overrides live in .astack/economy/state.json.
+economy:
+  enabled: true # Install economy hooks by default.
+  default_subagent_model: sonnet # Preserve an owner's existing environment choice.
+  respect_explicit: false # Lower explicit models above the policy ceiling.
+  weekly_budget_units: null # Optional estimate when official limits are stale.
+  limits_max_age_ms: 1800000 # Official percentages expire after 30 minutes.
+  main_context_threshold: 250000 # Suggest /compact above this many input tokens.
+  routes: # Cheapest capable default; legal always has an opus minimum.
+    search: haiku
+    bulk-read: sonnet
+    build: sonnet
+    write: sonnet
+    other: sonnet
+    review: opus
+    plan: opus
+    legal: opus
+  thresholds: # Amber, red and critical percentages, in order.
+    seven_day:
+      - 50
+      - 70
+      - 85
+    five_hour:
+      - 70
+      - 85
+      - 95
+  parallel_cap: # Running sub-agents per parent session.
+    green: 4
+    amber: 3
+    red: 2
+    critical: 1
+  context_budget: # Sub-agent input tokens, including cached input.
+    green: 160000
+    amber: 120000
+    red: 90000
+    critical: 90000
+  token_weights: # Weighted units per token, before the model multiplier.
+    input_tokens: 1
+    cache_creation_input_tokens: 2
+    cache_read_input_tokens: 0.1
+    output_tokens: 5
+  model_weights:
+    haiku: 0.33
+    sonnet: 1
+    opus: 1.67
+    fable: 1.67
+    unknown: 1
+  codex_model: null # Let the Codex account choose its default model.
+  local:
+    url: http://localhost:11434 # Ollama endpoint.
+    model: null # First installed non-embedding text model when unset.
+  statusline:
+    chain: null # Optional prior command; setup also preserves it in the wrapper.

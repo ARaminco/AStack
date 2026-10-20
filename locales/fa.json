@@ -70,7 +70,9 @@
       "a2a": "درگاه گفت‌وگوی عامل با عامل (A2A): serve، card، status.",
       "gateway": "پیام‌رسان مالک: فرمان از واتس‌اپ و تلگرام، گزارش و تأیید از گوشی، پیام صوتی فارسی محلی.",
       "console": "کنسول آرامین: اپ نصب‌شدنی برای گفت‌وگوها، تأییدها، مأموریت‌ها و پایش (open | start | token | status | user).",
-      "session": "نام گفت‌وگوهای Claude Code: وضعیت، فهرست، خلاصه، نام‌گذاری، اعمال دسته‌ای، برگرداندن، یافتن گفت‌وگوی قبلی، هم‌گام‌سازی با موبایل."
+      "session": "نام گفت‌وگوهای Claude Code: وضعیت، فهرست، خلاصه، نام‌گذاری، اعمال دسته‌ای، برگرداندن، یافتن گفت‌وگوی قبلی، هم‌گام‌سازی با موبایل.",
+      "economy": "مصرف، فشار سهمیه و انتخاب مدل",
+      "delegate": "سپردن یک کار محدود به Codex یا مدل محلی"
     },
     "project": {
       "usage": "فرمان‌های پروژه: init، demo، list، status، board، backlog، add، move، start، done، block، unblock، charter، milestone، sprint، risk، gate، advance، baseline، critical-path، forecast، next، digest، decision، scaffold، raci، report، templates",
@@ -721,6 +723,31 @@
       "hookUsage": "روش استفاده: astack session hook status|install|remove [--dry-run]",
       "remoteLogs": "پوشه‌های گزارش کنترل از راه دور: {dirs} · گفت‌وگوهای موبایلِ پیوندخورده: {linked}",
       "remoteLogsUsage": "روش استفاده: astack session remote-logs list|add <dir>"
+    },
+    "economy": {
+      "status": "مدیریت مصرف: {state}\nClaude: پنج‌ساعته {five}٪ · هفتگی {week}٪ ({source}، {age} دقیقه پیش)\nفشار: {pressure} · مصرف یک ساعت گذشته: {burn} واحد وزنی\nبیشترین مصرف:",
+      "official": "رسمی",
+      "estimate": "تخمینی",
+      "unknown": "نامعلوم؛ سبز در نظر گرفته می‌شود",
+      "green": "سبز",
+      "amber": "زرد",
+      "red": "قرمز",
+      "critical": "بحرانی",
+      "on": "روشن",
+      "off": "خاموش",
+      "live": "دستیارهای در حال کار: {count}",
+      "codex": "Codex: {percent}٪ · {available}",
+      "available": "در دسترس",
+      "unavailable": "در دسترس نیست",
+      "local": "مدل‌های متنی محلی: {models}",
+      "routes": "انتخاب مدل: {routes}",
+      "saved": "ذخیره شد: {key} = {value}",
+      "invalidSetting": "نام و مقدار یک تنظیم معتبر را بدهید.",
+      "invalidSince": "برای ‎--since یک زمان معتبر ISO بدهید.",
+      "unknownAction": "دستور مصرف ناشناخته: {action}",
+      "delegateFailed": "واگذاری ممکن نیست: {reason}. کار در همین محیط ادامه پیدا کند.",
+      "delegated": "موتور: {engine} · مصرف: {usage}",
+      "notChecked": "بررسی نشده"
     }
   },
   "delivery": {
