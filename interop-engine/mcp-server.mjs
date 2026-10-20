@@ -158,6 +158,19 @@ function sessionQueryProblem(input) {
  */
 export const mcpTools = [
   {
+    name: "astack_economy_status",
+    description: "Check account-wide Claude and Codex usage, official limit pressure, parallel agents and the active model routing policy before starting expensive work.",
+    inputSchema: { type: "object", properties: {} },
+    args: () => ["economy", "status"]
+  },
+  {
+    name: "astack_delegate",
+    description: "Delegate bounded bulk code generation, repetitive edits, test writing, reading or summarising many files, or first drafts to Codex to spare Claude quota. Use local only for classification, extraction or summaries of supplied text. The caller must review the result. Read mode is the default; write mode permits workspace edits.",
+    inputSchema: { type: "object", properties: { task: text("Bounded task with inputs, constraints and required output"), to: { type: "string", enum: ["codex", "local", "auto"] }, mode: { type: "string", enum: ["read", "write"] }, cwd: text("Working directory"), effort: { type: "string", enum: ["low", "medium", "high"] }, schema_json: { type: "object", description: "Optional JSON schema for Codex output" } }, required: ["task"] },
+    validate: (input) => typeof input.task !== "string" || !input.task.trim() ? "A bounded task is required." : input.to && !["codex", "local", "auto"].includes(input.to) || input.mode && !["read", "write"].includes(input.mode) || input.effort && !["low", "medium", "high"].includes(input.effort) ? "Invalid delegate option." : null,
+    args: (input) => ["delegate", ...optional("to", input.to), ...optional("mode", input.mode), ...optional("cwd", input.cwd), ...optional("effort", input.effort), ...optional("schema-json", input.schema_json ? JSON.stringify(input.schema_json) : null), "--", input.task]
+  },
+  {
     name: "astack_standup",
     description: "Owner capsule, open missions, pending approvals, learning and background jobs — the shared starting state for Claude Code and Codex.",
     inputSchema: { type: "object", properties: {} },
@@ -505,7 +518,7 @@ function runCli(args) {
     execFile(
       process.execPath,
       [bin, ...args],
-      { cwd: root, timeout: 120000, maxBuffer: 4 * 1024 * 1024, windowsHide: true, env: { ...process.env, ASTACK_MCP: "1" } },
+      { cwd: root, timeout: args[0] === "delegate" ? 1900000 : 120000, maxBuffer: 4 * 1024 * 1024, windowsHide: true, env: { ...process.env, ASTACK_MCP: "1" } },
       (error, stdout, stderr) => {
         const output = (String(stdout ?? "") + (stderr ? "\n" + String(stderr) : "")).trim();
         resolve({ ok: !error, output: output || (error ? error.message : "(no output)") });

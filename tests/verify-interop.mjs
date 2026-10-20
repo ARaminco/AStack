@@ -69,7 +69,7 @@ const interop = new InteropEngine(workspace, { memory, clock, home, env: {} });
 const first = interop.sync();
 assert.deepEqual(
   first.map((entry) => entry.path + ":" + entry.action),
-  ["AGENTS.md:ok", "CLAUDE.md:update", ".mcp.json:update", ".claude/settings.json:update", ".codex/config.toml:update", ".codex/hooks.json:create"]
+  ["AGENTS.md:ok", "CLAUDE.md:update", ".mcp.json:update", ".claude/settings.json:update", ".claude/agents/codex-worker.md:create", ".codex/config.toml:update", ".codex/hooks.json:create"]
 );
 const claudeAfter = readFileSync(join(workspace, "CLAUDE.md"), "utf8");
 assert.match(claudeAfter, /Owner rule that must survive/);

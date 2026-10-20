@@ -33,6 +33,26 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/bin/astack-economy-hook.mjs\" route",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/bin/astack-economy-hook.mjs\" tool",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
@@ -44,6 +64,15 @@
             "timeout": 15
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/bin/astack-economy-hook.mjs\" prompt",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "Stop": [
@@ -53,6 +82,28 @@
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/bin/astack-title-hook.mjs\" interop hook stop --runtime claude-code",
             "timeout": 20
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/bin/astack-economy-hook.mjs\" subagent-start",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/bin/astack-economy-hook.mjs\" subagent-stop",
+            "timeout": 5
           }
         ]
       }
@@ -74,5 +125,12 @@
       "mcp__astack-browser__browser_navigate_back",
       "mcp__astack-browser__browser_resize"
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "node \"$CLAUDE_PROJECT_DIR/bin/astack-economy-hook.mjs\" statusline --model-env InNvbm5ldCI"
+  },
+  "env": {
+    "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet"
   }
 }

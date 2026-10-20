@@ -263,13 +263,13 @@ const titles = new SessionTitles({ home, projectRoot, clock, cli: "/core/bin/ast
   const workspace = sandbox("workspace");
   const interop = new InteropEngine(workspace, { home: sandbox("interop-home"), env: {} });
   const settings = interop.plannedClaudeSettings({ hooks: { UserPromptSubmit: [{ hooks: [{ type: "command", command: "node .claude/hooks/owner.mjs" }] }] } });
-  assert.equal(settings.hooks.UserPromptSubmit.length, 2, "the owner's prompt hook is kept beside AStack's");
+  assert.equal(settings.hooks.UserPromptSubmit.length, 3, "the owner's prompt hook is kept beside title and economy hooks");
   assert.match(settings.hooks.UserPromptSubmit[1].hooks[0].command, /interop hook prompt --runtime claude-code/);
   const again = interop.plannedClaudeSettings(settings);
-  assert.equal(again.hooks.UserPromptSubmit.length, 2, "never duplicated");
+  assert.equal(again.hooks.UserPromptSubmit.length, 3, "never duplicated");
   interop.sessionTitles = new SessionTitles({ home, projectRoot, config: { enabled: false } });
   const disabled = interop.plannedClaudeSettings(again);
-  assert.equal(disabled.hooks.UserPromptSubmit.length, 1, "disabling removes only AStack's prompt hook");
+  assert.equal(disabled.hooks.UserPromptSubmit.length, 2, "disabling titles keeps the owner and economy prompt hooks");
   assert.equal(interop.promptSubmit({ payload: {} }), null);
   interop.sessionTitles = titles;
   const N = "ffffffff-5555-4555-8555-555555555555";

@@ -5,6 +5,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { hashId, redactSecrets } from "../lib/text.mjs";
 import { ConfigurationEngine } from "../configuration-engine/configuration.mjs";
 import { importLegacyMemory } from "./memory-sources.mjs";
+import { readEconomyConfig } from "../economy-engine/storage.mjs";
 
 /**
  * Runtime interoperability: one contract, one memory, one journal.
@@ -136,10 +137,11 @@ function parseFrontmatter(text) {
 }
 
 export class InteropEngine {
-  constructor(root, { workspaceRoot = root, projectRoot = null, legacyMemory = null, memory = null, standup = null, graphify = null, browser = null, guard = null, clock, home = homedir(), env = process.env } = {}) {
+  constructor(root, { workspaceRoot = root, projectRoot = null, legacyMemory = null, memory = null, standup = null, graphify = null, browser = null, guard = null, economy = null, clock, home = homedir(), env = process.env } = {}) {
     this.root = root;
     this.browserConfig = browser ?? readDedicatedConfig(root);
     this.guardConfig = guard ?? readSection(root, "guard");
+    this.economyConfig = economy ?? readEconomyConfig(workspaceRoot);
     this.graphify = graphify;
     this.workspaceRoot = workspaceRoot;
     // Where the runtimes are opened. Usually the install itself; for a core
@@ -368,6 +370,7 @@ export class InteropEngine {
         }
       }
     }
+    this.plannedEconomySettings(next, hooks);
     next.hooks = hooks;
     // Our enable and allow entries exist only while AStack manages the
     // browser; they are removed otherwise, so they can never carry over to a
@@ -385,6 +388,63 @@ export class InteropEngine {
     const keptAllow = (permissions.allow ?? []).filter((entry) => !ownAllow(entry));
     next.permissions = { ...permissions, allow: [...new Set([...keptAllow, "mcp__" + MCP_SERVER_ID, ...browserReads])] };
     return next;
+  }
+
+  plannedEconomySettings(next, hooks) {
+    const marker = "astack-economy-hook.mjs";
+    const enabled = this.economyConfig.enabled !== false;
+    const bin = relative(this.projectRoot, join(this.root, "bin", marker)).split("\\").join("/");
+    const command = (step) => "node \"$CLAUDE_PROJECT_DIR/" + bin + "\" " + step;
+    for (const [event, matcher, step] of [
+      ["PreToolUse", "Agent|Task", "route"], ["PreToolUse", "*", "tool"],
+      ["SubagentStart", null, "subagent-start"], ["SubagentStop", null, "subagent-stop"], ["UserPromptSubmit", null, "prompt"]
+    ]) {
+      if (step !== "tool") {
+        hooks[event] = (hooks[event] ?? []).map((group) => ({ ...group, hooks: (group.hooks ?? []).filter((hook) => !String(hook.command ?? "").includes(marker)) })).filter((group) => group.hooks.length);
+      }
+      if (enabled) {
+        hooks[event].push({ ...(matcher ? { matcher } : {}), hooks: [{ type: "command", command: command(step), timeout: 5 }] });
+      }
+      if (!hooks[event]?.length) {
+        delete hooks[event];
+      }
+    }
+    const previous = String(next.statusLine?.command ?? "");
+    const wrapped = previous.includes(marker);
+    const decode = (flag) => {
+      const match = previous.match(new RegExp("--" + flag + " ([A-Za-z0-9_-]+)"));
+      return match ? JSON.parse(Buffer.from(match[1], "base64url").toString("utf8")) : null;
+    };
+    const chain = this.economyConfig.statusline?.chain ?? (wrapped ? decode("chain") : next.statusLine) ?? null;
+    let managedModel = wrapped ? decode("model-env") : null;
+    const env = { ...(next.env ?? {}) };
+    if (enabled) {
+      if (!env.CLAUDE_CODE_SUBAGENT_MODEL && !this.env.CLAUDE_CODE_SUBAGENT_MODEL) {
+        managedModel = this.economyConfig.default_subagent_model ?? "sonnet";
+        env.CLAUDE_CODE_SUBAGENT_MODEL = managedModel;
+      } else if (managedModel && env.CLAUDE_CODE_SUBAGENT_MODEL === managedModel) {
+        managedModel = this.economyConfig.default_subagent_model ?? "sonnet";
+        env.CLAUDE_CODE_SUBAGENT_MODEL = managedModel;
+      }
+      const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+      next.statusLine = { type: "command", command: command("statusline") + (chain ? " --chain " + encode(chain) : "") + (managedModel ? " --model-env " + encode(managedModel) : "") };
+    } else {
+      if (wrapped) {
+        if (chain) {
+          next.statusLine = typeof chain === "string" ? { type: "command", command: chain } : chain;
+        } else {
+          delete next.statusLine;
+        }
+      }
+      if (managedModel && env.CLAUDE_CODE_SUBAGENT_MODEL === managedModel) {
+        delete env.CLAUDE_CODE_SUBAGENT_MODEL;
+      }
+    }
+    if (Object.keys(env).length) {
+      next.env = env;
+    } else {
+      delete next.env;
+    }
   }
 
   plannedCodexHooks(current) {
@@ -469,6 +529,7 @@ export class InteropEngine {
       { runtime: "claude-code", path: "CLAUDE.md", kind: "text", build: (current) => this.plannedClaudeInstructions(current) },
       { runtime: "claude-code", path: ".mcp.json", kind: "json", build: (current) => this.plannedMcpJson(current) },
       { runtime: "claude-code", path: ".claude/settings.json", kind: "json", build: (current) => this.plannedClaudeSettings(current) },
+      { runtime: "claude-code", path: ".claude/agents/codex-worker.md", kind: "text", build: (current) => current ?? "---\nname: codex-worker\ndescription: Delegate bounded build, bulk-read and test tasks to Codex.\nmodel: haiku\ntools: mcp__astack__astack_delegate, Read\n---\nHand the bounded build, bulk-read or test task to Codex through astack_delegate. Return Codex's result verbatim plus a three-line summary. Never do the work yourself. The caller reviews the result.\n" },
       { runtime: "codex", path: ".codex/config.toml", kind: "text", build: (current) => this.plannedCodexConfig(current) },
       { runtime: "codex", path: ".codex/hooks.json", kind: "json", build: (current) => this.plannedCodexHooks(current) }
     ];

@@ -54,7 +54,8 @@
     "workflow-engine",
     "workflows",
     "runner-engine",
-    "daemon-engine"
+    "daemon-engine",
+    "economy-engine"
   ],
   "seed": [
     ".github",

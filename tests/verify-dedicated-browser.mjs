@@ -63,7 +63,7 @@ const fakeSpawn = (binary, args, options) => {
   mkdirSync(profile, { recursive: true });
   writeFileSync(join(profile, "lockfile"), "");
   live.add(port);
-  return { pid: 4242, unref() {} };
+  return { pid: process.pid, unref() {} };
 };
 const launcher = new DedicatedBrowser(two, { config: { binary: process.execPath }, fetchImpl: answering(live), spawnImpl: fakeSpawn, env: { ASTACK_BROWSER_HEADLESS: "1" } });
 const started = await launcher.ensure({ url: "https://example.com" });
