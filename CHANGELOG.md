@@ -3,6 +3,10 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 3.8.2 — Limit percentages in every folder
+
+- `astack economy global on` also installs AStack's statusline where the owner has none, so the official 5-hour and weekly percentages stay fresh in every folder; an owner's statusline is never replaced, and `off` removes only ours.
+
 ## 3.8.1 — Economy for the whole account
 
 - `astack economy global on|off`: the economy hooks and the default sub-agent model (sonnet, unless the owner chose one) in `~/.claude/settings.json`, pointing at the canonical core, so every folder is covered: projects whose AStack core sits in a sub-folder, and folders with no AStack at all. Backed up before every change; `off` restores the owner's file.

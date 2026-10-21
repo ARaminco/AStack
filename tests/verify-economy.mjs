@@ -309,6 +309,8 @@ assert.deepEqual(JSON.parse(reply.result.content[0].text).slice(-2), ["--", "--d
   const owner = { hooks: { Stop: [{ hooks: [{ type: "command", command: "node owner-stop.mjs" }] }], PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "node guard.mjs" }] }] }, env: { FOO: "1" } };
   const on = planGlobalSettings(owner, { hookPath: "C:\\Users\\x\\.astack\\core\\bin\\astack-economy-hook.mjs" });
   assert.equal(on.env.CLAUDE_CODE_SUBAGENT_MODEL, "sonnet");
+  assert.ok(/statusline$/.test(on.statusLine.command), "a folder without a statusline gets ours");
+  assert.equal(planGlobalSettings({ statusLine: { type: "command", command: "mine.sh" } }, { hookPath: "h/astack-economy-hook.mjs" }).statusLine.command, "mine.sh", "the owner's statusline is kept");
   assert.equal(on.hooks.PreToolUse.length, 3);
   assert.ok(on.hooks.PreToolUse.some((group) => group.matcher === "Agent|Task" && /route --global$/.test(group.hooks[0].command)));
   assert.deepEqual(planGlobalSettings(on, { hookPath: "x/astack-economy-hook.mjs" }).hooks.SubagentStart.length, 1, "idempotent");

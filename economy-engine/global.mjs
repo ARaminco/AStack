@@ -43,13 +43,26 @@ export function planGlobalSettings(current, { hookPath, enable = true, defaultMo
         hooks: [{ type: "command", command: "node " + quote(hookPath) + " " + step + " --global", timeout: 5 }]
       }];
     }
+    next.astackEconomy = { ...(next.astackEconomy ?? {}) };
     if (!env.CLAUDE_CODE_SUBAGENT_MODEL) {
       env.CLAUDE_CODE_SUBAGENT_MODEL = defaultModel;
-      next.astackEconomy = { ownsSubagentModel: true };
+      next.astackEconomy.ownsSubagentModel = true;
+    }
+    // The statusline is the only official source of the limit percentages; folders without their own statusline get
+    // ours, so pressure stays fresh wherever the owner works. An owner's own statusline is never replaced.
+    if (!next.statusLine || String(next.statusLine.command ?? "").includes(MARKER)) {
+      next.statusLine = { type: "command", command: "node " + quote(hookPath) + " statusline" };
+      next.astackEconomy.ownsStatusLine = true;
+    }
+    if (!Object.keys(next.astackEconomy).length) {
+      delete next.astackEconomy;
     }
   } else {
     if (owned) {
       delete env.CLAUDE_CODE_SUBAGENT_MODEL;
+    }
+    if (next.astackEconomy?.ownsStatusLine && String(next.statusLine?.command ?? "").includes(MARKER)) {
+      delete next.statusLine;
     }
     delete next.astackEconomy;
   }
