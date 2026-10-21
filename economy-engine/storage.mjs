@@ -24,7 +24,18 @@ export function atomicJson(path, value) {
   const temporary = path + "." + process.pid + "." + Math.random().toString(36).slice(2) + ".tmp";
   try {
     writeFileSync(temporary, JSON.stringify(value) + "\n", "utf8");
-    renameSync(temporary, path);
+    // A reader holding the target open makes a Windows rename fail for a moment; retry briefly.
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        renameSync(temporary, path);
+        break;
+      } catch (error) {
+        if (attempt >= 50 || !["EPERM", "EACCES", "EBUSY"].includes(error.code)) {
+          throw error;
+        }
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5);
+      }
+    }
   } finally {
     if (existsSync(temporary)) {
       unlinkSync(temporary);
@@ -32,17 +43,21 @@ export function atomicJson(path, value) {
   }
 }
 
+const BUSY = new Set(["EEXIST", "EPERM", "EACCES", "EBUSY"]);
+
 /** Short cross-process lock: live hook updates must not lose another agent. */
 export function updateJson(path, update) {
   mkdirSync(dirname(path), { recursive: true });
   const lock = path + ".lock";
   let descriptor;
-  for (let attempt = 0; attempt < 20; attempt += 1) {
+  // On Windows a lock file that another hook is deleting answers EPERM/EACCES/EBUSY rather than EEXIST: that is
+  // contention too, not a failure. Up to ~1 s of waiting, well inside the 5 s hook timeout.
+  for (let attempt = 0; attempt < 200; attempt += 1) {
     try {
       descriptor = openSync(lock, "wx");
       break;
     } catch (error) {
-      if (error.code !== "EEXIST") {
+      if (!BUSY.has(error.code)) {
         throw error;
       }
       try {
@@ -64,7 +79,11 @@ export function updateJson(path, update) {
     return value;
   } finally {
     closeSync(descriptor);
-    unlinkSync(lock);
+    try {
+      unlinkSync(lock);
+    } catch {
+      // Already gone or briefly held by a scanner; the stale-lock sweep removes leftovers.
+    }
   }
 }
 

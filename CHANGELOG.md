@@ -3,6 +3,10 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 3.8.3 — Economy hooks under parallel launches
+
+- Windows answers lock contention with EPERM/EACCES/EBUSY as well as EEXIST; the economy cache now waits instead of failing, so several sub-agents launched at once are all routed and counted (16 concurrent writers, no lost update).
+
 ## 3.8.2 — Limit percentages in every folder
 
 - `astack economy global on` also installs AStack's statusline where the owner has none, so the official 5-hour and weekly percentages stay fresh in every folder; an owner's statusline is never replaced, and `off` removes only ours.
