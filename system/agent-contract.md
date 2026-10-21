@@ -83,6 +83,7 @@ This is a hard requirement, not a preference.
 - Give bulk build/read/test work and first drafts to Codex through astack_delegate (short jobs) or `astack delegate "<task>" --mode write` run in the background from the shell (long builds); Claude reviews the result before using it. `astack economy status` shows whether Codex has quota.
 - Use local Ollama for classification, OCR text processing and extraction of supplied text; image OCR needs a capable caller or Codex.
 - Suggest /compact when the main chat passes 250k input tokens, and use astack economy status to check usage, pressure and routes.
+- The economy is account-wide: `astack economy global on` (once per machine) wires it into every folder, with or without AStack.
 
 ## Code Graph (Graphify)
 Graphify turns the workspace into a knowledge graph (`graphify-out/graph.json`) with tree-sitter, locally and without model calls. AStack drives it for both runtimes; never run `graphify claude install` or `graphify codex install`, which would write different, machine-specific guidance per runtime.

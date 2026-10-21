@@ -747,7 +747,9 @@
       "unknownAction": "Unknown economy action: {action}",
       "delegateFailed": "Delegation unavailable: {reason}. Continue in the calling runtime.",
       "delegated": "Engine: {engine} · usage: {usage}",
-      "notChecked": "not checked"
+      "notChecked": "not checked",
+      "globalOn": "Account-wide economy hooks on: {path} (backup {backup}); default sub-agent model {model}. New Claude Code sessions in every folder use them.",
+      "globalOff": "Account-wide economy hooks removed from {path} (backup {backup})."
     }
   },
   "delivery": {

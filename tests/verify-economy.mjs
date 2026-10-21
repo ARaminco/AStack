@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { EconomyEngine, subagentTranscript } from "../economy-engine/economy-engine.mjs";
@@ -302,4 +303,32 @@ assert.equal(readJson(join(home, ".astack", "economy", "limits.json")).claude.ra
 const handler = createMcpHandler({ run: async (args) => ({ ok: true, output: JSON.stringify(args) }) });
 const reply = await handler({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "astack_delegate", arguments: { task: "--dangerous-looking task", schema_json: { type: "object" } } } });
 assert.deepEqual(JSON.parse(reply.result.content[0].text).slice(-2), ["--", "--dangerous-looking task"]);
-console.log("AStack economy verification passed (policy, meter, limits, hooks, wiring, delegation).");
+// Account-wide hooks: owner hooks and owner env kept, ours removed cleanly, projects with their own hooks win.
+{
+  const { planGlobalSettings, applyGlobalSettings, projectHasOwnHooks } = await import("../economy-engine/global.mjs");
+  const owner = { hooks: { Stop: [{ hooks: [{ type: "command", command: "node owner-stop.mjs" }] }], PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "node guard.mjs" }] }] }, env: { FOO: "1" } };
+  const on = planGlobalSettings(owner, { hookPath: "C:\\Users\\x\\.astack\\core\\bin\\astack-economy-hook.mjs" });
+  assert.equal(on.env.CLAUDE_CODE_SUBAGENT_MODEL, "sonnet");
+  assert.equal(on.hooks.PreToolUse.length, 3);
+  assert.ok(on.hooks.PreToolUse.some((group) => group.matcher === "Agent|Task" && /route --global$/.test(group.hooks[0].command)));
+  assert.deepEqual(planGlobalSettings(on, { hookPath: "x/astack-economy-hook.mjs" }).hooks.SubagentStart.length, 1, "idempotent");
+  const off = planGlobalSettings(on, { enable: false });
+  assert.deepEqual(off, owner, "removal restores the owner's settings exactly");
+  const chosen = planGlobalSettings({ env: { CLAUDE_CODE_SUBAGENT_MODEL: "opus" } }, { hookPath: "h/astack-economy-hook.mjs" });
+  assert.equal(chosen.env.CLAUDE_CODE_SUBAGENT_MODEL, "opus", "an owner's own default model is kept");
+  assert.equal(planGlobalSettings(chosen, { enable: false }).env.CLAUDE_CODE_SUBAGENT_MODEL, "opus", "and never removed");
+  const globalHome = mkdtempSync(join(tmpdir(), "astack-economy-global-"));
+  mkdirSync(join(globalHome, ".claude"), { recursive: true });
+  writeFileSync(join(globalHome, ".claude", "settings.json"), JSON.stringify(owner));
+  const applied = applyGlobalSettings({ home: globalHome, hookPath: "h/astack-economy-hook.mjs" });
+  assert.ok(applied.backup && existsSync(applied.backup));
+  const project = mkdtempSync(join(tmpdir(), "astack-economy-project-"));
+  mkdirSync(join(project, ".claude"), { recursive: true });
+  assert.equal(projectHasOwnHooks(project), false);
+  writeFileSync(join(project, ".claude", "settings.json"), JSON.stringify(on));
+  assert.equal(projectHasOwnHooks(project), false, "global commands alone do not count");
+  writeFileSync(join(project, ".claude", "settings.json"), JSON.stringify({ hooks: { PreToolUse: [{ matcher: "Agent|Task", hooks: [{ type: "command", command: "node \"$CLAUDE_PROJECT_DIR/bin/astack-economy-hook.mjs\" route" }] }] } }));
+  assert.equal(projectHasOwnHooks(project), true);
+}
+
+console.log("AStack economy verification passed (policy, meter, limits, hooks, wiring, delegation, account-wide hooks).");

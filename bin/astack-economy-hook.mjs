@@ -13,6 +13,10 @@ try {
   }
   const input = JSON.parse(raw);
   const root = process.env.CLAUDE_PROJECT_DIR ?? input.cwd ?? process.cwd();
+  // The account-wide copy (~/.claude/settings.json) steps aside where the project wires its own economy hooks.
+  if (process.argv.includes("--global") && (await import("../economy-engine/global.mjs")).projectHasOwnHooks(root)) {
+    process.exit(0);
+  }
   const core = join(dirname(fileURLToPath(import.meta.url)), "..");
   const config = mergeConfig(readEconomyConfig(core), readEconomyConfig(root));
   const engine = new EconomyEngine({ root, config });
