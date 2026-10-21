@@ -57,3 +57,7 @@ locked across hook processes and counts live agents plus pending launches;
 SubagentStart converts a launch reservation into a live entry under the same
 lock. Unused launch reservations expire after three minutes, so a cancelled call
 does not hold a slot indefinitely.
+
+## Account-wide hooks (3.8.1)
+
+`astack economy global on` adds the economy hooks and `CLAUDE_CODE_SUBAGENT_MODEL=sonnet` (only when unset) to `~/.claude/settings.json`, pointing at `~/.astack/core/bin/astack-economy-hook.mjs`. Usage limits are per account, so this covers every folder, including projects whose core lives in a sub-folder and folders without AStack. In a project that wires its own economy hooks the global copy exits at once, so nothing is counted twice. The owner's file is backed up first; `astack economy global off` removes only AStack's entries.

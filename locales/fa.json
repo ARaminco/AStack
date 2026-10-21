@@ -747,7 +747,9 @@
       "unknownAction": "دستور مصرف ناشناخته: {action}",
       "delegateFailed": "واگذاری ممکن نیست: {reason}. کار در همین محیط ادامه پیدا کند.",
       "delegated": "موتور: {engine} · مصرف: {usage}",
-      "notChecked": "بررسی نشده"
+      "notChecked": "بررسی نشده",
+      "globalOn": "مدیریت مصرف برای کل حساب روشن شد: {path} (پشتیبان: {backup})؛ مدل پیش‌فرض دستیارها: {model}. گفت‌وگوهای تازهٔ Claude Code در همهٔ پوشه‌ها از آن استفاده می‌کنند.",
+      "globalOff": "مدیریت مصرف سراسری از {path} برداشته شد (پشتیبان: {backup})."
     }
   },
   "delivery": {

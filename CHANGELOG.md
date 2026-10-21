@@ -3,6 +3,11 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 3.8.1 — Economy for the whole account
+
+- `astack economy global on|off`: the economy hooks and the default sub-agent model (sonnet, unless the owner chose one) in `~/.claude/settings.json`, pointing at the canonical core, so every folder is covered: projects whose AStack core sits in a sub-folder, and folders with no AStack at all. Backed up before every change; `off` restores the owner's file.
+- The account-wide copy steps aside in any project that wires its own economy hooks, so no call is counted twice.
+
 ## 3.8.0 — Economy: automatic model routing and usage control
 
 - Account-wide incremental Claude/Codex usage meter, official limit capture, pressure-aware routing and weighted burn reports.

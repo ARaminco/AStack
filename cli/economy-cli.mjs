@@ -1,7 +1,9 @@
+import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { parseArgs } from "../delivery-engine/cli.mjs";
 import { EconomyEngine, renderStatus } from "../economy-engine/economy-engine.mjs";
 import { delegate } from "../economy-engine/delegate.mjs";
+import { applyGlobalSettings } from "../economy-engine/global.mjs";
 import { readEconomyConfig, updateJson } from "../economy-engine/storage.mjs";
 
 export async function runEconomyCommand({ runtime, i18n, tokens }) {
@@ -16,6 +18,14 @@ export async function runEconomyCommand({ runtime, i18n, tokens }) {
     }
     const report = await engine.status({ since: flags.since ?? null, probes: action === "status" });
     console.log(flags.json ? JSON.stringify(report, null, 2) : renderStatus(report, i18n));
+    return;
+  }
+  if (action === "global") {
+    // astack economy global on|off — account-wide hooks in ~/.claude/settings.json, pointing at the canonical core.
+    const enable = (positionals[0] ?? "on") !== "off";
+    const hookPath = join(homedir(), ".astack", "core", "bin", "astack-economy-hook.mjs");
+    const result = applyGlobalSettings({ hookPath, enable, defaultModel: readEconomyConfig(root).default_subagent_model ?? "sonnet" });
+    console.log(t(enable ? "cli.economy.globalOn" : "cli.economy.globalOff", { path: result.path, backup: result.backup ?? "-", model: result.subagentModel ?? "-" }));
     return;
   }
   if (action === "route") {
