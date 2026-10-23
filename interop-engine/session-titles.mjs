@@ -1004,6 +1004,27 @@ export class SessionTitles {
     return state.turns >= config.first_after_turns || (state.turns > 1 && minutes >= config.first_after_minutes);
   }
 
+  /**
+   * A chat still without AStack's or the owner's title that has run for
+   * first_after_minutes, with a first-title reminder left and none given in
+   * this turn. The start is the prompt hook's firstAt, or the transcript's
+   * first timestamp when the prompt hook never ran.
+   */
+  longUntitled(state, title, text) {
+    const config = this.config;
+    if (title.source === "astack" || title.source === "owner" || state.namedTurn !== null) {
+      return false;
+    }
+    if (state.firstNudges >= config.max_nudges || state.enforcedTurn === state.turns || state.reminderTurn === state.turns) {
+      return false;
+    }
+    if (state.firstNudgedTurn !== null && state.turns - state.firstNudgedTurn < config.retry_after_turns) {
+      return false;
+    }
+    const started = Date.parse(state.firstAt ?? text.match(/"timestamp":"([^"]+)"/)?.[1] ?? "");
+    return Number.isFinite(started) && (this.now().getTime() - started) / 60000 >= config.first_after_minutes;
+  }
+
   /** The re-check point reached and not handled yet (one reminder each, no retries). */
   pendingCheckpoint(state) {
     const reached = this.config.recheck_turns.filter((turn) => state.turns >= turn && turn > state.checked && turn > (state.namedTurn ?? 0));
@@ -1074,12 +1095,18 @@ export class SessionTitles {
       }
       const id = String(payload.session_id ?? "");
       const file = payload.transcript_path ? String(payload.transcript_path) : null;
-      if (!SESSION_ID.test(id) || !file || !existsSync(file)) {
+      if (!SESSION_ID.test(id) || !file) {
         return null;
       }
       const state = this.readState(id);
       state.turns += 1;
       state.firstAt ??= this.now().toISOString();
+      // Claude Code writes the transcript after the first prompt: count that
+      // prompt anyway, or one-prompt chats never reach a first title.
+      if (!existsSync(file)) {
+        this.writeState(id, state);
+        return null;
+      }
       const parts = [];
       if (state.turns === 1 && this.config.suggest_existing && payload.prompt) {
         const similar = this.find(cleanPrompt(payload.prompt), { project: basename(dirname(file)), limit: 3, exclude: id }).filter((hit) => hit.subjectHit || hit.score >= 3);
@@ -1174,6 +1201,17 @@ export class SessionTitles {
           block: "Before finishing, set this chat's title (it is " + (title.title ? "still «" + title.title + "»" : "untitled") + "): call astack_session_title (session=" + id + ") or run `" + command + "`. " +
             "Shape «<subject> · <what is being done>», plain " + (LANGUAGE_NAMES[this.config.language] ?? this.config.language) + ", at most " + this.config.max_length + " characters; legal work: party or case label first. Then stop; say nothing about it."
         };
+      }
+      // A long chat with one or two prompts (a phone order, a scheduled run)
+      // never reaches the prompt hook's turn count: name it at the end of a
+      // reply once it has run first_after_minutes.
+      if (payload.stop_hook_active !== true && this.longUntitled(state, title, text)) {
+        state.firstNudges += 1;
+        state.firstNudgedTurn = state.turns;
+        state.reminderTurn = state.turns;
+        state.enforcedTurn = state.turns;
+        this.writeState(id, state);
+        return { block: this.instruction("first", { id, title }) + "\nThen stop; say nothing about it." };
       }
       if (this.config.sync_remote && (title.source === "astack" || state.pushedTitle)) {
         await this.syncOne(id, file, title, state, { text, history });
