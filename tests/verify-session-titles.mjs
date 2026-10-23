@@ -188,6 +188,28 @@ const titles = new SessionTitles({ home, projectRoot, clock, cli: "/core/bin/ast
   titles.promptHook({ session_id: T, transcript_path: fileT, prompt: "کار طولانی" });
   now = new Date(now.getTime() + 20 * 60000);
   assert.match(titles.promptHook({ session_id: T, transcript_path: fileT, prompt: "ادامه" }), /Session title due/, "due after first_after_minutes");
+
+  // the first prompt counts before Claude Code has written the transcript
+  const W = "abcdefab-9999-4999-8999-999999999999";
+  const fileW = join(projects, slug, W + ".jsonl");
+  assert.equal(titles.promptHook({ session_id: W, transcript_path: fileW, prompt: "یک دستور" }), null);
+  assert.equal(titles.readState(W).turns, 1, "a prompt is counted even without a transcript yet");
+
+  // one long prompt (a phone order, a scheduled run): named at the end of a reply
+  writeFileSync(fileW, user("یک دستور طولانی") + line({ type: "ai-title", aiTitle: "Long one-prompt job", sessionId: W }));
+  assert.equal(await titles.stopHook({ session_id: W, transcript_path: fileW }), null, "not before first_after_minutes");
+  now = new Date(now.getTime() + 16 * 60000);
+  assert.equal(await titles.stopHook({ session_id: W, transcript_path: fileW, stop_hook_active: true }), null, "never while continuing for a stop hook");
+  const long = await titles.stopHook({ session_id: W, transcript_path: fileW });
+  assert.match(long.block, /Session title due/);
+  assert.match(long.block, new RegExp("session=" + W));
+  assert.equal(await titles.stopHook({ session_id: W, transcript_path: fileW }), null, "never twice in one turn");
+  // a chat the prompt hook never saw starts at its first transcript record
+  const X = "abcdefab-aaaa-4aaa-8aaa-bbbbbbbbbbbb";
+  const fileX = session(X, [user("کار زمان‌بندی‌شده", "2026-10-17T07:00:00.000Z")]);
+  assert.match((await titles.stopHook({ session_id: X, transcript_path: fileX })).block, /Session title due/, "dated from the transcript");
+  titles.setTitle(X, "کار زمان‌بندی‌شده · آزمون");
+  assert.equal(await titles.stopHook({ session_id: X, transcript_path: fileX }), null, "a titled chat is left alone");
 }
 
 // ------------------------------------------------------------- remote copies

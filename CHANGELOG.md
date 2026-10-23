@@ -3,6 +3,11 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 3.8.4 — Chat titles for one-prompt chats
+
+- The first prompt of a chat is counted even before Claude Code has written its transcript, so prompt counts are no longer one short.
+- A chat still without a title that has run for `first_after_minutes` (default 15) is named at the end of a reply, even with a single prompt: phone orders and scheduled runs no longer keep automatic titles. Once per turn, never while a stop hook is already continuing, within `max_nudges`.
+
 ## 3.8.3 — Economy hooks under parallel launches
 
 - Windows answers lock contention with EPERM/EACCES/EBUSY as well as EEXIST; the economy cache now waits instead of failing, so several sub-agents launched at once are all routed and counted (16 concurrent writers, no lost update).
