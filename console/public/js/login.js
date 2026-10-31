@@ -115,6 +115,16 @@
                   </button>
                 </div>
                 <p class="hint" id="tHint" data-t="tokenHint">توکن را از ترمینال همین دستگاه کپی کنید.</p>
+                <div class="howto" id="tHow">
+                  <p class="howto-title" data-t="howTitle">توکن را چطور بگیرم؟</p>
+                  <ol class="howto-steps">
+                    <li data-t="howStep1">روی همین کامپیوتر PowerShell یا ترمینال را باز کنید.</li>
+                    <li><span data-t="howStep2">این دستور را بزنید:</span>
+                      <span class="cmd"><code dir="ltr">astack console token</code><button class="copy" type="button" data-copy="astack console token" data-t="copy">کپی</button></span></li>
+                    <li data-t="howStep3">متنی که چاپ می‌شود (با «ar_» شروع می‌شود) را اینجا بچسبانید.</li>
+                  </ol>
+                  <p class="hint" data-t="howOpen">راه سریع‌تر: دستور «astack console open» مرورگر را باز می‌کند و بدون توکن واردتان می‌کند.</p>
+                </div>
               </div>
             </div>
 
@@ -277,6 +287,7 @@
       $("#backBtn").addEventListener("click", function () { if (pending || until > Date.now()) return; clearSecrets(); step = "credentials"; status = "default"; update(); $("#u").focus(); });
       $("#skipCode").addEventListener("click", function () { if (credentials) send(credentials); });
       $("#altBtn").addEventListener("click", function () { if (pending || until > Date.now()) return; clearSecrets(); mode = mode === "password" ? "token" : "password"; status = "default"; $("#err").classList.remove("visible"); all("input").forEach(function(i) { i.removeAttribute("aria-invalid"); }); update(); $(mode === "token" ? "#t" : "#u").focus(); });
+      all(".copy").forEach(function (button) { button.addEventListener("click", function () { var text = button.dataset.copy || ""; var done = function () { button.textContent = tr("copied"); setTimeout(function () { button.textContent = tr("copy"); }, 1600); }; try { navigator.clipboard.writeText(text).then(done, function () {}); } catch (e) {} }); });
       all(".eye").forEach(function (button) { button.addEventListener("click", function () { var input = $("#" + button.dataset.for), show = input.type === "password"; input.type = show ? "text" : "password"; button.setAttribute("aria-pressed", String(show)); update(); }); });
       ["keydown","keyup","focus"].forEach(function (name) { $("#p").addEventListener(name, function (e) { $("#caps").classList.toggle("on", Boolean(e.getModifierState && e.getModifierState("CapsLock"))); }); });
       $("#p").addEventListener("blur", function () { $("#caps").classList.remove("on"); });

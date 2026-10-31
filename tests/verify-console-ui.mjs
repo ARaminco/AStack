@@ -297,9 +297,11 @@ try {
   }
   for (const kind of ["approval", "mission", "incident", "run"]) addKey("notify." + kind, "app.js (notify)");
   for (const sort of ["updated", "started", "turns"]) addKey("ui.projects.sort." + sort, "projects.js (sort)");
+  for (const id of ["projects", "claudeMemory", "memory", "phoneTitles", "accounts"]) addKey("ui.sync.step." + id, "sync.js (steps)");
+  for (const reason of ["disabled", "no-interop"]) addKey("ui.sync.skipped." + reason, "sync.js (skipped)");
   // Every dynamic prefix is accounted for above, so none can hide a missing key.
   for (const key of Object.keys(faStrings.login)) addKey("login." + key, "login.js (template)");
-  const covered = ["login.","nav.", "more.", "palette.", "risk.", "missions.", "notify.", "ui.projects.sort."];
+  const covered = ["login.","nav.", "more.", "palette.", "risk.", "missions.", "notify.", "ui.projects.sort.", "ui.sync.step.", "ui.sync.skipped."];
   none([...dynamicPrefixes.keys()].filter((prefix) => !covered.includes(prefix)).map((prefix) => prefix + " in " + [...dynamicPrefixes.get(prefix)].join(",")), "dynamic t(\"prefix.\" + x) keys the test does not know how to enumerate");
   ok(keySources.size >= 300, "the scan found the UI's keys (" + keySources.size + ")");
   none([...keySources].filter(([key]) => typeof lookup(faStrings, key) !== "string").map(([key, files]) => "fa  " + key + "  [" + [...files].join(",") + "]"), "locale keys missing from locales/fa.json (console.*)");

@@ -5044,3 +5044,17 @@ body.chat-mode .ac-content {
     display: none;
   }
 }
+
+/* sync everything */
+.sync-steps { list-style: none; margin: 12px 0; padding: 0; display: grid; gap: 8px; }
+.sync-step { display: flex; gap: 10px; align-items: flex-start; }
+.sync-mark { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; background: rgba(127,127,127,.18); }
+.sync-step.is-ok .sync-mark { background: #0B7F8A; color: #fff; }
+.sync-step.is-failed .sync-mark { background: #B42318; color: #fff; }
+.sync-text { display: grid; gap: 2px; }
+.sync-text small { opacity: .75; }
+.sync-account { margin: 8px 0; }
+.sync-working { padding: 18px 4px; font-weight: 600; }
+[data-action='sync-all'][aria-busy='true'] .ac-icon { animation: ar-sync-spin 1s linear infinite; }
+@keyframes ar-sync-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { [data-action='sync-all'][aria-busy='true'] .ac-icon { animation: none; } }

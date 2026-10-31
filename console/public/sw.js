@@ -24,6 +24,7 @@ const SHELL = [
   "/js/projects.js?v=" + BUILD,
   "/js/users.js?v=" + BUILD,
   "/js/users.css?v=" + BUILD,
+  "/js/sync.js?v=" + BUILD,
   "/js/keys.js?v=" + BUILD,
   "/vendor/aramin-console/aramin-console.min.css?v=" + BUILD,
   "/vendor/aramin-console/aramin-console.min.js?v=" + BUILD,

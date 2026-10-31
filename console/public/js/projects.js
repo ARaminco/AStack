@@ -179,8 +179,9 @@
         ${(item.tags || []).length ? html`<div class="ses-tags">${item.tags.map(function (tag) { return html`<button type="button" class="ses-tag" data-action="prj-tagfilter" data-id="${tag}">${tag}</button>`; })}</div>` : ""}
         <div class="ses-actions">
           <div class="ses-acts-main">
-            ${item.chatEnabled ? html`<a class="btn btn-primary btn-sm" href="#/chats/${item.id}">${ti("message-circle")}${t("ui.projects.openChat")}</a>` : ""}
-            <button type="button" class="btn btn-ghost btn-sm" data-action="prj-copy" data-id="${item.id}">${ti("terminal")}${t("ui.projects.copyResume")}</button>
+            ${item.chatEnabled
+              ? html`<a class="btn btn-primary btn-sm" href="#/chats/${item.id}">${ti("message-circle")}${t("ui.projects.continue")}</a>`
+              : html`<button type="button" class="btn btn-primary btn-sm" data-action="prj-continue" data-id="${item.id}">${ti("message-circle")}${t("ui.projects.continue")}</button>`}
           </div>
           <div class="ses-acts-icons">
           <button type="button" class="btn btn-ghost btn-sm ses-ibtn ${item.pinned ? "is-on" : ""}" data-action="prj-pin" data-id="${item.id}" aria-pressed="${item.pinned ? "true" : "false"}" aria-label="${item.pinned ? t("ui.projects.unpin") : t("ui.projects.pin")}" title="${item.pinned ? t("ui.projects.unpin") : t("ui.projects.pin")}">${ti("pin")}</button>
@@ -446,6 +447,24 @@
       return copyText(line).then(function () {
         A.toast(t("ui.projects.resumeCopied"), "success", line);
       }).catch(function () { resumeSheet(detail); });
+    }).catch(fail);
+  };
+  // "Continue": the chat opens right here. A project that is not yet allowed asks once, then the whole system is opened for the administrator.
+  A.actions["prj-continue"] = function (target, event, id) {
+    if (readOnly()) { A.toast(t("ui.projects.remoteReadOnly"), "warning"); return; }
+    A.openSheet(html`<div class="decision">
+      <div class="decision-head is-approve"><span class="decision-icon">${ti("message-circle")}</span><div><h3>${t("ui.projects.continueTitle")}</h3><p>${t("ui.projects.continueBody")}</p></div></div>
+      <div class="decision-actions"><button type="button" class="btn btn-primary" data-action="prj-continue-go" data-id="${id}">${t("ui.projects.continueConfirm")}</button><button type="button" class="btn btn-ghost" data-action="close-sheet">${t("common.cancel")}</button></div>
+    </div>`);
+  };
+  A.actions["prj-continue-go"] = function (target, event, id) {
+    write("/api/projects/chat-scope", { all: true }).then(function () {
+      return api("/api/projects/session?id=" + encodeURIComponent(id));
+    }).then(function (detail) {
+      A.closeSheet();
+      if (detail && detail.chatEnabled) { A.go("#/chats/" + id); return; }
+      A.toast(t("ui.projects.continueGone"), "warning");
+      return refresh(true);
     }).catch(fail);
   };
   A.actions["prj-detail"] = function (target, event, id) {

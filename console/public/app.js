@@ -359,6 +359,7 @@
           </div>
           <div class="ac-appbar__end">
             <div class="ac-chrome ac-utilbar">
+              <button class="ac-iconbtn" type="button" data-action="sync-all" aria-label="${t("ui.sync.title")}" title="${t("ui.sync.title")}"><svg class="ac-icon" aria-hidden="true"><use href="#i-refresh"/></svg></button>
               <button class="ac-iconbtn" type="button" data-action="palette" aria-label="${t("common.search")}"><svg class="ac-icon" aria-hidden="true"><use href="#i-search"/></svg></button>
               <button class="ac-iconbtn" type="button" data-action="notifications" aria-label="${t("nav.notifications")}"><svg class="ac-icon" aria-hidden="true"><use href="#i-bell"/></svg><span class="ac-appbar__count" data-unread hidden></span></button>
               <button class="ac-iconbtn" type="button" data-action="lang" data-value="${state.locale === "fa" ? "en" : "fa"}" data-hide-phone aria-label="${t("settings.language")}"><svg class="ac-icon" aria-hidden="true"><use href="#i-languages"/></svg></button>

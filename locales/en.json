@@ -1162,6 +1162,13 @@
       "hidePass": "Hide password",
       "hideToken": "Hide token",
       "tokenLbl": "Access token",
+      "howTitle": "How do I get the token?",
+      "howStep1": "On this computer, open PowerShell or a terminal.",
+      "howStep2": "Run this command:",
+      "howStep3": "Paste the text it prints (it starts with \"ar_\") here.",
+      "howOpen": "Quicker: the command \"astack console open\" opens the browser and signs you in without a token.",
+      "copy": "Copy",
+      "copied": "Copied",
       "tokenHint": "Copy the token from the terminal on this device.",
       "err": "Username or password is incorrect",
       "loading": "Checking…",
@@ -1586,6 +1593,36 @@
       "sendFailed": "The message was not sent"
     },
     "ui": {
+      "sync": {
+        "title": "Sync everything",
+        "hint": "Projects, chats and memory",
+        "body": "Refreshes projects, chats and AStack memory in one step.",
+        "working": "Syncing…",
+        "again": "Again",
+        "remote": "Sync is only available from this computer.",
+        "failed": "Sync did not run.",
+        "accountLabel": "Active account:",
+        "accountNote": "Chats and memory do not depend on the account; only phone titles sync under this account.",
+        "done": "Everything refreshed in {seconds} s.",
+        "partial": "{failed} step(s) failed; the rest refreshed.",
+        "step": {
+          "projects": "Projects and chats",
+          "claudeMemory": "Claude Code memory",
+          "memory": "AStack memory",
+          "phoneTitles": "Titles on the phone",
+          "accounts": "Claude accounts"
+        },
+        "skipped": {
+          "disabled": "Turned off in settings",
+          "no-interop": "Not in this install"
+        },
+        "d": {
+          "projects": "{projects} projects, {sessions} chats",
+          "memory": "{imported} new, {updated} updated",
+          "phone": "{pushed} titles sent of {sessions} chats",
+          "accounts": "{accounts} saved account(s)"
+        }
+      },
       "accounts": {
         "subtitle": "Move from one Claude account to another without losing chats or memory",
         "switcher": "Switch account",
@@ -1675,7 +1712,12 @@
         "missingBody": "The server of this install does not serve projects and sessions yet. Update AStack.",
         "remoteReadOnly": "Over the internet this screen is view-only; pinning, tags, renaming and archiving work on this computer or a trusted network.",
         "openChat": "Open chat",
-        "copyResume": "Resume command",
+        "continue": "Continue",
+      "continueTitle": "Continue the chat in Aramis",
+      "continueBody": "To continue from here, chats are opened for every project on this computer for the administrator. Every tool still asks for your permission.",
+      "continueConfirm": "Turn on and continue",
+      "continueGone": "This project's folder is no longer on this computer, so the chat cannot be continued.",
+      "copyResume": "Resume command",
         "resumeCopied": "Resume command copied",
         "resumeTitle": "Resume in the terminal",
         "resumeHint": "Run this line in a terminal to continue the session from the same place.",

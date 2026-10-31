@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import { createHash } from "node:crypto";
 import { isIP } from "node:net";
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ConsoleAuth } from "./auth.mjs";
@@ -14,6 +14,7 @@ import { AccountError, ClaudeAccounts } from "./accounts.mjs";
 import { ProjectsError, ProjectsHub, privateProject, privateSession } from "./projects.mjs";
 import { UsersAdmin, UsersError } from "./users-admin.mjs";
 import { ConsoleNotifier, resolveNotifySettings } from "./notify.mjs";
+import { ConsoleSync } from "./sync.mjs";
 import { parseInterval } from "../scheduler-engine/cron.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -372,6 +373,7 @@ export class ConsoleServer {
     this.events = new ConsoleEvents(runtime, { pollMs, clock });
     this.api = new ConsoleApi(runtime, { events: this.events, server: this, clock });
     this.chats = new ChatManager({ runtime, config: chats, events: this.events, clock, home: claudeHome, log });
+    this.chats.scopeAll = this.readChatScope();
     this.accounts = new ClaudeAccounts({ runtime, claudeHome: this.chats.home, chatTurns: () => this.chats.turns.size, clock });
     this.chats.accountEmail = () => this.accounts.activeEmail();
     // Projects and sessions hub; a non-default Claude home keeps its title state in the workspace.
@@ -385,6 +387,7 @@ export class ConsoleServer {
       titlesHome: claudeHome ? runtime.workspaceRoot : null,
       syncRemote: !claudeHome
     });
+    this.sync = new ConsoleSync(this);
     this.accessFetch = accessFetch;
     this.accessCertsUrl = accessCertsUrl;
     this.access = null;
@@ -951,7 +954,13 @@ export class ConsoleServer {
   }
 
   /** /api/projects*: projects and their Claude sessions. Reading is allowed everywhere, writing never over the internet listener. */
-  async projectsRoute(method, id, action, query, body, listener, address) {
+  async projectsRoute(method, id, action, query, body, listener, address, session = null) {
+    if (id === "chat-scope") {
+      if (method !== "POST") {
+        return undefined;
+      }
+      return this.chatScopeRoute(body, session, listener);
+    }
     const call = async (fn) => {
       try {
         return await fn();
@@ -1069,6 +1078,36 @@ export class ConsoleServer {
     }
   }
 
+  /** The owner's switch "continue any project's chat from here", kept in the console state folder. */
+  chatScopeFile() {
+    return join(this.directory, "chat-scope.json");
+  }
+
+  readChatScope() {
+    try {
+      return JSON.parse(readFileSync(this.chatScopeFile(), "utf8")).all === true;
+    } catch {
+      return false;
+    }
+  }
+
+  chatScopeRoute(body, session, listener) {
+    if (listener.kind === "remote") {
+      throw new HttpError(403, "the chat scope is changed from this computer only");
+    }
+    if (!this.usersAdmin.actor(session).admin) {
+      throw new HttpError(403, "only an administrator changes the chat scope");
+    }
+    const all = body?.all === true;
+    mkdirSync(this.directory, { recursive: true });
+    const file = this.chatScopeFile();
+    writeFileSync(file + ".tmp", JSON.stringify({ all, changedAt: this.clock().toISOString() }) + "\n", "utf8");
+    renameSync(file + ".tmp", file);
+    this.chats.scopeAll = all;
+    this.runtime.audit?.record({ actor: "owner@console", action: "console-chat-scope", target: "projects", riskLevel: "L2", result: all ? "all projects" : "configured projects only" });
+    return { all, projects: this.chats.projects().length };
+  }
+
   async route(method, pathname, query, body, session, listener = LOCAL, address = "unknown") {
     const api = this.api;
     const segments = pathname.split("/").filter(Boolean).slice(1).map((segment) => decodeURIComponent(segment));
@@ -1080,8 +1119,20 @@ export class ConsoleServer {
     if (resource === "accounts") {
       return this.accountsRoute(method, id, query, body, listener);
     }
+    if (resource === "sync") {
+      if (listener.kind === "remote") {
+        throw new HttpError(403, "sync is not available over the internet listener");
+      }
+      if (method === "GET" && !id) {
+        return this.sync.status();
+      }
+      if (method === "POST" && !id) {
+        return this.sync.run();
+      }
+      return undefined;
+    }
     if (resource === "projects") {
-      return this.projectsRoute(method, id, action, query, body, listener, address);
+      return this.projectsRoute(method, id, action, query, body, listener, address, session);
     }
     if (resource === "chats") {
       const access = this.chatAccess(listener);

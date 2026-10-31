@@ -768,3 +768,6 @@ economy:
     model: null # First installed non-embedding text model when unset.
   statusline:
     chain: null # Optional prior command; setup also preserves it in the wrapper.
+
+console:
+  auth: password

@@ -461,3 +461,12 @@ button { cursor: pointer; }
 
 }
 
+
+/* token how-to */
+.howto { margin-top: 14px; padding: 12px 14px; border: 1px solid var(--line, rgba(127,127,127,.28)); border-radius: 12px; background: var(--panel-2, rgba(127,127,127,.06)); }
+.howto-title { margin: 0 0 6px; font-weight: 700; font-size: 14px; }
+.howto-steps { margin: 0 0 8px; padding-inline-start: 20px; display: grid; gap: 6px; font-size: 13.5px; line-height: 1.7; }
+.howto .cmd { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.howto .cmd code { direction: ltr; unicode-bidi: isolate; font-family: var(--mono); font-size: 13px; padding: 6px 10px; border-radius: 8px; background: rgba(127,127,127,.14); }
+.howto .copy { min-height: 36px; min-width: 56px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line, rgba(127,127,127,.35)); background: transparent; color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
+.howto .copy:focus-visible { outline: 3px solid var(--focus, #0FA3B1); outline-offset: 2px; }

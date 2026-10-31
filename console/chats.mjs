@@ -438,7 +438,7 @@ export class ChatManager {
 
   /** `console.chats.projects: all` (or "*", or a list holding it): every project Claude Code has worked in. */
   allProjects() {
-    return toList(this.config.projects, []).some((entry) => entry === "all" || entry === "*");
+    return this.scopeAll === true || toList(this.config.projects, []).some((entry) => entry === "all" || entry === "*");
   }
 
   /** Project folders found under the Claude home, remembered until the projects folder changes or 30 seconds pass. */
