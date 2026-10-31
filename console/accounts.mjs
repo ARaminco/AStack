@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, s
 import { homedir, userInfo } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { isUnattended } from "../trust-engine/approvals.mjs";
+import { killProcessTree, resolveCommand, startProcess } from "../runner-engine/engines.mjs";
 
 /**
  * Claude accounts for the Aramis console.
@@ -31,6 +32,7 @@ export const USAGE_URL = "https://api.anthropic.com/api/oauth/usage";
 const ID_PATTERN = /^[a-z0-9][a-z0-9._@+-]{0,127}$/;
 const PROCESS_CACHE_MS = 10000;
 const USAGE_TIMEOUT_MS = 6000;
+const LOGIN_TIMEOUT_MS = 10 * 60 * 1000;
 
 /**
  * `code` is a stable key (console.accounts.errors.<code> in the locale files) so
@@ -298,7 +300,9 @@ export class ClaudeAccounts {
     platform = process.platform,
     security = null,
     harden = true,
-    usageTtlMs = 30000
+    usageTtlMs = 30000,
+    startLogin = null,
+    loginTimeoutMs = LOGIN_TIMEOUT_MS
   } = {}) {
     this.runtime = runtime;
     this.env = env;
@@ -317,6 +321,16 @@ export class ClaudeAccounts {
     this.security = security ?? ((args, input) => execFileSync("security", args, { input, encoding: "utf8", stdio: [input === undefined ? "ignore" : "pipe", "pipe", "ignore"], timeout: 8000 }));
     this.harden = harden;
     this.usageTtlMs = usageTtlMs;
+    // (args, env) => child process; injected by tests so no real sign-in ever starts.
+    this.startLoginProcess = startLogin ?? ((args, env) => {
+      const resolved = resolveCommand("claude", { env: this.env, platform: this.platform });
+      if (!resolved) {
+        throw new AccountError(409, "Claude Code was not found on this computer", null, "no-claude");
+      }
+      return startProcess(resolved, args, { env, cwd: homedir() });
+    });
+    this.loginTimeoutMs = loginTimeoutMs;
+    this.login = null;
     this.processCache = null;
     this.usageCache = new Map();
     this.emailCache = null;
@@ -862,6 +876,112 @@ export class ClaudeAccounts {
   }
 
   /** Five-hour and seven-day usage of an account; `{ error, code }` on any failure. Never throws, never returns a token. */
+  // ---------------------------------------------------- add another account
+
+  /**
+   * Adds a second (third, ...) Claude account without touching the live login.
+   * `claude auth login` runs with its own throw-away CLAUDE_CONFIG_DIR, so the
+   * account in use keeps working; when the sign-in finishes, the new login is
+   * saved as a profile and the throw-away folder is deleted. The caller shows
+   * the sign-in link and polls loginStatus().
+   */
+  startAddLogin({ email = null, label = null } = {}) {
+    this.assertAttended();
+    if (this.login && this.login.state === "running") {
+      throw new AccountError(409, "a sign-in is already waiting", null, "login-running");
+    }
+    const cleanEmail = email ? String(email).trim().slice(0, 254) : "";
+    if (cleanEmail && !/^[^\s@<>"'`;&|]+@[^\s@<>"'`;&|]+\.[^\s@<>"'`;&|]+$/.test(cleanEmail)) {
+      throw new AccountError(400, "this is not an email address", null, "bad-email");
+    }
+    this.ensureDirectory();
+    const folder = join(this.directory, ".login-" + randomBytes(6).toString("hex"));
+    mkdirSync(folder, { recursive: true, mode: 0o700 });
+    const args = ["auth", "login", "--claudeai", ...(cleanEmail ? ["--email", cleanEmail] : [])];
+    const env = { ...this.env, CLAUDE_CONFIG_DIR: folder };
+    let child;
+    try {
+      child = this.startLoginProcess(args, env);
+    } catch (error) {
+      rmSync(folder, { recursive: true, force: true });
+      throw error;
+    }
+    const state = { id: randomBytes(6).toString("hex"), state: "running", url: null, account: null, error: null, code: null, startedAt: this.clock().toISOString(), folder, child, label: label ? cleanLabel(label) : null };
+    this.login = state;
+    const watch = (chunk) => {
+      if (state.url) {
+        return;
+      }
+      const text = String(chunk).replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, "");
+      const found = /https:\/\/[^\s"'<>)\]]+/.exec(text);
+      if (found && /(claude|anthropic)\./i.test(found[0])) {
+        state.url = found[0];
+      }
+    };
+    child.stdout?.on("data", watch);
+    child.stderr?.on("data", watch);
+    const timer = setTimeout(() => {
+      if (state.state === "running") {
+        state.timedOut = true;
+        killProcessTree(child);
+      }
+    }, this.loginTimeoutMs);
+    timer.unref?.();
+    const finish = (code, spawnError) => {
+      clearTimeout(timer);
+      if (state.state !== "running") {
+        return;
+      }
+      try {
+        if (state.cancelled) {
+          state.state = "cancelled";
+        } else if (spawnError || code !== 0) {
+          state.state = "failed";
+          state.code = state.timedOut ? "login-timeout" : "login-failed";
+          state.error = state.timedOut ? "the sign-in was not finished in time" : "the sign-in did not finish";
+        } else {
+          const temp = new ClaudeAccounts({ claudeHome: folder, directory: this.directory, platform: "linux", env: {}, clock: this.clock, harden: false, runtime: this.runtime });
+          temp.explicitHome = true;
+          const saved = temp.save({ label: state.label });
+          state.account = saved;
+          state.state = "done";
+          this.audit("claude-account-add", saved.id, "added through a separate sign-in (the live login was not touched)");
+        }
+      } catch (error) {
+        state.state = "failed";
+        state.code = error.code ?? "login-failed";
+        state.error = error.code ? error.message : "the new login could not be saved";
+      } finally {
+        rmSync(folder, { recursive: true, force: true });
+        state.child = null;
+      }
+    };
+    child.on("error", (error) => finish(1, error));
+    child.on("close", (code) => finish(code ?? 1));
+    return this.loginView();
+  }
+
+  loginView() {
+    const state = this.login;
+    if (!state) {
+      return { state: "idle" };
+    }
+    return { id: state.id, state: state.state, url: state.url, account: state.account, error: state.error, code: state.code, startedAt: state.startedAt };
+  }
+
+  cancelAddLogin() {
+    this.assertAttended();
+    const state = this.login;
+    if (state && state.state === "running") {
+      state.cancelled = true;
+      killProcessTree(state.child);
+      // the close event settles the state; make it visible at once as well
+      state.state = "cancelled";
+      rmSync(state.folder, { recursive: true, force: true });
+    }
+    return this.loginView();
+  }
+
   async usage(id = null) {
     let token;
     let key;

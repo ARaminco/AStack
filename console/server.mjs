@@ -15,6 +15,7 @@ import { ProjectsError, ProjectsHub, privateProject, privateSession } from "./pr
 import { UsersAdmin, UsersError } from "./users-admin.mjs";
 import { ConsoleNotifier, resolveNotifySettings } from "./notify.mjs";
 import { ConsoleSync } from "./sync.mjs";
+import { ConsoleOverview } from "./overview.mjs";
 import { parseInterval } from "../scheduler-engine/cron.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -388,6 +389,7 @@ export class ConsoleServer {
       syncRemote: !claudeHome
     });
     this.sync = new ConsoleSync(this);
+    this.overview = new ConsoleOverview(this);
     this.accessFetch = accessFetch;
     this.accessCertsUrl = accessCertsUrl;
     this.access = null;
@@ -1038,6 +1040,12 @@ export class ConsoleServer {
       if (!id) {
         return call(() => this.accounts.list());
       }
+      if (id === "login") {
+        if (listener.kind === "remote") {
+          throw new HttpError(403, "Claude accounts are not changed over the internet listener");
+        }
+        return this.accounts.loginView();
+      }
       return id === "usage" ? call(() => this.accounts.usage(query.id || null)) : undefined;
     }
     if (method !== "POST") {
@@ -1049,6 +1057,10 @@ export class ConsoleServer {
     switch (id) {
       case "save":
         return call(() => this.accounts.save({ label: body.label }));
+      case "login":
+        return call(() => this.accounts.startAddLogin({ email: body.email, label: body.label }));
+      case "login-cancel":
+        return call(() => this.accounts.cancelAddLogin());
       case "switch":
         return call(() => this.accounts.switch(body.id, { force: body.force === true }));
       case "remove":
@@ -1118,6 +1130,9 @@ export class ConsoleServer {
     }
     if (resource === "accounts") {
       return this.accountsRoute(method, id, query, body, listener);
+    }
+    if (resource === "overview") {
+      return method === "GET" && !id ? this.overview.get({ remote: listener.kind === "remote", fresh: query?.fresh === "1" }) : undefined;
     }
     if (resource === "sync") {
       if (listener.kind === "remote") {

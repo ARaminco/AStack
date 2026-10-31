@@ -299,9 +299,12 @@ try {
   for (const sort of ["updated", "started", "turns"]) addKey("ui.projects.sort." + sort, "projects.js (sort)");
   for (const id of ["projects", "claudeMemory", "memory", "phoneTitles", "accounts"]) addKey("ui.sync.step." + id, "sync.js (steps)");
   for (const reason of ["disabled", "no-interop"]) addKey("ui.sync.skipped." + reason, "sync.js (skipped)");
+  for (const id of ["console", "scheduler", "signals", "runner", "ollama", "chats", "whatsapp-wapi", "whatsapp-bridge", "whatsapp-cloud", "telegram"]) addKey("ui.dashboard.svc." + id, "dashboard.js (services)");
+  for (const state of ["on", "idle", "off", "warn", "busy"]) addKey("ui.dashboard.state." + state, "dashboard.js (states)");
+  for (const code of ["no-claude", "login-timeout", "login-failed", "bad-email"]) addKey("ui.accounts.addErr." + code, "accounts.js (add errors)");
   // Every dynamic prefix is accounted for above, so none can hide a missing key.
   for (const key of Object.keys(faStrings.login)) addKey("login." + key, "login.js (template)");
-  const covered = ["login.","nav.", "more.", "palette.", "risk.", "missions.", "notify.", "ui.projects.sort.", "ui.sync.step.", "ui.sync.skipped."];
+  const covered = ["login.","nav.", "more.", "palette.", "risk.", "missions.", "notify.", "ui.projects.sort.", "ui.sync.step.", "ui.sync.skipped.", "ui.dashboard.svc.", "ui.dashboard.state.", "ui.accounts.addErr."];
   none([...dynamicPrefixes.keys()].filter((prefix) => !covered.includes(prefix)).map((prefix) => prefix + " in " + [...dynamicPrefixes.get(prefix)].join(",")), "dynamic t(\"prefix.\" + x) keys the test does not know how to enumerate");
   ok(keySources.size >= 300, "the scan found the UI's keys (" + keySources.size + ")");
   none([...keySources].filter(([key]) => typeof lookup(faStrings, key) !== "string").map(([key, files]) => "fa  " + key + "  [" + [...files].join(",") + "]"), "locale keys missing from locales/fa.json (console.*)");

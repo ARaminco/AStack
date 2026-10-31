@@ -815,6 +815,77 @@ try {
   assert.equal(quiet.activeAccount(), null, "a failing lookup never blocks a chat turn");
   assert.equal(new ChatManager({ runtime, config: {}, home: apiFake.home }).activeAccount(), null);
 
+  // ---- add another account without touching the live login (a fake `claude auth login`)
+  {
+    const { EventEmitter } = await import("node:events");
+    const { PassThrough } = await import("node:stream");
+    const f = fakeHome();
+    const dir = sandbox("astack-accounts-add-");
+    login(f, "first@x.com", "Org One", "tok-ONE", "ref-ONE");
+    const liveBefore = { credentials: readFileSync(f.credentialsPath, "utf8"), json: readFileSync(f.jsonPath, "utf8") };
+    let started = null;
+    const fakeLogin = (outcome) => (args, env) => {
+      started = { args, configDir: env.CLAUDE_CONFIG_DIR };
+      const child = new EventEmitter();
+      child.stdout = new PassThrough();
+      child.stderr = new PassThrough();
+      child.pid = 0;
+      child.exitCode = null;
+      setTimeout(() => {
+        child.stdout.write("Opening browser to sign in…\nIf it does not open, visit: https://claude.ai/oauth/authorize?code=true&client_id=abc\n");
+      }, 20);
+      setTimeout(() => {
+        if (outcome === "ok") {
+          // what the real command leaves in its own CLAUDE_CONFIG_DIR
+          writeFileSync(join(env.CLAUDE_CONFIG_DIR, ".credentials.json"), JSON.stringify(credentials("tok-TWO", "ref-TWO", "pro")));
+          writeFileSync(join(env.CLAUDE_CONFIG_DIR, ".claude.json"), claudeJson(accountRaw("second@x.com", "Org Two")));
+        }
+        child.exitCode = outcome === "ok" ? 0 : 1;
+        child.emit("close", child.exitCode);
+      }, 120);
+      return child;
+    };
+    const acc = new ClaudeAccounts({ runtime: auditRuntime, claudeHome: f.home, directory: dir, listProcesses: async () => [], env: {}, harden: false, startLogin: fakeLogin("ok") });
+    acc.save();
+    const began = acc.startAddLogin({ email: "second@x.com", label: "Work" });
+    assert.equal(began.state, "running");
+    assert.deepEqual(started.args, ["auth", "login", "--claudeai", "--email", "second@x.com"]);
+    assert.notEqual(started.configDir, f.home, "the sign-in runs in its own throw-away config folder");
+    assert.throws(() => acc.startAddLogin({}), (error) => error.code === "login-running", "one sign-in at a time");
+    await new Promise((done) => setTimeout(done, 60));
+    assert.match(acc.loginView().url, /^https:\/\/claude\.ai\/oauth\/authorize/, "the sign-in link is picked up from the command output");
+    await new Promise((done) => setTimeout(done, 200));
+    const done = acc.loginView();
+    assert.equal(done.state, "done", JSON.stringify(done));
+    assert.equal(done.account.email, "second@x.com");
+    assert.equal(done.account.label, "Work");
+    assert.equal(readFileSync(f.credentialsPath, "utf8"), liveBefore.credentials, "the live login credentials were not touched");
+    assert.equal(readFileSync(f.jsonPath, "utf8"), liveBefore.json, "the live .claude.json was not touched");
+    assert.ok(!existsSync(started.configDir), "the throw-away folder with the new tokens is deleted");
+    const listed = await acc.list();
+    assert.equal(listed.accounts.length, 2, "both accounts are saved: the first one and the added one");
+    assert.ok(!JSON.stringify([acc.loginView(), listed]).includes("tok-TWO"), "no token in what the API shows");
+    assert.ok(audits.some((entry) => entry.action === "claude-account-add" && !JSON.stringify(entry).includes("tok-")), "added accounts are audited without secrets");
+    // switching to the added account works like any other profile
+    const switched = await acc.switch(done.account.id, { force: true });
+    assert.ok(switched.active.email === "second@x.com" || switched.active?.profileId === done.account.id);
+
+    // a failed or cancelled sign-in leaves nothing behind
+    const bad = new ClaudeAccounts({ runtime: auditRuntime, claudeHome: f.home, directory: dir, listProcesses: async () => [], env: {}, harden: false, startLogin: fakeLogin("fail") });
+    bad.startAddLogin({});
+    await new Promise((resolveWait) => setTimeout(resolveWait, 250));
+    assert.equal(bad.loginView().state, "failed");
+    assert.equal(bad.loginView().code, "login-failed");
+    assert.ok(!existsSync(started.configDir), "the folder of a failed sign-in is deleted");
+    assert.throws(() => bad.startAddLogin({ email: "not an email" }), (error) => error.code === "bad-email");
+    const gone = new ClaudeAccounts({ runtime: auditRuntime, claudeHome: f.home, directory: dir, listProcesses: async () => [], env: {}, harden: false, startLogin: () => { throw new AccountError(409, "Claude Code was not found on this computer", null, "no-claude"); } });
+    assert.throws(() => gone.startAddLogin({}), (error) => error.code === "no-claude");
+    assert.equal(readdirSync(dir).filter((name) => name.startsWith(".login-")).length, 0, "no sign-in folder is left in the profile folder");
+    // unattended processes may never start a sign-in
+    const robot = new ClaudeAccounts({ runtime: auditRuntime, claudeHome: f.home, directory: dir, listProcesses: async () => [], env: { ASTACK_UNATTENDED: "1" }, harden: false, startLogin: fakeLogin("ok") });
+    assert.throws(() => robot.startAddLogin({}), (error) => error.code === "unattended");
+  }
+
   console.log("verify-console-accounts: ok");
 } finally {
   for (const server of servers) {

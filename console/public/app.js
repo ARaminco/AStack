@@ -253,6 +253,7 @@
   var NAV = [
     { group: "groupMain", items: [
       { id: "chats", icon: "chat", feature: "chats" },
+      { id: "dashboard", icon: "activity" },
       { id: "projects", icon: "folder" },
       { id: "home", icon: "home" },
       { id: "approvals", icon: "shield", count: "approvals" },
@@ -296,7 +297,7 @@
       MORE_PAGES = BASE_MORE;
     }
   }
-  var ICONS = { projects: "folder", accounts: "users", users: "user-cog", chats: "chat", home: "home", approvals: "shield", missions: "flag", memory: "brain", more: "grid", runs: "zap", jobs: "calendar", audit: "activity", skills: "book", board: "columns", gateway: "send", system: "cpu", settings: "settings" };
+  var ICONS = { dashboard: "activity", projects: "folder", accounts: "users", users: "user-cog", chats: "chat", home: "home", approvals: "shield", missions: "flag", memory: "brain", more: "grid", runs: "zap", jobs: "calendar", audit: "activity", skills: "book", board: "columns", gateway: "send", system: "cpu", settings: "settings" };
 
   function parseRoute() {
     var hash = location.hash.replace(/^#\/?/, "");
@@ -310,7 +311,7 @@
       hash = hash.slice(0, queryIndex);
     }
     var parts = hash.split("/").filter(Boolean);
-    var name = parts[0] || "home";
+    var name = parts[0] || (VIEWS.dashboard ? "dashboard" : "home");
     if (!VIEWS[name]) name = "home";
     return { name: name, id: parts[1] ? decodeURIComponent(parts[1]) : null, query: query };
   }
@@ -338,7 +339,7 @@
   function renderShell() {
     layoutTabs();
     var root = document.getElementById("ar-root");
-    var topLinks = (chatsOn() ? ["chats"] : []).concat(["home", "approvals", "missions", "projects"]);
+    var topLinks = (chatsOn() ? ["chats"] : []).concat(["dashboard", "home", "approvals", "missions", "projects"]);
     root.innerHTML = out(html`
       <a class="ac-skip-link" href="#view">${t("common.skip")}</a>
       <header class="ac-appbar" data-ac="appbar" data-collapsed="true">

@@ -156,6 +156,63 @@
 
   // ------------------------------------------------------------- save etc.
 
+  // ---- add another account: a separate sign-in runs in its own folder, the live login is never touched
+  var addTimer = null;
+  function stopAddPolling() { if (addTimer) { clearTimeout(addTimer); addTimer = null; } }
+  function addSheet(view) {
+    var state = view && view.state;
+    if (state === "running") {
+      A.openSheet(html`<div class="decision" data-acct-add-sheet>
+        <div class="decision-head is-approve"><span class="decision-icon">${icon("plus")}</span><div><h3>${t("ui.accounts.addTitle")}</h3><p>${t("ui.accounts.addWaiting")}</p></div></div>
+        ${view.url ? html`<p class="muted small">${t("ui.accounts.addLink")}<br><a href="${view.url}" target="_blank" rel="noopener noreferrer" dir="ltr">${t("ui.accounts.addOpen")}</a></p>` : ""}
+        <div class="sheet-actions"><button type="button" class="btn btn-ghost btn-lg" data-action="acct-add-cancel">${t("ui.accounts.addCancel")}</button></div>
+      </div>`);
+      return;
+    }
+    if (state === "done") {
+      A.openSheet(html`<div class="decision" data-acct-add-sheet><div class="decision-head is-approve"><span class="decision-icon">${icon("check")}</span><div><h3>${t("ui.accounts.addDone", { email: view.account && view.account.email ? view.account.email : "" })}</h3><p>${t("ui.accounts.addDoneHint")}</p></div></div><div class="sheet-actions"><button type="button" class="btn btn-primary btn-lg" data-action="close-sheet">${t("common.close")}</button></div></div>`);
+      return;
+    }
+    A.openSheet(html`<div class="decision" data-acct-add-sheet>
+      <div class="decision-head is-approve"><span class="decision-icon">${icon("plus")}</span><div><h3>${t("ui.accounts.addTitle")}</h3><p>${state === "failed" || state === "cancelled" ? t("ui.accounts.addFailed") : t("ui.accounts.addHint")}</p></div></div>
+      <label class="field"><span class="field-label">${t("ui.accounts.addEmail")}</span><input class="input input-lg" data-acct-add-email type="email" dir="ltr" autocomplete="off" inputmode="email"></label>
+      <label class="field"><span class="field-label">${t("ui.accounts.labelField")}</span><input class="input input-lg" data-acct-add-label maxlength="40" placeholder="${t("ui.accounts.labelPlaceholder")}"></label>
+      <div class="sheet-actions"><button type="button" class="btn btn-ghost btn-lg" data-action="close-sheet">${t("common.cancel")}</button><button type="button" class="btn btn-primary btn-lg" data-action="acct-add-go">${t("ui.accounts.addStart")}</button></div>
+    </div>`);
+  }
+  function pollAdd() {
+    stopAddPolling();
+    addTimer = setTimeout(function () {
+      if (!A.$("[data-acct-add-sheet]")) return;
+      api("/api/accounts/login").then(function (view) {
+        if (!A.$("[data-acct-add-sheet]")) return;
+        if (view.state === "running") { if (view.url && !A.$("[data-acct-add-sheet] a")) addSheet(view); pollAdd(); return; }
+        if (view.state === "done") { cache.at = 0; addSheet(view); A.toast(t("ui.accounts.saved"), "success"); load(true).then(function () { paintChip(); }); return; }
+        addSheet(view);
+        if (view.code) A.toast(t("ui.accounts.addErr." + (/^(no-claude|login-timeout|login-failed|bad-email)$/.test(view.code) ? view.code : "login-failed")), "danger");
+      }).catch(function () { pollAdd(); });
+    }, 1800);
+  }
+  A.actions["acct-add"] = function () {
+    if (readOnly()) { A.toast(t("ui.accounts.remoteReadOnly"), "warning"); return; }
+    api("/api/accounts/login").then(function (view) { addSheet(view && view.state === "running" ? view : null); if (view && view.state === "running") pollAdd(); }).catch(function () { addSheet(null); });
+  };
+  A.actions["acct-add-go"] = function (target) {
+    var email = A.$("[data-acct-add-email]"), label = A.$("[data-acct-add-label]");
+    target.disabled = true;
+    api("/api/accounts/login", { method: "POST", body: { email: email ? email.value.trim() : "", label: label ? label.value.trim() : "" } }).then(function (view) {
+      addSheet(view); pollAdd();
+    }).catch(function (error) {
+      target.disabled = false;
+      var code = error && error.details && error.details.code ? error.details.code : "";
+      A.toast(t("ui.accounts.addErr." + (/^(no-claude|login-timeout|login-failed|bad-email)$/.test(code) ? code : "login-failed")), "danger", code ? "" : (error && error.message) || "");
+    });
+  };
+  A.actions["acct-add-cancel"] = function () {
+    stopAddPolling();
+    api("/api/accounts/login-cancel", { method: "POST", body: {} }).catch(function () {}).then(function () { A.closeSheet(); });
+  };
+
   A.actions["acct-save"] = function () {
     if (readOnly()) { A.toast(t("ui.accounts.remoteReadOnly"), "warning"); return; }
     A.openSheet(html`<div class="decision">
@@ -273,7 +330,8 @@
       return html`
         ${ro ? html`<p class="ar-note ar-note--info">${icon("lock")}<span>${t("ui.accounts.remoteReadOnly")}</span></p>` : ""}
         <div class="ar-actions">
-          <button type="button" class="btn btn-primary" data-action="acct-save" ${ro ? raw("disabled") : ""}>${icon("plus")}${t("ui.accounts.saveCurrent")}</button>
+          <button type="button" class="btn btn-primary" data-action="acct-add" ${ro ? raw("disabled") : ""}>${icon("plus")}${t("ui.accounts.addButton")}</button>
+          <button type="button" class="btn btn-ghost" data-action="acct-save" ${ro ? raw("disabled") : ""}>${icon("plus")}${t("ui.accounts.saveCurrent")}</button>
           <button type="button" class="btn btn-ghost" data-action="acct-usage">${icon("refresh")}${t("ui.accounts.refreshUsage")}</button>
         </div>
         <p class="muted small acct-running">${data.active && data.active.email ? html`${t("ui.accounts.currentLogin")}: ${ltr(data.active.email)}${data.active.plan ? html` ${ltr("(" + data.active.plan + ")")}` : ""}` : t("ui.accounts.noLogin")}</p>
