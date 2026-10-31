@@ -1,6 +1,6 @@
 {
   "id": "astack-core",
-  "version": "3.8.4",
+  "version": "4.0.0",
   "layers": [
     "agent-engine",
     "bin",

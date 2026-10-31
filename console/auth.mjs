@@ -266,6 +266,30 @@ export class ConsoleAuth {
     return ended;
   }
 
+  /**
+   * After a user changed their own credentials in the console: end every other
+   * session of that user and keep the session they are using, bound to the
+   * new credential version. `key` is the hashed session key from session().
+   */
+  keepOnlySession(username, key, credentialVersion) {
+    const name = String(username ?? "").trim().toLowerCase();
+    const sessions = this.loadSessions();
+    let ended = 0;
+    for (const [other, session] of Object.entries(sessions)) {
+      if (session.user && session.user === name && other !== key) {
+        delete sessions[other];
+        ended += 1;
+      }
+    }
+    if (sessions[key]) {
+      if (credentialVersion) {
+        sessions[key].credentialVersion = credentialVersion;
+      }
+    }
+    this.saveSessions();
+    return ended;
+  }
+
   destroySession(id) {
     const sessions = this.loadSessions();
     delete sessions[hash(String(id ?? ""))];

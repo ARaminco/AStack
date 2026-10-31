@@ -18,7 +18,7 @@ AStack Enterprise is a modular AI operating system that runs natively in both Cl
 
 **In your pocket** — *new in 3.0*
 - **Gateway** — command AStack from Telegram or WhatsApp (a wapi-compatible HTTP gateway, AStack's own linked-device bridge, or the Meta Cloud API); owner allowlists with several accounts per channel; approve with «بفرست» / "approve" or decline with «نه» / "deny"; local Persian voice notes ([docs](documentation/Gateway.md))
-- **Aramis console** — a local, installable web app (PWA) for approvals, missions, memory, runs, jobs, audit, skills, board and system state; loopback only, token login, Persian by default ([docs](documentation/Aramis-Console.md))
+- **Aramis console** — a local, installable web app (PWA) for approvals, missions, memory, runs, jobs, audit, skills, board and system state, plus a Claude accounts switcher and a projects and sessions hub; rebuilt UI with a desktop rail, a phone tab bar, ⌘K palette, dark mode and RTL; loopback only, token login, Persian by default ([docs](documentation/Aramis-Console.md))
 
 **Memory and recall**
 - **Memory OS** — twelve temporal facets, supersede instead of overwrite, nightly consolidation ([docs](documentation/Memory-OS.md))

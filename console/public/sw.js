@@ -16,9 +16,23 @@ const SHELL = [
   "/",
   "/app.css?v=" + BUILD,
   "/app.js?v=" + BUILD,
+  "/login.css?v=" + BUILD,
+  "/js/login.js?v=" + BUILD,
+  "/icons/logo-mark-dark.svg",
   "/boot.js?v=" + BUILD,
+  "/js/accounts.js?v=" + BUILD,
+  "/js/projects.js?v=" + BUILD,
+  "/js/users.js?v=" + BUILD,
+  "/js/users.css?v=" + BUILD,
+  "/js/keys.js?v=" + BUILD,
+  "/vendor/aramin-console/aramin-console.min.css?v=" + BUILD,
+  "/vendor/aramin-console/aramin-console.min.js?v=" + BUILD,
+  "/vendor/aramin-console/icons.svg",
+  "/vendor/aramin-console/fonts/vazirmatn-variable.woff2",
   "/manifest.webmanifest",
   "/icons/icon.svg",
+  "/icons/favicon.svg",
+  "/icons/logo-mark.svg",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/fonts/vazirmatn-variable.woff2"
@@ -31,7 +45,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((key) => key.startsWith("aramis-") && key !== CACHE).map((key) => caches.delete(key))))
+      .then((keys) => Promise.all(keys.filter((key) => (key.startsWith("aramis-") || key.startsWith("aramin-")) && key !== CACHE).map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });

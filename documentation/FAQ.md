@@ -90,7 +90,8 @@ code. The decision produces the same receipt as `astack approval approve`.
 With the daemon running, `astack console open` opens the browser already
 signed in. Without the daemon, `astack console start --open`. By hand: open
 `http://127.0.0.1:7717` and paste the token from `astack console token`. Your
-browser can install it as an app. See [Aramis Console](Aramis-Console.md).
+browser can install it as an app. Since 4.0 it also switches between saved Claude accounts and
+browses your projects and chat sessions. See [Aramis Console](Aramis-Console.md).
 
 ## Can the console or the gateway be reached from the internet?
 

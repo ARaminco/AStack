@@ -169,7 +169,7 @@
           throw Object.assign(new Error(body.error || "login required"), { status: 401, silent: true });
         }
         if (!response.ok || body.ok === false) {
-          throw Object.assign(new Error(body.error || "HTTP " + response.status), { status: response.status, body: body });
+          throw Object.assign(new Error(body.error || "HTTP " + response.status), { status: response.status, body: body, retryAfter: response.headers.get("retry-after") });
         }
         return body.data !== undefined ? body.data : body;
       });
@@ -179,7 +179,17 @@
   // ------------------------------------------------------------ preferences
 
   function getPref(key, fallback) {
-    try { return localStorage.getItem(key) || fallback; } catch (error) { return fallback; }
+    try {
+      var value = localStorage.getItem(key);
+      if (value) return value;
+      // the console had an older name: read the old key once and move it over
+      var old = localStorage.getItem(key.replace(/^aramis-/, "aramin-"));
+      if (old) {
+        localStorage.setItem(key, old);
+        return old;
+      }
+      return fallback;
+    } catch (error) { return fallback; }
   }
   function setPref(key, value) {
     try { localStorage.setItem(key, value); } catch (error) { /* ignore */ }
@@ -190,10 +200,11 @@
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
     document.documentElement.setAttribute("data-theme-choice", choice);
     var meta = document.getElementById("theme-color");
-    if (meta) meta.setAttribute("content", dark ? "#0b0d15" : "#f4f5f7");
+    if (meta) meta.setAttribute("content", dark ? "#0b0b0c" : "#f2f2f3");
   }
   function setTheme(choice) {
     setPref("aramis-theme", choice);
+    try { localStorage.setItem("ac:theme", JSON.stringify(choice === "system" ? "auto" : choice)); } catch (error) { /* ignore */ }
     applyTheme(choice);
     updateChrome();
   }
@@ -205,8 +216,18 @@
     darkQuery.addEventListener("change", function () { applyTheme(getPref("aramis-theme", "system")); });
   }
 
+  // The last bundle is kept in this browser, so the app can still say "no connection" in the owner's
+  // language when it is opened offline (the service worker serves the shell, never the API).
   function loadStrings(locale) {
     return api("/api/i18n?lang=" + encodeURIComponent(locale)).then(function (bundle) {
+      try { localStorage.setItem("aramis-i18n-" + locale, JSON.stringify(bundle)); } catch (error) { /* storage full or blocked */ }
+      return bundle;
+    }, function (error) {
+      var kept = null;
+      try { kept = JSON.parse(localStorage.getItem("aramis-i18n-" + locale) || "null"); } catch (parseError) { /* ignore */ }
+      if (kept && kept.strings && error instanceof TypeError) return kept;
+      throw error;
+    }).then(function (bundle) {
       state.locale = bundle.meta && bundle.meta.locale ? bundle.meta.locale : locale;
       state.strings = bundle.strings || {};
       rtf = null;
@@ -232,6 +253,7 @@
   var NAV = [
     { group: "groupMain", items: [
       { id: "chats", icon: "chat", feature: "chats" },
+      { id: "projects", icon: "folder" },
       { id: "home", icon: "home" },
       { id: "approvals", icon: "shield", count: "approvals" },
       { id: "missions", icon: "flag", count: "missionsActive" },
@@ -247,6 +269,8 @@
       { id: "board", icon: "columns" }
     ] },
     { group: "groupSystem", items: [
+      { id: "accounts", icon: "users" },
+      { id: "users", icon: "user-cog" },
       { id: "gateway", icon: "send" },
       { id: "system", icon: "cpu" },
       { id: "settings", icon: "settings" }
@@ -259,7 +283,7 @@
     { id: "memory", icon: "brain" },
     { id: "more", icon: "grid", count: "incidents" }
   ];
-  var BASE_MORE = ["runs", "jobs", "audit", "skills", "board", "gateway", "system", "settings"];
+  var BASE_MORE = ["projects", "accounts", "users", "runs", "jobs", "audit", "skills", "board", "gateway", "system", "settings"];
   var TABS = BASE_TABS;
   var MORE_PAGES = BASE_MORE;
   /** With conversations on, they take the first tab and memory moves under "more". */
@@ -272,7 +296,7 @@
       MORE_PAGES = BASE_MORE;
     }
   }
-  var ICONS = { chats: "chat", home: "home", approvals: "shield", missions: "flag", memory: "brain", more: "grid", runs: "zap", jobs: "calendar", audit: "activity", skills: "book", board: "columns", gateway: "send", system: "cpu", settings: "settings" };
+  var ICONS = { projects: "folder", accounts: "users", users: "user-cog", chats: "chat", home: "home", approvals: "shield", missions: "flag", memory: "brain", more: "grid", runs: "zap", jobs: "calendar", audit: "activity", skills: "book", board: "columns", gateway: "send", system: "cpu", settings: "settings" };
 
   function parseRoute() {
     var hash = location.hash.replace(/^#\/?/, "");
@@ -300,58 +324,121 @@
     return html`<span class="${cls}" data-count="${key || ""}" ${value ? "" : raw("hidden")}>${value > 99 ? "99+" : value}</span>`;
   }
 
+  var GROUP_ICON = { groupMain: "layout-grid", groupOps: "zap", groupKnowledge: "book-open", groupSystem: "settings" };
+  var TEMPLATE_ICON = { home: "house", shield: "shield-check", flag: "flag", brain: "brain", zap: "zap", calendar: "calendar-clock", activity: "activity", book: "book-open", columns: "columns-3", send: "send", cpu: "cpu", settings: "settings", chat: "message-circle", folder: "folder", users: "users", grid: "layout-grid", search: "search" };
+  function tIcon(name) {
+    return raw('<svg class="ac-icon" aria-hidden="true"><use href="#i-' + (TEMPLATE_ICON[name] || name) + '"/></svg>');
+  }
+  function railBadge(key) {
+    var value = key ? state.counts[key] || 0 : 0;
+    return html`<span class="ac-rail__badge ac-rail__badge--accent" data-count="${key || ""}" ${value ? "" : raw("hidden")}>${value > 99 ? "99+" : value}</span>`;
+  }
+  function groupId(group) { return group.group.replace(/^group/, "").toLowerCase(); }
+
   function renderShell() {
     layoutTabs();
     var root = document.getElementById("ar-root");
+    var topLinks = (chatsOn() ? ["chats"] : []).concat(["home", "approvals", "missions", "projects"]);
     root.innerHTML = out(html`
-      <aside class="rail" aria-label="${t("brand")}">
-        <a class="rail-brand" href="#/home">
-          <svg class="rail-mark"><use href="#i-mark"/></svg>
-          <span class="rail-brand-text"><strong>${t("brand")}</strong><small>${t("tagline")}</small></span>
-        </a>
-        <button type="button" class="rail-search" data-action="palette">
-          ${icon("search")}<span>${t("common.search")}…</span><kbd>Ctrl K</kbd>
-        </button>
-        <nav class="rail-nav">
+      <a class="ac-skip-link" href="#view">${t("common.skip")}</a>
+      <header class="ac-appbar" data-ac="appbar" data-collapsed="true">
+        <div class="ac-appbar__inner">
+          <div class="ac-appbar__start">
+            <a class="ac-chrome ac-iconbtn ar-back" href="#/more" data-back hidden aria-label="${t("common.back")}"><svg class="ac-icon ac-flip-rtl" aria-hidden="true"><use href="#i-arrow-left"/></svg></a>
+            <a class="ac-chrome ac-brand" href="#/home" aria-label="${t("brand")}">
+              <span class="ac-brand__mark"><svg class="ar-mark"><use href="#i-mark"/></svg></span>
+              <span class="ac-brand__name">${t("brand")}</span>
+            </a>
+          </div>
+          <div class="ac-appbar__center">
+            <div class="ac-appbar__title" id="ac-appbar-title" aria-hidden="true" data-title></div>
+            <nav class="ac-chrome ac-topnav" data-ac="navpill" aria-label="${t("brand")}">
+              ${topLinks.map(function (id) { return html`<a class="ac-topnav__link" href="#/${id}" data-nav="${id}">${t("nav." + id)}</a>`; })}
+              <button class="ac-topnav__link" type="button" data-ac-rail-toggle aria-controls="ac-rail" aria-expanded="false"><span>${t("nav.more")}</span><svg class="ac-icon" aria-hidden="true"><use href="#i-chevron-down"/></svg></button>
+            </nav>
+          </div>
+          <div class="ac-appbar__end">
+            <div class="ac-chrome ac-utilbar">
+              <button class="ac-iconbtn" type="button" data-action="palette" aria-label="${t("common.search")}"><svg class="ac-icon" aria-hidden="true"><use href="#i-search"/></svg></button>
+              <button class="ac-iconbtn" type="button" data-action="notifications" aria-label="${t("nav.notifications")}"><svg class="ac-icon" aria-hidden="true"><use href="#i-bell"/></svg><span class="ac-appbar__count" data-unread hidden></span></button>
+              <button class="ac-iconbtn" type="button" data-action="lang" data-value="${state.locale === "fa" ? "en" : "fa"}" data-hide-phone aria-label="${t("settings.language")}"><svg class="ac-icon" aria-hidden="true"><use href="#i-languages"/></svg></button>
+              <button class="ac-iconbtn" type="button" data-action="theme" aria-label="${t("settings.theme")}"><svg class="ac-icon ac-only-light" aria-hidden="true"><use href="#i-moon"/></svg><svg class="ac-icon ac-only-dark" aria-hidden="true"><use href="#i-sun"/></svg></button>
+            </div>
+            <button type="button" class="ac-chrome ar-acct" data-action="accounts-switcher" data-acct-chip aria-label="${t("ui.accounts.switcher")}" hidden></button>
+          </div>
+        </div>
+      </header>
+      <aside class="ac-dock" data-ac="dock" aria-label="${t("brand")}">
+        <nav class="ac-dock__pill ac-dock__nav">
           ${NAV.map(function (group) {
-            return html`<p class="rail-group">${t("nav." + group.group)}</p>
-              ${group.items.filter(function (item) { return !item.feature || chatsOn(); }).map(function (item) {
-                return html`<a class="rail-link" href="#/${item.id}" data-nav="${item.id}">
-                  ${icon(item.icon)}<span class="rail-label">${t("nav." + item.id)}</span>${item.count ? countBadge(item.count, "rail-count") : ""}
-                </a>`;
-              })}`;
+            return html`<button class="ac-dock__btn" type="button" data-ac-rail-group="${groupId(group)}" aria-controls="ac-rail" aria-expanded="false" aria-label="${t("nav." + group.group)}">${tIcon(GROUP_ICON[group.group])}</button>`;
           })}
         </nav>
-        <div class="rail-foot">
-          <span class="live-dot" data-live></span><span class="rail-foot-text" data-live-text>${t("common.live")}</span>
+        <div class="ac-dock__pill ac-dock__foot">
+          <button class="ac-dock__btn" type="button" data-action="palette" aria-label="${t("common.search")}">${tIcon("search")}</button>
+          <button class="ac-dock__btn" type="button" data-action="theme" aria-label="${t("settings.theme")}"><svg class="ac-icon ac-only-light" aria-hidden="true"><use href="#i-moon"/></svg><svg class="ac-icon ac-only-dark" aria-hidden="true"><use href="#i-sun"/></svg></button>
         </div>
       </aside>
-      <div class="main">
-        <header class="appbar">
-          <div class="appbar-inner">
-            <a class="appbar-back" href="#/home" data-back hidden aria-label="${t("common.back")}">${icon("chevron", "flip-rtl")}</a>
-            <a class="appbar-mark" href="#/home" data-brand aria-label="${t("brand")}"><svg><use href="#i-mark"/></svg></a>
-            <div class="appbar-titles">
-              <h1 class="appbar-title" data-title>${t("brand")}</h1>
-              <p class="appbar-sub" data-subtitle></p>
-            </div>
-            <button type="button" class="appbar-search" data-action="palette">${icon("search")}<span>${t("palette.placeholder")}</span><kbd>Ctrl K</kbd></button>
-            <button type="button" class="icon-btn only-phone" data-action="palette" aria-label="${t("common.search")}">${icon("search")}</button>
-            <button type="button" class="icon-btn" data-action="notifications" aria-label="${t("nav.notifications")}">${icon("bell")}<span class="dot-count" data-unread hidden></span></button>
-            <button type="button" class="icon-btn" data-action="theme" aria-label="${t("settings.theme")}">${icon("moon", "theme-dark-icon")}${icon("sun", "theme-light-icon")}</button>
-          </div>
-        </header>
-        <main class="content" id="view" tabindex="-1"></main>
+      <aside class="ac-rail" id="ac-rail" data-ac="rail" aria-label="${t("brand")}">
+        <div class="ac-rail__head">
+          <div class="ac-rail__heading"><span class="ac-brand__mark ac-hide-desktop" aria-hidden="true"><svg class="ar-mark"><use href="#i-mark"/></svg></span><span class="ac-rail__heading-text">${t("brand")}</span></div>
+          <button class="ac-rail__close" type="button" data-ac-rail-close aria-label="${t("common.close")}"><svg class="ac-icon" aria-hidden="true"><use href="#i-x"/></svg></button>
+        </div>
+        <button class="ac-rail__search" type="button" data-action="palette"><svg class="ac-icon" aria-hidden="true"><use href="#i-search"/></svg><span>${t("common.search")}…</span><kbd class="ac-kbd">Ctrl K</kbd></button>
+        <nav class="ac-rail__nav">
+          ${NAV.map(function (group) {
+            return html`<div class="ac-rail__group" data-group="${groupId(group)}">
+              <div class="ac-rail__label">${t("nav." + group.group)}</div>
+              ${group.items.filter(function (item) { return !item.feature || chatsOn(); }).map(function (item) {
+                return html`<a class="ac-rail__link" href="#/${item.id}" data-nav="${item.id}">${tIcon(item.icon)}<span class="ac-rail__text">${t("nav." + item.id)}</span>${item.count ? railBadge(item.count) : ""}</a>`;
+              })}
+            </div>`;
+          })}
+        </nav>
+        <div class="ac-rail__foot">
+          <div class="ar-rail-live"><span class="live-dot" data-live></span><span data-live-text>${t("common.live")}</span></div>
+        </div>
+      </aside>
+      <div class="ac-scrim" data-ac-rail-close aria-hidden="true"></div>
+      <div class="ac-main">
+        <main class="ac-content" id="view" tabindex="-1" data-ac="pull-refresh"></main>
       </div>
-      <nav class="tabbar" aria-label="${t("brand")}">
+      <nav class="ac-tabbar" data-ac="tabbar" aria-label="${t("brand")}">
         ${TABS.map(function (tab) {
-          return html`<a class="tab" href="#/${tab.id}" data-tab="${tab.id}">
-            <span class="tab-icon">${icon(tab.icon)}${tab.count ? countBadge(tab.count, "tab-badge") : ""}</span>
-            <span class="tab-label">${t("nav." + tab.id)}</span>
+          return html`<a class="ac-tabbar__item" href="#/${tab.id}" data-tab="${tab.id}">
+            <span class="ac-tabbar__icon">${tIcon(tab.icon)}</span>
+            <span class="ac-tabbar__label">${t("nav." + tab.id)}</span>
+            ${tab.count ? html`<span class="ac-tabbar__badge" data-count="${tab.count}" hidden></span>` : ""}
           </a>`;
         })}
       </nav>`);
+    wirePullRefresh();
     updateChrome();
+    if (window.Aramis && window.Aramis.hooks.shell) window.Aramis.hooks.shell();
+  }
+
+  /** True when the touch began inside an inner scroller that is not at its top (pulling there must scroll it, not refresh). */
+  function insideScrolledBox(node, stop) {
+    for (var el = node; el && el !== stop && el.nodeType === 1; el = el.parentElement) {
+      if (el.scrollHeight > el.clientHeight + 1 && el.scrollTop > 0) {
+        var overflow = getComputedStyle(el).overflowY;
+        if (overflow === "auto" || overflow === "scroll") return true;
+      }
+    }
+    return false;
+  }
+  /** Pull-to-refresh follows the page scroll: off inside a conversation or a scrolled inner list; on elsewhere it reloads the screen. */
+  function wirePullRefresh() {
+    var viewEl = document.getElementById("view");
+    if (!viewEl) return;
+    viewEl.addEventListener("touchstart", function (event) {
+      if (document.body.classList.contains("chat-mode") || insideScrolledBox(event.target, viewEl)) event.stopPropagation();
+    }, true);
+    viewEl.addEventListener("ac:pull-refresh:refresh", function (event) {
+      if (event.detail && typeof event.detail.waitUntil === "function") {
+        event.detail.waitUntil(new Promise(function (done) { navigate(true); setTimeout(done, 700); }));
+      }
+    });
   }
 
   function updateChrome() {
@@ -362,8 +449,7 @@
       else el.removeAttribute("aria-current");
     });
     $all("[data-nav]").forEach(function (el) {
-      var active = el.getAttribute("data-nav") === route.name || (route.name === "more" && false);
-      if (active) el.setAttribute("aria-current", "page");
+      if (el.getAttribute("data-nav") === route.name) el.setAttribute("aria-current", "page");
       else el.removeAttribute("aria-current");
     });
     $all("[data-count]").forEach(function (el) {
@@ -379,12 +465,10 @@
       unread.hidden = !state.unread;
     }
     document.body.classList.toggle("chat-mode", route.name === "chats" && Boolean(route.id));
+    // phone: a page opened from "more" or a single conversation gets a back arrow (the tab bar hides in a conversation)
     var back = $("[data-back]");
-    var brand = $("[data-brand]");
-    if (back && brand) {
-      var detail = Boolean(route.id) || MORE_PAGES.indexOf(route.name) !== -1;
-      back.hidden = !detail;
-      brand.hidden = detail;
+    if (back) {
+      back.hidden = !(Boolean(route.id) || MORE_PAGES.indexOf(route.name) !== -1);
       back.setAttribute("href", route.id ? "#/" + route.name : "#/more");
     }
     if (navigator.setAppBadge) {
@@ -394,16 +478,25 @@
       } catch (error) { /* unsupported */ }
     }
     document.title = (state.counts.approvals ? "(" + state.counts.approvals + ") " : "") + t("brand");
+    if (window.Aramis && window.Aramis.hooks.chrome) window.Aramis.hooks.chrome();
   }
 
   function setTitle(title, subtitle) {
-    var el = $("[data-title]");
-    var sub = $("[data-subtitle]");
-    if (el) el.textContent = title;
+    var bar = $("[data-title]");
+    if (bar) bar.textContent = title;
+    var head = $("#view .ac-page-head__title");
+    if (head) head.textContent = title;
+    var sub = $("#view .ac-page-head__sub");
     if (sub) {
       sub.textContent = subtitle || "";
       sub.hidden = !subtitle;
     }
+  }
+  var NO_HEAD = { home: true, chats: true, more: true };
+  function pageHead(route, view) {
+    if (NO_HEAD[route.name]) return "";
+    var subtitle = view.subtitle ? view.subtitle(route) : "";
+    return html`<header class="ac-page-head" data-ac="largetitle"><div class="ac-page-head__titles"><h1 class="ac-page-head__title">${view.title(route)}</h1><p class="ac-page-head__sub" ${subtitle ? "" : raw("hidden")}>${subtitle}</p></div></header>`;
   }
 
   // --------------------------------------------------------------- building blocks
@@ -467,6 +560,12 @@
   // ---------------------------------------------------------------- toasts
 
   function toast(message, tone, body) {
+    if (window.AC && typeof window.AC.toast === "function") {
+      try {
+        window.AC.toast({ title: message, text: body || "", tone: tone === "danger" ? "danger" : tone === "warning" ? "warning" : tone === "success" ? "success" : "info" });
+        return;
+      } catch (error) { /* fall back to the built-in toast */ }
+    }
     var root = document.getElementById("ar-toasts");
     var el = document.createElement("div");
     el.className = "toast tone-" + (tone || "neutral");
@@ -523,56 +622,13 @@
     closeSheet();
     state.chat = null;
     document.body.classList.remove("chat-mode");
-    var options = state.login || { methods: ["token"], totp: "off" };
-    var methods = options.methods || ["token"];
-    var mode = state.loginMode && methods.indexOf(state.loginMode) !== -1 ? state.loginMode : methods[0];
-    state.loginMode = mode;
-    var withCode = mode === "password" && options.totp !== "off";
-    var root = document.getElementById("ar-root");
-    root.innerHTML = out(html`<div class="login">
-      <div class="login-glow"></div>
-      <form class="login-card" data-form="login" data-mode="${mode}" autocomplete="on">
-        <svg class="login-mark"><use href="#i-mark"/></svg>
-        <h1 class="login-title">${t("login.title")}</h1>
-        <p class="login-sub">${options.remote ? t("login.subtitleRemote") : t("login.subtitle")}</p>
-        ${methods.length > 1 ? html`<div class="login-tabs">${segmented("login-mode", [["password", html`${icon("user")}${t("login.withPassword")}`], ["token", html`${icon("key")}${t("login.withToken")}`]], mode)}</div>` : ""}
-        ${mode === "password" ? html`
-          <label class="field">
-            <span class="field-label">${icon("user")}${t("login.usernameLabel")}</span>
-            <input class="input input-lg ltr" dir="ltr" type="text" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="32" required autofocus>
-          </label>
-          <label class="field">
-            <span class="field-label">${icon("lock")}${t("login.passwordLabel")}</span>
-            <input class="input input-lg ltr" dir="ltr" type="password" name="password" autocomplete="current-password" maxlength="256" required>
-          </label>
-          ${withCode ? html`<label class="field">
-            <span class="field-label">${icon("shield")}${t("login.codeLabel")}${options.totp === "optional" ? html` <span class="field-note">${t("login.codeOptional")}</span>` : ""}</span>
-            <input class="input input-lg ltr otp-input" dir="ltr" type="text" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="••••••" ${options.totp === "required" ? raw("required") : ""}>
-          </label>` : ""}` : html`
-          <label class="field">
-            <span class="field-label">${icon("key")}${t("login.tokenLabel")}</span>
-            <input class="input input-lg ltr" dir="ltr" type="password" name="token" placeholder="${t("login.tokenPlaceholder")}" autocomplete="current-password" spellcheck="false" autofocus required>
-          </label>`}
-        <p class="login-error" data-login-error ${message ? "" : raw("hidden")}>${message || ""}</p>
-        <button class="btn btn-primary btn-lg btn-block" type="submit">${icon("lock")}${t("login.submit")}</button>
-        ${mode === "token" ? html`<div class="login-hint">
-          <span>${t("login.hint")}</span>
-          <code dir="ltr">astack console token</code>
-        </div>` : ""}
-        <p class="login-secure">${icon("shield")}${options.remote ? t("login.secureRemote") : t("login.secure")}</p>
-        <div class="login-switch">
-          <button type="button" class="link" data-action="lang" data-value="${state.locale === "fa" ? "en" : "fa"}">${icon("globe")}${state.locale === "fa" ? "English" : "فارسی"}</button>
-          <button type="button" class="link" data-action="theme">${icon("moon", "theme-dark-icon")}${icon("sun", "theme-light-icon")}${t("settings.theme")}</button>
-        </div>
-      </form>
-    </div>`);
-    var input = $("input[autofocus]", root);
-    if (input) input.focus();
+    window.AramisLogin.mount({ root: document.getElementById("ar-root"), options: state.login, t: t, locale: state.locale, api: api, success: function (result) { state.csrf = result.csrf; state.loginMode = null; return boot(); }, language: function (locale) { setPref("aramis-lang", locale); return loadStrings(locale); }, theme: cycleTheme, message: message });
   }
 
   function login(body) {
     return api("/api/login", { method: "POST", body: body }).then(function (result) {
       state.csrf = result.csrf;
+      state.loginMode = null;
       return boot();
     });
   }
@@ -1557,7 +1613,7 @@
       return html`<div class="msg msg-user" data-at="${item.at || ""}"><div class="bubble" dir="${textDir(item.text)}">${item.text ? markdown(item.text) : ""}${item.images ? html`<p class="msg-images">${icon("file")}${t("chats.images", { count: item.images })}</p>` : ""}</div>${item.at ? html`<time class="msg-time">${ltr(fmtDate(item.at))}</time>` : ""}</div>`;
     }
     if (item.kind === "assistant") {
-      return html`<div class="msg msg-assistant"><span class="msg-mark">${icon("sparkles")}</span><div class="answer" dir="${textDir(item.text)}">${markdown(item.text)}</div></div>`;
+      return html`<div class="msg msg-assistant"><span class="msg-mark">${icon("sparkles")}</span><div class="answer" dir="${textDir(item.text)}">${markdown(item.text)}${item.account ? html`<span class="turn-account">${icon("user")}${t("ui.accounts.ranOn", { account: item.account })}</span>` : ""}</div></div>`;
     }
     if (item.kind === "tool") {
       return html`<div class="msg msg-tool">${toolChip(item)}</div>`;
@@ -1890,14 +1946,15 @@
     updateChrome();
     var renderId = ++state.renderId;
     if (!soft || !sameView) {
-      container.innerHTML = out(skeleton(view.skeleton));
+      container.innerHTML = out(pageHead(route, view)) + out(skeleton(view.skeleton));
       container.scrollTop = 0;
       if (!soft) window.scrollTo(0, 0);
     }
     view.load(route).then(function (data) {
       if (renderId !== state.renderId) return;
       var scroll = window.scrollY;
-      container.innerHTML = out(view.render(data, route));
+      container.innerHTML = out(pageHead(route, view)) + out(view.render(data, route));
+      if (window.AC && window.AC.scan) { try { window.AC.scan(container); } catch (error) { /* decorative */ } }
       if (view.mount) view.mount(container, data, route);
       container.classList.remove("enter");
       void container.offsetWidth;
@@ -1907,7 +1964,7 @@
       updateChrome();
     }).catch(function (error) {
       if (renderId !== state.renderId || error.silent) return;
-      container.innerHTML = out(error.status === 404 ? html`<div class="card">${empty("search", t("common.noResults"), error.message)}</div>` : errorCard(error));
+      container.innerHTML = out(pageHead(route, view)) + out(error.status === 404 ? html`<div class="card">${empty("search", t("common.noResults"), error.message)}</div>` : errorCard(error));
     });
   }
   var softRefresh = debounce(function () {
@@ -1929,7 +1986,8 @@
       { group: "actions", icon: "shield", label: t("home.reviewNow"), hash: "#/approvals" }
     ];
     if (state.features.runner) actions.push({ group: "actions", icon: "zap", label: t("runs.newRun"), hash: "#/runs" });
-    return actions.concat(pages);
+    var extras = window.Aramis.hooks.palette ? window.Aramis.hooks.palette() : [];
+    return actions.concat(extras, pages);
   }
   function openPalette() {
     var root = document.getElementById("ar-palette-root");
@@ -2198,6 +2256,17 @@
       case "lang": setLanguage(target.getAttribute("data-value")); break;
       case "notifications": notificationsSheet(); break;
       case "close-sheet": closeSheet(); break;
+      case "toggle-secret": {
+        var secret = target.parentNode && target.parentNode.querySelector("input");
+        if (secret) {
+          var shown = secret.type === "password";
+          secret.type = shown ? "text" : "password";
+          target.setAttribute("aria-pressed", shown ? "true" : "false");
+          target.classList.toggle("is-shown", shown);
+          secret.focus();
+        }
+        break;
+      }
       case "close-sheet-nav": closeSheet(); break;
       case "reload": navigate(); break;
       case "approve": decisionSheet(id, "approve"); break;
@@ -2238,6 +2307,7 @@
         }).catch(function (error) { target.disabled = false; toast(t("common.error"), "danger", error.message); });
         break;
       case "skill": openSkill(id); break;
+      case "accounts-switcher": if (window.Aramis.actions.accountSwitcher) window.Aramis.actions.accountSwitcher(target); break;
       case "chat-new": newChatSheet(); break;
       case "chat-stop":
         if (!state.chat) break;
@@ -2337,6 +2407,7 @@
         break;
       }
       default:
+        if (window.Aramis.actions[action]) window.Aramis.actions[action](target, event, id);
         break;
     }
   });
@@ -2358,6 +2429,8 @@
         button.disabled = false;
         var codeInput = $("input[name=code]", form);
         if (codeInput) codeInput.value = "";
+        var secretInput = $("input[name=password], input[name=token]", form);
+        if (secretInput) { secretInput.value = ""; secretInput.focus(); }
         if (error) {
           error.textContent = err.status === 429 ? t("login.tooMany") : err.status === 403 ? t("login.methodRefused") : form.getAttribute("data-mode") === "password" ? t("login.invalidPassword") : t("login.invalid");
           error.hidden = false;
@@ -2508,15 +2581,22 @@
     }
   });
 
+  // Ctrl/Cmd+K. The AraminConsole runtime binds the same shortcut on `document` and would open its
+  // own (empty) palette on top of this one. This listener runs first (window, capture phase) and stops
+  // the event, so exactly one palette ever opens: Aramis's, which also searches memory, chats and runs.
+  // Works on every keyboard layout (event.code), also on the login screen where nothing opens.
+  window.addEventListener("keydown", function (event) {
+    if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
+    if (!(event.code === "KeyK" || event.key === "k" || event.key === "K")) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (!state.authenticated || event.isComposing) return;
+    if ($(".palette.open")) closePalette();
+    else openPalette();
+  }, true);
+
   document.addEventListener("keydown", function (event) {
     var paletteOpen = Boolean($(".palette.open"));
-    if ((event.ctrlKey || event.metaKey) && (event.key === "k" || event.key === "K")) {
-      if (!state.authenticated) return;
-      event.preventDefault();
-      if (paletteOpen) closePalette();
-      else openPalette();
-      return;
-    }
     if (event.key === "Enter" && event.target && event.target.hasAttribute && event.target.hasAttribute("data-composer") && !event.shiftKey && !event.isComposing && !(window.matchMedia && window.matchMedia("(pointer: coarse)").matches)) {
       event.preventDefault();
       var composerForm = event.target.closest("form");
@@ -2557,7 +2637,12 @@
     event.preventDefault();
     state.installPrompt = event;
   });
-  window.addEventListener("online", function () { if (state.authenticated) startEvents(); });
+  window.addEventListener("online", function () {
+    if (state.authenticated) { setOnline(true); startEvents(); }
+    else if (document.querySelector("#ar-root .error-card")) location.reload();
+  });
+  // the browser knows at once when the network is gone; the event stream can take a minute to notice
+  window.addEventListener("offline", function () { if (state.authenticated) setOnline(false); });
 
   // ----------------------------------------------------------------- boot
 
@@ -2574,6 +2659,7 @@
         renderLogin();
         return null;
       }
+      if (window.AramisLogin) window.AramisLogin.unmount();
       state.authenticated = true;
       state.csrf = session.csrf;
       state.features = session.features || {};
@@ -2587,12 +2673,56 @@
     });
   }
 
+  // Latin commands inside Persian guillemets («astack ask … --engage») get scrambled by the bidi
+  // algorithm: the quotes and the words swap sides. Every text node that holds such a span is
+  // split once so the Latin part sits in its own left-to-right isolate.
+  var LATIN_QUOTE = /«([^»«]*[A-Za-z][^»«]*)»/;
+  function isolateLatinQuotes(root) {
+    if (!root || root.nodeType !== 1 || root.textContent.indexOf("«") === -1) return;
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: function (node) {
+        if (node.nodeValue.indexOf("«") === -1 || !LATIN_QUOTE.test(node.nodeValue)) return NodeFilter.FILTER_REJECT;
+        var tag = node.parentNode && node.parentNode.nodeName;
+        return /^(SCRIPT|STYLE|TEXTAREA|CODE|PRE|BDI)$/.test(tag) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    var nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(function (node) {
+      var fragment = document.createDocumentFragment();
+      var rest = node.nodeValue;
+      var match;
+      while ((match = LATIN_QUOTE.exec(rest))) {
+        var bdi = document.createElement("bdi");
+        bdi.setAttribute("dir", "ltr");
+        bdi.className = "ltr-quote";
+        bdi.textContent = "«" + match[1] + "»";
+        fragment.appendChild(document.createTextNode(rest.slice(0, match.index)));
+        fragment.appendChild(bdi);
+        rest = rest.slice(match.index + match[0].length);
+      }
+      fragment.appendChild(document.createTextNode(rest));
+      node.parentNode.replaceChild(fragment, node);
+    });
+  }
+  function watchBidi() {
+    if (!window.MutationObserver) return;
+    new MutationObserver(function (records) {
+      records.forEach(function (record) {
+        Array.prototype.forEach.call(record.addedNodes, function (node) { isolateLatinQuotes(node.nodeType === 1 ? node : node.parentNode); });
+      });
+    }).observe(document.body, { childList: true, subtree: true });
+  }
+
   function start() {
+    watchBidi();
     applyTheme(getPref("aramis-theme", "system"));
     var preferred = getPref("aramis-lang", "");
     fetch("/api/session", { credentials: "same-origin", cache: "no-store" }).then(function (r) { return r.json(); }).catch(function () { return {}; }).then(function (session) {
-      return loadStrings(preferred || session.locale || "fa");
+      return loadStrings(preferred || "fa");
     }).then(boot).catch(function (error) {
+      // a failed fetch is a TypeError: say "offline" in plain words instead of the browser's English message
+      if (error instanceof TypeError) error = new Error(t("common.offline"));
       document.getElementById("ar-root").innerHTML = out(html`<div class="login"><div class="login-card">${errorCard(error)}</div></div>`);
     });
     if ("serviceWorker" in navigator) {
@@ -2602,6 +2732,22 @@
       });
     }
   }
+
+  // The Accounts, Projects and keyboard scripts (js/*.js) plug into the app here.
+  window.Aramis = {
+    VIEWS: VIEWS,
+    state: state,
+    actions: {},
+    hooks: {},
+    api: api, t: t, html: html, raw: raw, out: out, esc: esc, icon: icon, ltr: ltr, tIcon: tIcon,
+    badge: badge, empty: empty, errorCard: errorCard, skeleton: skeleton, segmented: segmented,
+    toast: toast, openSheet: openSheet, closeSheet: closeSheet, setSheet: setSheet,
+    go: go, navigate: navigate, openPalette: openPalette, setLanguage: setLanguage,
+    relTime: relTime, when: when, fmtDate: fmtDate, debounce: debounce, $: $, $all: $all,
+    chatsOn: chatsOn,
+    isRemote: function () { return Boolean(state.session && state.session.remote); },
+    NAV: NAV
+  };
 
   start();
 })();

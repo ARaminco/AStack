@@ -24,6 +24,7 @@ import { runSandboxCommand } from "../cli/sandbox-cli.mjs";
 import { runVaultCommand } from "../cli/vault-cli.mjs";
 import { runA2ACommand } from "../cli/a2a-cli.mjs";
 import { runSessionCommand } from "../cli/session-cli.mjs";
+import { runAccountCommand } from "../cli/account-cli.mjs";
 import { runGatewayCommand } from "../cli/gateway-cli.mjs";
 import { runConsoleCommand } from "../console/cli.mjs";
 import { readServerRecord } from "../console/server.mjs";
@@ -44,6 +45,7 @@ const COMMANDS = [
 COMMANDS.push("run", "runner", "daemon");
 COMMANDS.push("gateway");
 COMMANDS.push("session");
+COMMANDS.push("account");
 
 function printHelp() {
   console.log(i18n.t("cli.title"));
@@ -327,6 +329,10 @@ async function run() {
     case "session":
     case "sessions":
       await runSessionCommand(context);
+      return;
+    case "account":
+    case "accounts":
+      await runAccountCommand(context);
       return;
     default:
       throw new Error(i18n.t("cli.unknownCommand", { command }));

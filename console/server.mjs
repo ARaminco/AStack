@@ -10,6 +10,10 @@ import { ConsoleEvents } from "./events.mjs";
 import { ConsoleUsers, LoginGuard, normalizeUsername } from "./users.mjs";
 import { AccessVerifier, accessTeamOrigin } from "./access.mjs";
 import { ChatError, ChatManager } from "./chats.mjs";
+import { AccountError, ClaudeAccounts } from "./accounts.mjs";
+import { ProjectsError, ProjectsHub, privateProject, privateSession } from "./projects.mjs";
+import { UsersAdmin, UsersError } from "./users-admin.mjs";
+import { ConsoleNotifier, resolveNotifySettings } from "./notify.mjs";
 import { parseInterval } from "../scheduler-engine/cron.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -180,6 +184,7 @@ export function resolveConsoleSettings(config = {}, overrides = {}) {
     chats: config.chats && typeof config.chats === "object" ? config.chats : {},
     remote,
     brand: resolveBrand(config.brand),
+    notify: resolveNotifySettings(config.notify),
     warnings
   };
 }
@@ -341,7 +346,7 @@ function parseCookies(header) {
  * stream for live badges and notifications. Bound to loopback by default.
  */
 export class ConsoleServer {
-  constructor({ runtime, host = DEFAULT_HOST, port = DEFAULT_PORT, pollMs = 3000, sessionDays = 30, locale = null, allowedHosts = [], log = console.log, clock = null, authMode = null, sessionIdleMs = null, lockout = {}, chats = {}, remote = null, accessFetch = null, accessCertsUrl = null, claudeHome = null, totpVault = undefined, brand = null } = {}) {
+  constructor({ runtime, host = DEFAULT_HOST, port = DEFAULT_PORT, pollMs = 3000, sessionDays = 30, locale = null, allowedHosts = [], log = console.log, clock = null, authMode = null, sessionIdleMs = null, lockout = {}, chats = {}, remote = null, accessFetch = null, accessCertsUrl = null, claudeHome = null, totpVault = undefined, brand = null, notify = null } = {}) {
     if (!runtime) {
       throw new Error("ConsoleServer needs a runtime");
     }
@@ -358,6 +363,8 @@ export class ConsoleServer {
     this.clock = clock ?? (() => new Date());
     this.auth = new ConsoleAuth(this.directory, { clock, sessionDays, idleMs: sessionIdleMs });
     this.users = new ConsoleUsers(this.directory, { clock, workspaceRoot: runtime.workspaceRoot, ...(totpVault !== undefined ? { vault: totpVault } : {}) });
+    this.usersAdmin = new UsersAdmin(this);
+    this.notifier = new ConsoleNotifier({ runtime, settings: notify, log, clock: this.clock });
     const minutes = Number(lockout.minutes ?? 15) > 0 ? Number(lockout.minutes ?? 15) : 15;
     // Persisted (hashed keys, expiry), so a restart does not reset a lock.
     this.guard = new LoginGuard({ attempts: Number(lockout.attempts ?? 5) || 5, windowMs: minutes * 60 * 1000, lockMs: minutes * 60 * 1000, clock, path: join(this.directory, "lockouts.json") });
@@ -365,6 +372,19 @@ export class ConsoleServer {
     this.events = new ConsoleEvents(runtime, { pollMs, clock });
     this.api = new ConsoleApi(runtime, { events: this.events, server: this, clock });
     this.chats = new ChatManager({ runtime, config: chats, events: this.events, clock, home: claudeHome, log });
+    this.accounts = new ClaudeAccounts({ runtime, claudeHome: this.chats.home, chatTurns: () => this.chats.turns.size, clock });
+    this.chats.accountEmail = () => this.accounts.activeEmail();
+    // Projects and sessions hub; a non-default Claude home keeps its title state in the workspace.
+    this.projects = new ProjectsHub({
+      claudeHome: this.chats.home,
+      metaPath: join(this.directory, "projects-meta.json"),
+      clock,
+      chatProjects: () => this.chats.projects().map((entry) => entry.path),
+      titlesConfig: runtime.configuration?.section?.("session_titles", {}) ?? {},
+      titlesRoot: claudeHome ? join(runtime.workspaceRoot, ".astack", "session-titles") : null,
+      titlesHome: claudeHome ? runtime.workspaceRoot : null,
+      syncRemote: !claudeHome
+    });
     this.accessFetch = accessFetch;
     this.accessCertsUrl = accessCertsUrl;
     this.access = null;
@@ -445,7 +465,9 @@ export class ConsoleServer {
     return {
       methods: mode === "both" ? ["password", "token"] : [mode],
       totp: !withTotp ? "off" : withTotp === users.length ? "required" : "optional",
-      remote: false
+      remote: false,
+      // No console user yet: the owner token creates the first administrator.
+      firstRun: users.length === 0
     };
   }
 
@@ -562,11 +584,19 @@ export class ConsoleServer {
           resolvePromise({});
           return;
         }
+        let parsed;
         try {
-          resolvePromise(JSON.parse(raw));
+          parsed = JSON.parse(raw);
         } catch {
           reject(new HttpError(400, "invalid JSON body"));
+          return;
         }
+        // Every route reads fields from the body: null, a list or a bare value is a client mistake, not a server error.
+        if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+          reject(new HttpError(400, "a JSON object body is required"));
+          return;
+        }
+        resolvePromise(parsed);
       });
       request.on("error", reject);
     });
@@ -589,7 +619,7 @@ export class ConsoleServer {
 
   serveStatic(request, response, pathname) {
     let relative = pathname === "/" ? "/index.html" : pathname;
-    if (relative === "/sw.js" || relative === "/manifest.webmanifest" || relative.startsWith("/icons/") || relative.startsWith("/fonts/") || /^\/[a-z0-9-]+\.(js|css|html|svg|png|txt)$/i.test(relative)) {
+    if (relative === "/sw.js" || relative === "/manifest.webmanifest" || relative.startsWith("/icons/") || relative.startsWith("/fonts/") || relative.startsWith("/vendor/") || relative.startsWith("/js/") || /^\/[a-z0-9-]+\.(js|css|html|svg|png|txt)$/i.test(relative)) {
       // known shell asset shapes only
     } else {
       // Every other path is a client-side route: serve the shell.
@@ -708,6 +738,7 @@ export class ConsoleServer {
             features: { ...this.api.features(), chats: this.chatAccess(listener) },
             server: { loopback: isLoopback(this.host), remote: listener.kind === "remote", runner: listener.kind !== "remote" || Boolean(this.remote?.runner) },
             user: session.user ?? null,
+            role: session.user ? this.users.roleOf(session.user) : "admin",
             method: session.method ?? "token",
             stepUp: listener.kind === "remote" ? (this.remote?.totp === false && !this.users.hasTotp(session.user) ? "password" : "totp") : false,
             login
@@ -757,6 +788,7 @@ export class ConsoleServer {
     if (pathname === "/api/logout-all" && method === "POST") {
       const ended = this.auth.destroyAll();
       this.runtime.audit?.record({ actor: "owner@console", action: "console-logout-all", target: address, riskLevel: "L1", result: ended + " session(s) ended" });
+      this.notifier.routed({ method, pathname, session, listener, address, userAgent: request.headers["user-agent"] });
       this.send(response, 200, { ok: true, data: { ended } }, { "set-cookie": this.sessionCookie("", 0, listener) });
       return;
     }
@@ -767,6 +799,7 @@ export class ConsoleServer {
       this.send(response, 404, { ok: false, error: "unknown endpoint" });
       return;
     }
+    this.notifier.routed({ method, pathname, session, listener, address, userAgent: request.headers["user-agent"] });
     this.send(response, 200, { ok: true, data: result });
   }
 
@@ -819,6 +852,7 @@ export class ConsoleServer {
       const gate = this.guard.check(keys);
       if (!gate.allowed) {
         this.runtime.audit?.record({ actor: "console", action: "console-login-locked", target: address, riskLevel: "L1", result: (method === "password" ? "user" : method) + (username ? " " + username : "") });
+        this.notifier.lockout({ address, listener, target: method === "password" ? username : null });
         this.send(response, 429, { ok: false, error: "too many attempts, try again later", retryAfterSeconds: Math.ceil(gate.retryAfterMs / 1000) }, { "retry-after": String(Math.ceil(gate.retryAfterMs / 1000)) });
         return;
       }
@@ -848,6 +882,11 @@ export class ConsoleServer {
         return;
       }
       user = name;
+      try {
+        this.users.touchLogin(name);
+      } catch {
+        // the last sign-in time is a convenience; signing in does not depend on it
+      }
     }
     this.guard.succeed(keys);
     const remote = listener.kind === "remote";
@@ -861,6 +900,7 @@ export class ConsoleServer {
       credentialVersion: user ? this.users.credentialVersion(user) : null
     });
     this.runtime.audit?.record({ actor: "owner@console", action: "console-login", target: address, riskLevel: "L1", result: "session (" + (method === "password" ? "user" : method) + (user ? " " + user : "") + ", " + listener.kind + (request.accessEmail ? ", access " + request.accessEmail : "") + ")" });
+    this.notifier.login({ method, user, usedCode: Boolean(user) && this.users.hasTotp(user), listener, address, userAgent: request.headers["user-agent"] });
     this.send(response, 200, { ok: true, authenticated: true, csrf: created.csrf }, { "set-cookie": this.sessionCookie(created.id, created.maxAgeSeconds, listener) });
   }
 
@@ -910,11 +950,139 @@ export class ConsoleServer {
     }
   }
 
+  /** /api/projects*: projects and their Claude sessions. Reading is allowed everywhere, writing never over the internet listener. */
+  async projectsRoute(method, id, action, query, body, listener, address) {
+    const call = async (fn) => {
+      try {
+        return await fn();
+      } catch (error) {
+        if (error instanceof ProjectsError) {
+          throw new HttpError(error.status, error.message);
+        }
+        throw error;
+      }
+    };
+    if (method === "GET") {
+      // Over the internet: no titles, prompts or paths (prompts can carry private material).
+      const privateView = listener.kind === "remote";
+      // Summaries that are not cached yet are built in short slices first, so a cold listing never freezes the server.
+      if (!id) {
+        return call(async () => {
+          await this.projects.warm();
+          const list = this.projects.projects();
+          return privateView ? list.map(privateProject) : list;
+        });
+      }
+      if (id === "sessions") {
+        return call(async () => {
+          await this.projects.warm({ project: query.project || null, sidechains: query.sidechains });
+          return this.projects.sessions(query, { privateView });
+        });
+      }
+      if (id === "session") {
+        return call(() => {
+          const entry = this.projects.session(query.id);
+          return privateView ? privateSession(entry) : entry;
+        });
+      }
+      return id === "usage" ? call(() => this.projects.usage({ project: query.project })) : undefined;
+    }
+    if (method !== "POST") {
+      return undefined;
+    }
+    if (listener.kind === "remote") {
+      throw new HttpError(403, "projects and sessions are not changed over the internet listener");
+    }
+    const audit = (action_, target, result) => this.runtime.audit?.record({ actor: "owner@console", action: action_, target, riskLevel: "L1", result });
+    if (id === "session" && action === "meta") {
+      const result = await call(() => this.projects.setSessionMeta(body.id, { pinned: body.pinned, archived: body.archived, tags: body.tags }));
+      audit("console-session-meta", result.id, "pinned=" + result.pinned + " archived=" + result.archived + " tags=" + result.tags.length);
+      return result;
+    }
+    if (id === "session" && action === "rename") {
+      const result = await call(() => this.projects.rename(body.id, body.title));
+      audit("console-session-rename", result.id, result.rename.status);
+      return result;
+    }
+    if (id === "meta" && !action) {
+      await call(() => this.projects.warm());
+      const result = await call(() => this.projects.setProjectMeta(body.id, { pinned: body.pinned, label: body.label, color: body.color }));
+      audit("console-project-meta", result.id, "pinned=" + result.pinned);
+      return result;
+    }
+    return undefined;
+  }
+
+  /** /api/accounts*: the owner's Claude logins. Reading is allowed everywhere, switching never over the internet listener. */
+  async accountsRoute(method, id, query, body, listener) {
+    const call = async (fn) => {
+      try {
+        return await fn();
+      } catch (error) {
+        if (error instanceof AccountError) {
+          throw new HttpError(error.status, error.message, { ...(error.details ?? {}), ...(error.code ? { code: error.code } : {}) });
+        }
+        throw error;
+      }
+    };
+    if (method === "GET") {
+      if (!id) {
+        return call(() => this.accounts.list());
+      }
+      return id === "usage" ? call(() => this.accounts.usage(query.id || null)) : undefined;
+    }
+    if (method !== "POST") {
+      return undefined;
+    }
+    if (listener.kind === "remote") {
+      throw new HttpError(403, "Claude accounts are not changed over the internet listener");
+    }
+    switch (id) {
+      case "save":
+        return call(() => this.accounts.save({ label: body.label }));
+      case "switch":
+        return call(() => this.accounts.switch(body.id, { force: body.force === true }));
+      case "remove":
+        return call(() => this.accounts.remove(body.id));
+      case "label":
+        return call(() => this.accounts.label(body.id, body.label));
+      default:
+        return undefined;
+    }
+  }
+
+  /** What a conversation may reach: with `console.chats.projects: all` only an administrator on this computer sees every project. */
+  chatScope(session, listener = LOCAL) {
+    const admin = !session?.user || this.users.isAdmin(session.user);
+    return { restricted: listener.kind === "remote" || !admin };
+  }
+
+  /** /api/users*: console users, the first administrator and the sign-in mode. Local only. */
+  async usersRoute(method, id, body, session, listener, address) {
+    try {
+      return await this.usersAdmin.route(method, id, body, session, listener, address);
+    } catch (error) {
+      if (error instanceof UsersError) {
+        throw new HttpError(error.status, error.message, error.details);
+      }
+      throw error;
+    }
+  }
+
   async route(method, pathname, query, body, session, listener = LOCAL, address = "unknown") {
     const api = this.api;
     const segments = pathname.split("/").filter(Boolean).slice(1).map((segment) => decodeURIComponent(segment));
     const [resource, id, action] = segments;
     const hideChat = this.hidesChatApprovals(listener);
+    if (resource === "users") {
+      return this.usersRoute(method, id, body, session, listener, address);
+    }
+    if (resource === "accounts") {
+      return this.accountsRoute(method, id, query, body, listener);
+    }
+    if (resource === "projects") {
+      return this.projectsRoute(method, id, action, query, body, listener, address);
+    }
     if (resource === "chats") {
       const access = this.chatAccess(listener);
       if (!access.enabled) {
@@ -922,19 +1090,19 @@ export class ConsoleServer {
       }
       if (method === "GET") {
         if (!id) {
-          return this.chatCall(() => this.chats.list(query));
+          return this.chatCall(() => this.chats.list({ ...query, ...this.chatScope(session, listener) }));
         }
         if (id === "status") {
           return this.chats.status();
         }
-        return this.chatCall(() => this.chats.get(id, { before: query.before ?? null, turns: query.turns, agent: query.agent || null }));
+        return this.chatCall(() => this.chats.get(id, { before: query.before ?? null, turns: query.turns, agent: query.agent || null, ...this.chatScope(session, listener) }));
       }
       if (method === "POST") {
         if (!id) {
-          return this.chatCall(() => this.chats.send({ project: body.project ?? 0, prompt: body.prompt, channel: listener.kind }));
+          return this.chatCall(() => this.chats.send({ project: body.project ?? 0, prompt: body.prompt, channel: listener.kind, ...this.chatScope(session, listener) }));
         }
         if (action === "messages") {
-          return this.chatCall(() => this.chats.send({ sessionId: id, prompt: body.prompt, channel: listener.kind }));
+          return this.chatCall(() => this.chats.send({ sessionId: id, prompt: body.prompt, channel: listener.kind, ...this.chatScope(session, listener) }));
         }
         if (action === "stop") {
           this.runtime.audit?.record({ actor: "owner@console", action: "console-chat-stop", target: id, riskLevel: "L1", result: "stop requested" });

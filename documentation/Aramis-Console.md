@@ -57,7 +57,7 @@ until it has been idle for `console.session_idle` when that is set.
 
 `console.auth` defaults to `both` once a console user exists, else `token`
 (`password` with no user falls back to `token`, so the owner is never locked
-out). Passwords are hashed with scrypt (N = 2^15, r = 8, p = 1, a salt per
+out). Passwords are hashed with scrypt (N = 2^17, r = 8, p = 1, a salt per
 user); an unknown username costs the same scrypt as a known one. TOTP is RFC
 6238 (SHA-1, 30 s, 6 digits, one step of drift) and every code works once.
 
@@ -88,6 +88,152 @@ serves HTTPS (installing as an app on a phone needs HTTPS too):
 
 Then sign in on the phone with the token or a console user. Never expose the
 console on a public address without HTTPS in front of it.
+
+## Admin sign-in (4.0)
+
+One administrator, many projects. Aramis signs an administrator in with a
+**username and password** (and an authenticator code when they turned it on),
+and with `console.chats.projects: all` that administrator reaches every
+project Claude Code has worked in. Everything that creates or changes a user
+is **local only**.
+
+### First run
+
+On a fresh install there is no console user, so the owner token is the only way
+in (`astack console open`, `astack console start --open`, or the token pasted on
+the sign-in screen). The login options then say `firstRun: true` and, once
+signed in with the token or the one-time link **on this computer**, the console
+offers to create the first administrator:
+
+```text
+POST /api/users   { "username": "ali", "password": "…", "confirm": "…" }
+```
+
+- It works only from a local token or ticket session, and the first user is
+  always an administrator (the role asked for does not matter). From then on
+  the first-run offer is gone (`setup.needed: false`); more users are added by
+  an administrator or by the token session.
+- The password is sent once over loopback, stored only as a salted scrypt hash
+  (N = 2^17, r = 8, p = 1) and never logged, audited or returned.
+- Nothing else is needed on the command line: `astack console user set <name>`
+  still works and makes an administrator (a user without a role is an
+  administrator).
+
+### Passwords chosen in the browser
+
+At least 12 characters, at most 256, and none of: the username (in any case or
+with punctuation), digits only, one or two repeated characters, a well-known
+password. A refusal is HTTP 400 with `reason` one of `short`, `long`,
+`username`, `digits`, `repeated`, `common`, `mismatch` (the confirmation
+differs) or `username-format`. The command line keeps its 10-character minimum.
+
+### Signing in
+
+`POST /api/login { username, password, code? }`. A wrong password and an unknown
+username get the same `401 invalid credentials` and cost the same scrypt. The
+lockout is unchanged: `console.lockout.attempts` failures (default 5) inside
+`console.lockout.minutes` (15) lock the address and the username (HTTP 429 with
+`Retry-After`), and the lock also covers the owner token. TOTP is unchanged:
+RFC 6238, one use per code, mandatory only on the internet listener unless
+`console.remote.totp: false`.
+
+### Roles
+
+| Role | May |
+|---|---|
+| `admin` | create, remove and change the role of users, set `console.auth`, and — with `console.chats.projects: all` — use every project on the local listener |
+| `user` | sign in, see only themselves, change their own password and TOTP, use the conversations of the explicit project list (or the workspace) |
+
+- A user created before roles existed has no role and counts as an administrator.
+- **The last administrator is protected**: removing them or demoting them is
+  refused with HTTP 409 and `reason: "last-admin"`. Promote someone else first.
+- A user added later is a `user` unless `role: "admin"` is given.
+- A token or one-time-link session has no user: it acts as the machine owner
+  (an administrator).
+- Removing a user ends all of their sessions; a changed password or TOTP ends
+  every other session of that user.
+
+### Changing your own password or TOTP
+
+`POST /api/users/password { current, password, confirm }` and
+`POST /api/users/totp { action: "enable"|"disable", current }` need the
+**current password**. A wrong or missing one is **HTTP 422** (`reason:
+"current"`), never 401, so the screen stays signed in and shows the message;
+wrong attempts count against the same lockout as sign-in. On success every
+other session of that user ends and the one in use stays, bound to the new
+credentials. The TOTP key is shown once, in the answer that turns it on.
+
+### Local only: the user routes
+
+Every `/api/users*` route (`GET /api/users`, and `POST` to `/api/users`,
+`/password`, `/totp`, `/remove`, `/role`, `/auth-mode`) answers **403 on the
+internet listener**, for administrators too, and creates nothing there. Users,
+passwords and the sign-in mode are never managed from outside this computer.
+Every change is audited without any secret (`console-user-created`,
+`console-user-removed`, `console-user-role`, `console-user-secret-changed`,
+`console-user-totp`, `console-auth-mode`).
+
+### `console.auth`
+
+`token`, `password` or `both` (default `both` once a user exists, else
+`token`). An administrator switches it in the console
+(`POST /api/users/auth-mode { mode: "password"|"both" }`):
+
+- `password` is refused with 409 (`reason: "no-admin"`) until an administrator
+  exists, so the owner can never lock themselves out; the saved value
+  `password` with nobody to sign in falls back to the token.
+- The change is applied immediately and saved in `astack.config.yaml` as a
+  one-line edit of the `console:` section: comments, order and the file's line
+  endings (CRLF or LF) stay as they are. The old file is copied first to
+  `.astack/backups/console-auth-<time>/astack.config.yaml` (never overwritten by
+  a later change).
+- If the `console:` section has an unusual shape (for example
+  `console: { port: 7717 }`) or there is no config file, **nothing is written**:
+  the change holds for this run and the answer carries the exact lines to add
+  by hand (`console:` / `  auth: password`).
+- The one-time link from `astack console open` is a machine-local convenience
+  and is not governed by `console.auth`.
+
+### `console.chats.projects: all`
+
+```yaml
+console:
+  chats:
+    projects: all        # or "*", or a list that includes all
+```
+
+The conversation list then holds the workspace plus **every project Claude
+Code has worked in** (the project folders under the Claude home, with the real
+folder read from the transcripts), without listing each one. A project whose
+folder no longer exists on disk is skipped. Who sees them:
+
+| Who | Projects |
+|---|---|
+| administrator (or token session) on the **local** listener | all |
+| a `user` on the local listener | the explicit `projects` list, else the workspace |
+| anyone on the **internet** listener, administrators included | the explicit list, else the workspace |
+
+A restricted caller cannot list or open a session of a project outside their
+set (404), and starting a conversation there by index is refused (400).
+
+What it changes about permissions and budgets: **nothing is relaxed**. A turn
+in another project runs there (`cwd` is that project's folder), with the same
+permission mode, allowed tools and deny rules as any other turn
+(`bypassPermissions` stays refused; the console's, vault's, gateway's and
+accounts' state folders stay denied everywhere); every tool use outside
+`allowed_tools` still waits for an approval in this console; and there is one
+`daily_budget_usd` and one ledger for all projects together
+(`.astack/console/chats/ledger.jsonl`). Reach is wider, authority is not.
+The Projects screen marks every discovered project as chat-enabled.
+
+### Internet listener
+
+Unchanged except what is said above: username, password and (by default) a
+TOTP code behind Cloudflare Access; no token or ticket sign-in; `/api/users*`
+answers 403; conversations stay off unless `console.remote.chat: true`, and
+then see only the workspace or the explicit project list.
+
+Tests: `tests/verify-console-auth.mjs` (`npm run test:console-auth`).
 
 ## Start it
 
@@ -443,6 +589,122 @@ maskable one, and `sw.js`, which caches the shell for offline start and never
 caches or intercepts `/api/*`. The server stamps a content hash of
 `console/public/` into the worker, so a changed shell replaces the old cache.
 
+## Login notifications (4.0)
+
+Aramis tells the owner on Telegram (the gateway's owner chat) about every **successful sign-in**: user (or token / one-time ticket), method (with the authenticator code when used), local or internet connection, address, browser and system, and the time in `console.notify.timezone`. The last line says what to do if it was not the owner. It also sends a warning when sign-in is **locked** after repeated failures (once a minute at most) and when a **security change** is made: user created, password / TOTP / role changed, user removed, sign-in mode changed, Claude account switched, saved or removed, sign out everywhere.
+
+A failed sign-in sends nothing, and a refused change sends nothing. Messages are fire-and-forget with an 8 second timeout: a missing, slow or failing gateway never delays or breaks a sign-in, and identical messages within 5 seconds are sent once. No password, token, ticket, cookie, code or session id is ever put in a message, and user supplied text is stripped of line breaks and bidi controls.
+
+```yaml
+console:
+  notify:
+    enabled: true      # false = no messages at all
+    login: true
+    lockout: true
+    security: true
+    channel: telegram
+    timezone: Asia/Dubai
+```
+
+Test: `npm run test:console-notify` (a fake gateway; nothing real is sent).
+
+## Claude accounts
+
+Switch between your Claude accounts from the dashboard (`/api/accounts`) or the
+terminal (`astack account`) and continue the same chat under another account.
+Chat transcripts (`~/.claude/projects`) and all AStack memory are account
+independent, so the next turn of a chat simply runs
+`claude -p --resume <id>` under the newly active login. Each chat turn records
+the account it ran on (`account` on the turn events and in the spend ledger).
+
+How it works (the same mechanism as karthiknl0/claude-account-switcher):
+
+- The live login is `<claudeHome>/.credentials.json` (`claudeAiOauth`: access
+  and refresh token) plus the `oauthAccount` object inside `.claude.json`
+  (`CLAUDE_CONFIG_DIR` is honoured). On macOS the credentials live in the Keychain
+  item "Claude Code-credentials" and are read and written through the `security` tool.
+- **Save** copies the live login to `~/.astack/accounts/<email>.json`
+  (override: `ASTACK_ACCOUNTS_DIR`). The folder is owner-only (`icacls` on Windows,
+  0700/0600 elsewhere) and is on the chat deny list, together with
+  `.credentials.json`, so a chat can never read it. Tokens never appear in an API
+  answer, an audit record or a log line.
+- **Switch** (1) writes a token that Claude Code refreshed while an account was live back
+  into its profile, (2) keeps one rolling backup of the live login in
+  `accounts/.backups/live-login.json`, (3) writes the credentials atomically (other keys,
+  such as MCP logins, stay), (4) replaces only the text span of `"oauthAccount"`
+  in `.claude.json` (every other byte stays identical), and (5) reads the result back;
+  a failed check restores the previous login.
+- A switch is refused (409) while a console chat turn is running; `force` overrides it.
+  The answer always lists other running `claude` processes as a warning
+  (`running-sessions`): an interactive terminal session keeps its old login until it is
+  restarted, and may write its refreshed token back to the live files.
+- **Usage** asks `api.anthropic.com/api/oauth/usage` (6 s timeout, cached 30 s) for the
+  five-hour and seven-day utilisation. A saved account whose access token has expired
+  answers `expired`: switch to it once so Claude Code refreshes it.
+- **Remove** deletes the local profile only; it never signs out of Claude.
+- The internet listener may read the list and usage, but never save, switch, label or
+  remove (403).
+
+```bash
+astack account list
+astack account save --label "Work"
+astack account switch work@example.com [--force]
+astack account usage [<id>]
+astack account label <id> <text>
+astack account remove <id>
+```
+
+Limits: the files of an already running interactive `claude` session are not
+re-read, so open terminals need a restart; on macOS the Keychain write passes the
+credentials to `security` as a command-line argument (visible to the same user's
+`ps` for an instant) and a Keychain prompt may appear; Claude Code may rewrite
+`.claude.json` at the same moment as a switch (a rare race, which the read-back
+verification reports).
+
+## Projects and sessions
+
+Every folder under the Claude home (`~/.claude/projects/<slug>/`, or
+`CLAUDE_CONFIG_DIR`) is a project, not only the ones in `console.chats.projects`;
+those carry `chatEnabled: true` (only they can receive new turns from the
+console). The real folder comes from the `cwd` in the transcripts. Drive-letter
+case variants (`c--` and `C--`) are one project, id = the lower-cased folder name.
+
+A session is a `<uuid>.jsonl` transcript. The list is built from the head
+(128 KB) and the tail (256 KB) of each file and cached by (mtime, size), so a
+90 MB chat costs two small reads; the middle is never read for the list.
+Consequences: `turns` of a file over 384 KB is an estimate (`turnsApprox: true`),
+and a rename older than the tail is found by a bounded look-back (3 MB). Title
+precedence: AStack or owner title (`custom-title`, `titleSource` `astack` /
+`owner`), Claude's `summary`, its generated `ai` title, then the cleaned first
+prompt. `agent-*.jsonl` files are sidechains: hidden unless `sidechains=1`,
+with `parent` set; `<id>/subagents/` shows as `hasSubagents` and, in the
+session detail, as `subagents`. A chat modified in the last 2 minutes is `live`.
+
+Owner metadata (pin, archive, tags per session; pin, label, colour per project)
+lives in `.astack/console/projects-meta.json`, written atomically. Renaming goes
+through the session-title engine (`SessionTitles.setTitle`, the record
+`astack session title` writes, mtime preserved) and then pushes the title to the
+phone (Remote Control) copy when the chat has one. Usage is the sum of
+`usage` tokens of assistant messages over the last 7 UTC days (sub-agents
+included, a streamed message counted once), scanned lazily and incrementally
+per file; transcripts over 400 MB are skipped and counted in `skipped`. Titles,
+prompts, tags and labels pass through `redactSecretsStrict` before leaving the
+server. Resume info is `claude --resume <id>` plus the project folder.
+
+Over the internet listener these endpoints are read-only (writes answer 403).
+
+| Endpoint | Meaning |
+| --- | --- |
+| `GET /api/projects` | projects: id, name, path, label, color, pinned, sessions, live, updatedAt, chatEnabled |
+| `GET /api/projects/sessions?project=&q=&tag=&archived=0\|1&pinned=&live=&sort=updated\|started\|turns&page=&size=&sidechains=` | `{ items, total, page, pages, size }`; no `project` searches all projects |
+| `GET /api/projects/session?id=` | one session plus `resume: { command, cwd }` and `subagents` |
+| `POST /api/projects/session/meta` | `{ id, pinned?, archived?, tags? }` |
+| `POST /api/projects/session/rename` | `{ id, title }` (title rules of `astack session title`) |
+| `POST /api/projects/meta` | `{ id, pinned?, label?, color? }` |
+| `GET /api/projects/usage?project=` | `{ days: [{ date, input, output, cacheRead, cacheWrite }], total }` |
+
+Code: `console/projects.mjs` (`ProjectsHub`). Test: `tests/verify-console-projects.mjs`.
+
 ## API (JSON, session required unless noted)
 
 | Method | Path | Notes |
@@ -453,6 +715,8 @@ caches or intercepts `/api/*`. The server stamps a content hash of
 | POST | `/api/login` | `{ token }`, `{ ticket }` (local, this computer only) or `{ username, password, code? }` |
 | POST | `/api/logout` | |
 | POST | `/api/logout-all` | 3.1: end every session |
+| GET | `/api/users` | 4.0, local listener only: users (a non-administrator sees only themselves), `me`, `setup`, `authMode`, `minPassword`, `roles` |
+| POST | `/api/users`, `/api/users/password`, `/api/users/totp`, `/api/users/remove`, `/api/users/role`, `/api/users/auth-mode` | 4.0, **403 on the internet listener**: create (the first administrator from a token or ticket session), change own password / TOTP (needs `current`; 422 when wrong), remove, set role, set `console.auth` — see [Admin sign-in](#admin-sign-in-40) |
 | GET | `/api/chats?q=&project=&page=&size=` | 3.1: conversation list, projects, today's spend |
 | GET | `/api/chats/:id?before=&turns=&agent=` | 3.1: one conversation (a window of turns; `agent=` a sub-agent) and the running turn |
 | POST | `/api/chats` | 3.1: `{ project, prompt }` starts a new session |
@@ -473,6 +737,11 @@ caches or intercepts `/api/*`. The server stamps a content hash of
 | GET | `/api/skills?q=&source=`, `/api/skills/:id` | |
 | GET | `/api/board`, `/api/gateway`, `/api/system`, `/api/search?q=` | |
 | GET | `/api/events` | Server-Sent Events |
+| GET | `/api/accounts` | Claude accounts: `active`, saved `accounts`, running `claude` processes, `chatTurnsRunning` |
+| POST | `/api/accounts/save` | `{ label? }` saves the current login |
+| POST | `/api/accounts/switch` | `{ id, force? }` (local listener only) |
+| GET | `/api/accounts/usage?id=` | five-hour and seven-day utilisation, or `{ error }` |
+| POST | `/api/accounts/remove`, `/api/accounts/label` | `{ id }`, `{ id, label }` (local listener only) |
 
 ## Configuration
 
@@ -521,5 +790,8 @@ CSRF, tickets), `console/events.mjs` (SSE hub and poller),
 (`astack console`), `console/public/` (the app); 3.1: `console/users.mjs`
 (users, scrypt, TOTP, lockout), `console/access.mjs` (Cloudflare Access JWT),
 `console/chats.mjs` (transcripts and turns), `lib/tool-summary.mjs` and the
-permission tool in `interop-engine/mcp-server.mjs`. Tests:
-`tests/verify-console.mjs`, `tests/verify-console-chats.mjs`.
+permission tool in `interop-engine/mcp-server.mjs`. 4.0: `console/users-admin.mjs` (`/api/users*`),
+`console/config-edit.mjs` (the `console.auth` edit), `console/project-folders.mjs`
+(`projects: all`). Tests:
+`tests/verify-console.mjs`, `tests/verify-console-chats.mjs`,
+`tests/verify-console-auth.mjs`.

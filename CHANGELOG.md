@@ -3,6 +3,14 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 4.0.0 — Aramis: new console UI, Claude accounts switcher, projects hub
+
+- The console is renamed from Aramin to Aramis (آرامیس) everywhere: documentation (`documentation/Aramis-Console.md`), the session cookie `aramis_sid`, and browser storage `aramis-*`. Old `aramin-*` keys are read once as a fallback, so existing installs keep their theme, language and layout.
+- The dashboard UI is rebuilt on the AraminConsole template (github.com/ARaminco/AraminConsole, MIT): rail and dock on desktop, a bottom tab bar on phones, large titles, a ⌘K command palette, dark mode and full RTL.
+- New Claude accounts switcher: `astack account list|save|switch|usage|label|remove`, `/api/accounts*`, an Accounts screen and a top-bar switcher in the dashboard. A switch swaps `~/.claude/.credentials.json` and the `oauthAccount` span of `~/.claude.json`, with sync-back of refreshed tokens, a rolling backup, atomic writes and automatic rollback. Chats resume under the new account because transcripts are account-independent; running terminal sessions need a restart. Writes are accepted from the local listener only.
+- New Projects and sessions hub (`/api/projects*`): a projects sidebar, session search, filters and sorting, pin, archive, tags and rename through the AStack session-title engine, a ready resume command and usage per project. The internet listener returns no titles, prompts or paths.
+- Keyboard shortcuts: ⌘/Ctrl+1..9 switch screens, ⌘[ and ⌘] move between them, ? shows the list.
+
 ## 3.8.4 — Chat titles for one-prompt chats
 
 - The first prompt of a chat is counted even before Claude Code has written its transcript, so prompt counts are no longer one short.

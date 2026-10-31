@@ -7,6 +7,8 @@ import { toolInputPreview, toolTarget } from "../lib/tool-summary.mjs";
 import { claudeSlug, cleanUserText } from "../search-engine/sources/sessions.mjs";
 import { MANDATORY_CLAUDE_DENIED, killProcessTree, resolveCommand, startProcess, unattendedEnv } from "../runner-engine/engines.mjs";
 import { PERMISSION_TOOL_NAME } from "../interop-engine/mcp-server.mjs";
+import { turnsFilePath, writeTurnsFile } from "./accounts.mjs";
+import { discoverProjectFolders } from "./project-folders.mjs";
 
 /**
  * Conversations (گفت‌وگوها): Claude Code sessions in the console.
@@ -57,7 +59,7 @@ const STDERR_TAIL = 4000;
  * a prefix is relative to the working directory. In Bash and PowerShell rules
  * `*` matches any text, spaces included, at any position.
  */
-export const CHAT_STATE_DIRECTORIES = ["console", "vault", "gateway"];
+export const CHAT_STATE_DIRECTORIES = ["console", "vault", "gateway", "accounts"];
 export const CHAT_STATE_DENIES = [
   ...CHAT_STATE_DIRECTORIES.flatMap((name) => [
     "Read(//**/.astack/" + name + "/**)",
@@ -67,12 +69,40 @@ export const CHAT_STATE_DENIES = [
   ]),
   // The workspace may sit outside the project folder a turn runs in.
   "Edit(//**/.astack/**)",
+  // The live Claude login (and the saved account profiles above): Read and Edit are denied outright.
+  // The Bash and PowerShell rules below are best effort text matching (a command can be rewritten to
+  // slip past a pattern); the owner's approval of every shell call is the real gate, and every
+  // streamed event is strict-redacted as a second layer.
+  "Read(//**/.credentials.json)",
+  "Edit(//**/.credentials.json)",
   ...CHAT_STATE_DIRECTORIES.flatMap((name) => ["Bash(*.astack/" + name + "*)", "PowerShell(*.astack*" + name + "*)"]),
+  // The backslash form and globs of the saved accounts folder, and the live login through a shell.
+  "PowerShell(*.astack*)",
+  ...["Bash", "PowerShell"].flatMap((tool) => ["*.credentials.json*", "*.cred*", "*Claude Code-credentials*", "*find-generic-password*"].map((pattern) => tool + "(" + pattern + ")")),
+  // A chat may not change the owner's Claude login (the CLI refuses unattended runs too).
+  ...["Bash", "PowerShell"].flatMap((tool) => ["save", "switch", "remove", "rm", "label"].flatMap((verb) => ["*astack* account* " + verb + "*", "*astack.mjs* account* " + verb + "*"].map((pattern) => tool + "(" + pattern + ")"))),
   "Bash(*astack* console*)",
   "Bash(*astack.mjs* console*)",
   "PowerShell(*astack* console*)",
   "PowerShell(*astack.mjs* console*)"
 ];
+
+/**
+ * Read and Edit denies for a saved-accounts folder moved outside ~/.astack
+ * (ASTACK_ACCOUNTS_DIR), written as an anchored path (`//d/acc/**` on Windows).
+ */
+export function accountsDirectoryDenies(env = process.env) {
+  const raw = String(env?.ASTACK_ACCOUNTS_DIR ?? "").trim();
+  if (!raw) {
+    return [];
+  }
+  let anchored = resolve(raw).replace(/\\/g, "/").replace(/\/+$/, "");
+  const drive = /^([A-Za-z]):\/(.*)$/.exec(anchored);
+  if (drive) {
+    anchored = "/" + drive[1].toLowerCase() + "/" + drive[2];
+  }
+  return ["Read", "Edit"].map((tool) => tool + "(/" + anchored + "/**)");
+}
 
 /**
  * Extra denies for a turn started from the remote (internet) listener when
@@ -383,8 +413,10 @@ export class ChatError extends Error {
  * Lists, reads and drives Claude Code sessions for the console.
  */
 export class ChatManager {
-  constructor({ runtime, config = {}, events = null, clock = null, home = null, log = () => {} } = {}) {
+  constructor({ runtime, config = {}, events = null, clock = null, home = null, log = () => {}, accountEmail = null } = {}) {
     this.runtime = runtime;
+    // () => email of the Claude login a turn would run on (set by the console server).
+    this.accountEmail = accountEmail;
     this.config = config ?? {};
     this.events = events;
     this.clock = clock ?? (() => new Date());
@@ -404,9 +436,44 @@ export class ChatManager {
     return this.config.enabled !== false;
   }
 
-  projects() {
-    const configured = toList(this.config.projects, []);
-    const list = configured.length ? configured : [this.runtime.workspaceRoot];
+  /** `console.chats.projects: all` (or "*", or a list holding it): every project Claude Code has worked in. */
+  allProjects() {
+    return toList(this.config.projects, []).some((entry) => entry === "all" || entry === "*");
+  }
+
+  /** Project folders found under the Claude home, remembered until the projects folder changes or 30 seconds pass. */
+  discovered() {
+    let stamp = "none";
+    try {
+      stamp = String(statSync(join(this.home, "projects")).mtimeMs);
+    } catch {
+      stamp = "none";
+    }
+    const now = this.clock().getTime();
+    if (this.discovery && this.discovery.stamp === stamp && now - this.discovery.at < 30 * 1000) {
+      return this.discovery.list;
+    }
+    let list = [];
+    try {
+      list = discoverProjectFolders(this.home, (this.cwdCache ??= new Map()));
+    } catch {
+      list = [];
+    }
+    this.discovery = { stamp, at: now, list };
+    return list;
+  }
+
+  /**
+   * The projects a conversation can use. With `console.chats.projects: all`
+   * that is the workspace plus every project folder that still exists, for an
+   * administrator on this machine. `restricted` (the internet listener, or a
+   * user without the admin role) keeps the explicit list, or the workspace.
+   */
+  projects({ restricted = false } = {}) {
+    const explicit = toList(this.config.projects, []).filter((entry) => entry !== "all" && entry !== "*");
+    const wide = this.allProjects() && !restricted;
+    const base = explicit.length ? explicit : [this.runtime.workspaceRoot];
+    const list = wide ? [this.runtime.workspaceRoot, ...explicit, ...this.discovered().map((entry) => entry.path)] : base;
     const seen = new Set();
     return list.map((path) => resolve(path)).filter((path) => {
       const key = path.toLowerCase();
@@ -499,8 +566,8 @@ export class ChatManager {
     }).filter((agent) => AGENT_FILE.test(agent.id));
   }
 
-  list({ q = "", project = null, page = 1, size = 30 } = {}) {
-    const projects = this.projects();
+  list({ q = "", project = null, page = 1, size = 30, restricted = false } = {}) {
+    const projects = this.projects({ restricted });
     const needle = String(q ?? "").trim().toLowerCase();
     const all = [];
     const counts = {};
@@ -548,11 +615,11 @@ export class ChatManager {
     };
   }
 
-  locate(id) {
+  locate(id, { restricted = false } = {}) {
     if (!UUID.test(String(id ?? ""))) {
       return null;
     }
-    for (const project of this.projects()) {
+    for (const project of this.projects({ restricted })) {
       for (const directory of transcriptDirectories(project.path, this.home)) {
         const path = join(directory, id + ".jsonl");
         if (existsSync(path)) {
@@ -583,8 +650,8 @@ export class ChatManager {
     return items;
   }
 
-  get(id, { before = null, turns = 12, agent = null } = {}) {
-    const found = this.locate(id);
+  get(id, { before = null, turns = 12, agent = null, restricted = false } = {}) {
+    const found = this.locate(id, { restricted });
     const active = this.turns.get(id);
     if (!found) {
       if (active) {
@@ -648,8 +715,27 @@ export class ChatManager {
 
   // ------------------------------------------------------------- turns
 
+  /** The Claude login this turn runs on (email), or null when unknown. */
+  /** The running turns on disk, so `astack account switch` in a terminal can refuse like the console does. */
+  persistTurns() {
+    try {
+      writeTurnsFile(turnsFilePath(this.runtime), [...this.turns.values()].map((turn) => ({ sessionId: turn.sessionId, startedAt: turn.startedAt })));
+    } catch {
+      // Best effort: the in-memory map stays the console's own source of truth.
+    }
+  }
+
+  activeAccount() {
+    try {
+      return this.accountEmail?.() ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   activeState(turn) {
     return {
+      account: turn.account ?? null,
       turnId: turn.id,
       sessionId: turn.sessionId,
       startedAt: turn.startedAt,
@@ -693,7 +779,7 @@ export class ChatManager {
       // Only these built-in tools are loaded (fewer tool schemas per turn).
       args.push("--tools", tools.join(","));
     }
-    const denies = [...new Set([...toList(this.config.disallowed_tools, []), ...MANDATORY_CLAUDE_DENIED, ...CHAT_STATE_DENIES, ...(remote ? remoteChatDenies() : [])])];
+    const denies = [...new Set([...toList(this.config.disallowed_tools, []), ...MANDATORY_CLAUDE_DENIED, ...CHAT_STATE_DENIES, ...accountsDirectoryDenies(), ...(remote ? remoteChatDenies() : [])])];
     const allowed = remote ? [] : this.allowedTools().filter((tool) => !/^mcp__astack__permission/.test(tool));
     args.push("--disallowedTools", ...denies);
     if (allowed.length) {
@@ -731,7 +817,9 @@ export class ChatManager {
    * Start one turn. `sessionId` continues a session; without it `project`
    * (an index into `console.chats.projects`) starts a new one.
    */
-  send({ sessionId = null, project = null, prompt, channel = "local" } = {}) {
+  send({ sessionId = null, project = null, prompt, channel = "local", restricted = false } = {}) {
+    // The internet listener never reaches beyond the explicit project list.
+    restricted = restricted || channel === "remote";
     if (!this.enabled()) {
       throw new ChatError(404, "conversations are turned off (console.chats.enabled: false)");
     }
@@ -748,13 +836,13 @@ export class ChatManager {
       if (!UUID.test(String(sessionId))) {
         throw new ChatError(400, "invalid session id");
       }
-      const found = this.locate(sessionId);
+      const found = this.locate(sessionId, { restricted });
       if (!found) {
         throw new ChatError(404, "Unknown conversation: " + sessionId);
       }
       target = found.project;
     } else {
-      target = this.projects().find((entry) => String(entry.index) === String(project ?? 0));
+      target = this.projects({ restricted }).find((entry) => String(entry.index) === String(project ?? 0));
       if (!target) {
         throw new ChatError(400, "choose one of the configured projects (console.chats.projects)");
       }
@@ -796,6 +884,8 @@ export class ChatManager {
     const args = this.args({ sessionId, isNew, mcpConfigPath, channel, budgetUsd: remaining });
     // Unattended like a runner child: the child can ask, only this server decides.
     const env = unattendedEnv({ ...process.env, MCP_TOOL_TIMEOUT: String(this.approvalTimeoutMs() + 60 * 1000) });
+    // The child never needs to know where the saved Claude accounts live.
+    delete env.ASTACK_ACCOUNTS_DIR;
     let child;
     try {
       child = startProcess(resolved, args, { input: text, cwd: target.path, env });
@@ -811,6 +901,7 @@ export class ChatManager {
       project: target,
       prompt: text,
       startedAt: this.clock().toISOString(),
+      account: this.activeAccount(),
       status: "running",
       child,
       buffer: [],
@@ -825,8 +916,9 @@ export class ChatManager {
       args
     };
     this.turns.set(sessionId, turn);
+    this.persistTurns();
     this.runtime.audit?.record?.({ actor: "owner@console", action: "console-chat-turn", target: sessionId, tool: "claude", riskLevel: "L3", result: (isNew ? "new" : "resume") + " in " + target.name + " (" + permissionMode + ", " + channel + ")" });
-    this.emit(turn, "start", { isNew, project: { index: target.index, name: target.name }, prompt: redactSecretsStrict(clipText(text, 4000)) });
+    this.emit(turn, "start", { account: turn.account, isNew, project: { index: target.index, name: target.name }, prompt: redactSecretsStrict(clipText(text, 4000)) });
     let pending = "";
     child.stdout.setEncoding("utf8");
     child.stdout.on("data", (chunk) => {
@@ -999,14 +1091,15 @@ export class ChatManager {
     const costUsd = result?.costUsd ?? 0;
     const durationMs = result?.durationMs ?? Date.now() - new Date(turn.startedAt).getTime();
     mkdirSync(this.directory, { recursive: true });
-    appendFileSync(this.ledgerPath, JSON.stringify({ at: this.clock().toISOString(), sessionId: turn.sessionId, turnId: turn.id, status, costUsd, durationMs }) + "\n", "utf8");
+    appendFileSync(this.ledgerPath, JSON.stringify({ at: this.clock().toISOString(), sessionId: turn.sessionId, turnId: turn.id, status, costUsd, durationMs, account: turn.account ?? null }) + "\n", "utf8");
     const error = status === "failed"
       ? redactSecretsStrict(result?.text || turn.spawnError || (turn.stderr ? turn.stderr.trim().split(/\r?\n/).slice(-3).join(" ") : "") || "Claude Code exited with code " + code).slice(0, 600)
       : null;
     this.runtime.audit?.record?.({ actor: "owner@console", action: "console-chat-turn-finished", target: turn.sessionId, tool: "claude", riskLevel: "L3", result: status + " $" + costUsd.toFixed(4) });
-    this.emit(turn, "done", { status, costUsd, durationMs, error, denials: result?.denials ?? 0, today: this.todaySpend(), budget: this.budget() });
+    this.emit(turn, "done", { account: turn.account ?? null, status, costUsd, durationMs, error, denials: result?.denials ?? 0, today: this.todaySpend(), budget: this.budget() });
     this.turns.delete(turn.sessionId);
-    this.recentTurns = [{ id: turn.id, sessionId: turn.sessionId, status, costUsd, durationMs, at: this.clock().toISOString() }, ...this.recentTurns].slice(0, 50);
+    this.persistTurns();
+    this.recentTurns = [{ id: turn.id, sessionId: turn.sessionId, status, costUsd, durationMs, account: turn.account ?? null, at: this.clock().toISOString() }, ...this.recentTurns].slice(0, 50);
     this.events?.soon?.();
   }
 

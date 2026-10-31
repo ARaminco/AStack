@@ -18,7 +18,7 @@ AStack Enterprise, Claude Code ve OpenAI Codex içinde eşit düzeyde çalışan
 
 **Cebinizde** — *3.0'da yeni*
 - **Ağ geçidi (gateway)** — AStack'e Telegram veya WhatsApp'tan komut verin (wapi uyumlu HTTP ağ geçidi, AStack'in kendi bağlı cihaz köprüsü veya Meta Cloud API ile); kanal başına birden çok hesapla sahip izin listeleri; «بفرست» / "approve" ile onay, «نه» / "deny" ile ret; Farsça sesli mesajların yerelde metne çevrilmesi ([belge](documentation/Gateway.md))
-- **Aramis konsolu** — onaylar, görevler, bellek, çalıştırmalar, işler, denetim, beceriler, pano ve sistem durumu için yerel, kurulabilir web uygulaması (PWA); yalnızca yerel makinede, token ile giriş, varsayılan dil Farsça ([belge](documentation/Aramis-Console.md))
+- **Aramis konsolu** — onaylar, görevler, bellek, çalıştırmalar, işler, denetim, beceriler, pano ve sistem durumu için yerel, kurulabilir web uygulaması (PWA); ayrıca Claude hesap değiştirici ve projeler ile oturumlar merkezi, masaüstünde yan ray, telefonda alt sekme çubuğu, ⌘K paleti, koyu mod ve RTL ile yenilenmiş arayüz; yalnızca yerel makinede, token ile giriş, varsayılan dil Farsça ([belge](documentation/Aramis-Console.md))
 
 **Bellek ve hatırlama**
 - **Çok yönlü ve zamansal bellek** — on iki bellek yüzü, üzerine yazmak yerine geçersiz kılma, gecelik konsolidasyon ([belge](documentation/Memory-OS.md))

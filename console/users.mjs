@@ -26,6 +26,46 @@ const scrypt = promisify(scryptCallback);
 // parameters, still verify, and are rehashed on the next successful sign-in.
 export const SCRYPT_PARAMS = { N: 2 ** 17, r: 8, p: 1, keylen: 64 };
 export const MIN_PASSWORD_LENGTH = 10;
+// Passwords chosen in the browser (first administrator, new users, a changed password).
+export const STRONG_PASSWORD_LENGTH = 12;
+export const ROLES = ["admin", "user"];
+const COMMON_PASSWORDS = new Set([
+  "password", "password1", "password12", "password123", "password1234", "123456789012", "1234567890123", "qwertyuiop12",
+  "qwerty123456", "qwertyuiopas", "abcdefghijkl", "abcd12345678", "administrator", "administrator1", "adminadmin12",
+  "admin1234567", "admin12345678", "letmein12345", "welcome12345", "iloveyou1234", "changeme1234", "changemenow1",
+  "aramis123456", "astack123456", "passw0rd1234", "p@ssw0rd1234", "111111111111", "000000000000", "123123123123"
+]);
+
+/**
+ * Policy for a password chosen on the web: at least 12 characters, not a
+ * well-known one, not the username, not one repeated character and not digits
+ * only. Returns null when it is acceptable, else a short reason code the
+ * screen turns into a message. The password itself never leaves this call.
+ */
+export function passwordProblem(password, username = "") {
+  const value = String(password ?? "");
+  const name = String(username ?? "").trim().toLowerCase();
+  if (value.length < STRONG_PASSWORD_LENGTH) {
+    return "short";
+  }
+  if (value.length > 256) {
+    return "long";
+  }
+  const lowered = value.toLowerCase();
+  if (name && (lowered === name || lowered.replace(/[^a-z0-9]/g, "") === name.replace(/[^a-z0-9]/g, ""))) {
+    return "username";
+  }
+  if (/^[0-9]+$/.test(value)) {
+    return "digits";
+  }
+  if (new Set(value).size <= 2) {
+    return "repeated";
+  }
+  if (COMMON_PASSWORDS.has(lowered) || COMMON_PASSWORDS.has(lowered.replace(/[^a-z0-9@]/g, ""))) {
+    return "common";
+  }
+  return null;
+}
 const USERNAME = /^[a-z0-9][a-z0-9._-]{1,31}$/;
 // scrypt needs 128 * N * r bytes: 128 MiB at N=2^17, r=8; give it room.
 const MAXMEM = 256 * 1024 * 1024;
@@ -227,8 +267,10 @@ export class ConsoleUsers {
   list() {
     return Object.entries(this.read().users).map(([name, user]) => ({
       username: name,
+      role: ROLES.includes(user.role) ? user.role : "admin",
       createdAt: user.createdAt ?? null,
       updatedAt: user.updatedAt ?? null,
+      lastLoginAt: user.lastLoginAt ?? null,
       totp: Boolean(user.totp?.enabled),
       totpStore: user.totp?.enabled ? (user.totp.store ?? "file") : null
     }));
@@ -248,11 +290,55 @@ export class ConsoleUsers {
     return Object.keys(this.read().users).length;
   }
 
+  /** A user without a role (created before roles existed) is an administrator. */
+  roleOf(username) {
+    const user = this.get(username);
+    return user ? (ROLES.includes(user.role) ? user.role : "admin") : null;
+  }
+
+  isAdmin(username) {
+    return this.roleOf(username) === "admin";
+  }
+
+  adminCount() {
+    return this.list().filter((user) => user.role === "admin").length;
+  }
+
+  /** Change a role. The last administrator cannot be demoted. */
+  setRole(username, role) {
+    const name = normalizeUsername(username);
+    const data = this.read();
+    if (!name || !data.users[name]) {
+      throw new Error("Unknown console user: " + username);
+    }
+    if (!ROLES.includes(role)) {
+      throw new Error("A role is admin or user");
+    }
+    if (role !== "admin" && this.isAdmin(name) && this.adminCount() <= 1) {
+      throw new Error("The last administrator keeps the admin role");
+    }
+    data.users[name].role = role;
+    data.users[name].updatedAt = this.clock().toISOString();
+    this.write(data);
+    return role;
+  }
+
+  /** Remember when a user last signed in. Does not touch the credentials. */
+  touchLogin(username) {
+    const name = normalizeUsername(username);
+    const data = this.read();
+    if (!name || !data.users[name]) {
+      return;
+    }
+    data.users[name].lastLoginAt = this.clock().toISOString();
+    this.write(data);
+  }
+
   anyWithTotp() {
     return Object.values(this.read().users).some((user) => user.totp?.enabled);
   }
 
-  async set(username, password) {
+  async set(username, password, { role = null } = {}) {
     const name = normalizeUsername(username);
     if (!name) {
       throw new Error("A username is 2-32 characters: a-z, 0-9, dot, dash or underscore, starting with a letter or digit");
@@ -264,7 +350,10 @@ export class ConsoleUsers {
     const data = this.read();
     const now = this.clock().toISOString();
     const existing = data.users[name];
-    data.users[name] = { ...(existing ?? {}), hash, credentialVersion: newCredentialVersion(), createdAt: existing?.createdAt ?? now, updatedAt: now };
+    if (role !== null && !ROLES.includes(role)) {
+      throw new Error("A role is admin or user");
+    }
+    data.users[name] = { ...(existing ?? {}), hash, credentialVersion: newCredentialVersion(), createdAt: existing?.createdAt ?? now, updatedAt: now, ...(role ? { role } : {}) };
     this.write(data);
     return { username: name, created: !existing };
   }

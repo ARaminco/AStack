@@ -140,6 +140,12 @@ astack session remote-logs list|add <dir>                # Remote Control log fo
 astack interop hook prompt --runtime claude-code          # called by Claude Code on every prompt
 ```
 
+## Claude accounts
+
+```bash
+astack account list|save [--label x]|switch <email|id> [--force]|usage [<id>]|label <id> <text>|remove <id>
+```
+
 ## Setup and update
 
 ```bash
@@ -253,6 +259,13 @@ stripped). Only an scrypt hash is stored, in `.astack/console/users.json`.
 `totp` prints a base32 key and an `otpauth://totp/...` URI for an
 authenticator app; from then on every password sign-in needs the 6-digit code.
 The internet listener (`console.remote`) starts only when a user has TOTP on.
+
+4.0: the command line did not change. A user made here is an administrator (it has no
+role, and a user without a role is one), and the command line keeps its
+10-character minimum, while a password chosen in the browser needs 12
+characters and a few more checks. Users, roles and `console.auth` are also
+managed in the console itself, from this computer only; see
+[Admin sign-in](Aramis-Console.md#admin-sign-in-40).
 
 ## Search (3.0)
 

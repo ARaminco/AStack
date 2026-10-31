@@ -8,8 +8,8 @@
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
-  "background_color": "#0b0d15",
-  "theme_color": "#0b0d15",
+  "background_color": "#0F1B28",
+  "theme_color": "#0F1B28",
   "dir": "rtl",
   "lang": "fa",
   "categories": ["productivity", "business"],
@@ -22,6 +22,8 @@
   ],
   "shortcuts": [
     { "name": "تأییدها", "short_name": "تأییدها", "description": "درخواست‌های منتظر تصمیم", "url": "/#/approvals", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
-    { "name": "مأموریت‌ها", "short_name": "مأموریت‌ها", "description": "مأموریت‌های فعال", "url": "/#/missions", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] }
+    { "name": "مأموریت‌ها", "short_name": "مأموریت‌ها", "description": "مأموریت‌های فعال", "url": "/#/missions", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "پروژه‌ها", "short_name": "پروژه‌ها", "description": "پروژه‌ها و نشست‌ها", "url": "/#/projects", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "حساب‌ها", "short_name": "حساب‌ها", "description": "حساب‌های Claude", "url": "/#/accounts", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] }
   ]
 }

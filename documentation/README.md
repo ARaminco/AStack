@@ -13,7 +13,7 @@ AStack is a personal AI operating system for any practice — software, legal, f
 ## New in 3.0 — always on, in your pocket
 - [Runner and Daemon](Runner-and-Daemon.md) — unattended runs (Claude Code, Codex, Ollama), budgets, one background process, OS service install
 - [Gateway](Gateway.md) — command and approve from Telegram and WhatsApp, owner allowlists, local Persian voice
-- [Aramis Console](Aramis-Console.md) — the local installable console: sign in, screens, trust model, API
+- [Aramis Console](Aramis-Console.md) — the local installable console: sign in, screens (dashboard, Claude accounts switcher, projects and sessions hub), trust model, API
 - [Search](Search.md) — Persian-aware recall over memory, past sessions, reports, skills and missions
 - [Skill Hub](Skill-Hub.md) — third-party skill packs, the security scanner, the curator and the Hermes pack
 - [Board, Sandbox, Vault and A2A](Board-Sandbox-Vault.md) — multi-agent board, Docker sandbox, OS vault backends, Agent-to-Agent endpoint
