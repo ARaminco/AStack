@@ -651,7 +651,7 @@ secrets:
 #     timeout_s: 300
 #     allow_approvals: false
 
-# Aramin, the AStack console (`astack console start`). Optional: every value
+# Aramis, the AStack console (`astack console start`). Optional: every value
 # below is the default used when this section is absent.
 # console:
 #   enabled: true            # false keeps the daemon from starting it
@@ -668,12 +668,12 @@ secrets:
 #   lockout:                 # failed sign-ins per address and per username
 #     attempts: 5
 #     minutes: 15
-#   # 3.1.3: this install's own name for the panel (Aramin stays the base name).
+#   # 3.1.3: this install's own name for the panel (Aramis stays the base name).
 #   brand:
 #     name: null             # e.g. Gisoo
 #     name_fa: null          # e.g. گیسو
 #     icons: null            # folder with icon.svg, icon-192.png, icon-512.png, icon-maskable-512.png
-#   # 3.1: the internet listener a tunnel points at (see Aramin-Console.md).
+#   # 3.1: the internet listener a tunnel points at (see Aramis-Console.md).
 #   # 7717 never answers the public host name; this listener answers nothing else.
 #   remote:
 #     enabled: false

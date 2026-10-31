@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Aramin",
-  "short_name": "Aramin",
-  "description": "آرامین، کنسول AStack: تأییدها، مأموریت‌ها، حافظه و پایش کارهای پس‌زمینه در یک اپ تمیز و نصب‌شدنی.",
+  "name": "Aramis",
+  "short_name": "Aramis",
+  "description": "آرامیس، کنسول AStack: تأییدها، مأموریت‌ها، حافظه و پایش کارهای پس‌زمینه در یک اپ تمیز و نصب‌شدنی.",
   "start_url": "/#/home",
   "scope": "/",
   "display": "standalone",

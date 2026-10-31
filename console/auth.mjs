@@ -5,7 +5,7 @@ import { join } from "node:path";
 const DAY = 24 * 60 * 60 * 1000;
 
 /**
- * Owner authentication for the Aramin console.
+ * Owner authentication for the Aramis console.
  *
  * One random owner token lives in `.astack/console/token`. The login screen
  * exchanges it once for a session: an opaque id in an HttpOnly, SameSite=Strict

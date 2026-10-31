@@ -166,7 +166,7 @@ cuBLAS and cuDNN 9 runtime DLLs the script falls back to the CPU, which works bu
 
 ### Console
 
-**`astack console open` says Aramin is not running**
+**`astack console open` says Aramis is not running**
 `console open` signs in to a console that is already running. Start the daemon
 (`astack daemon start`) or run `astack console start --open` instead. If the daemon runs but the
 console does not, check `console.enabled` and, when you set `daemon.services`, that the list
@@ -185,7 +185,7 @@ Another program holds it: `astack console start --port <n>` or set `console.port
 
 **Through a tunnel the console answers with a Host error**
 On loopback only `127.0.0.1`, `localhost` and `[::1]` are accepted. Add the tunnel's host name to
-`console.allowed_hosts`. See [Aramin Console](Aramin-Console.md#how-to-sign-in).
+`console.allowed_hosts`. See [Aramis Console](Aramis-Console.md#how-to-sign-in).
 
 ### Search, skills, sandbox, A2A
 

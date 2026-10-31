@@ -221,7 +221,7 @@ astack gateway whatsapp setup [--dry-run] | pair | start | stop | status
 
 Channels: `telegram`, `whatsapp-wapi`, `whatsapp-bridge`, `whatsapp-cloud`, `cli`.
 
-## Aramin console (3.0)
+## Aramis console (3.0)
 
 ```bash
 astack console open

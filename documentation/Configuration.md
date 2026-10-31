@@ -380,7 +380,7 @@ are `credential://` references, and real gateway owner ids belong in
 `.astack/gateway/owners.json` through `astack gateway owner add`. See
 [Runner and Daemon](Runner-and-Daemon.md), [Gateway](Gateway.md),
 [Search](Search.md), [Skill Hub](Skill-Hub.md),
-[Aramin Console](Aramin-Console.md) and
+[Aramis Console](Aramis-Console.md) and
 [Board, Sandbox, Vault and A2A](Board-Sandbox-Vault.md) for what each key does.
 
 ## AStack 3.4 and 3.5 sections

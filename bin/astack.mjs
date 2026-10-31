@@ -111,7 +111,7 @@ function doctor({ verbose = false } = {}) {
   console.log("Search: " + searchDoctorLine());
   console.log("Gateway: " + runtime.gateway.describe());
   const consoleRecord = readServerRecord(runtime.workspaceRoot);
-  console.log("Console (Aramin): " + (consoleRecord?.alive ? consoleRecord.url : "stopped (astack console start)"));
+  console.log("Console (Aramis): " + (consoleRecord?.alive ? consoleRecord.url : "stopped (astack console start)"));
   console.log("Telemetry: disabled");
   // An install that upgraded from an older core ran the previous upgrade command,
   // which had no migration step. Report what is still waiting rather than letting

@@ -1,5 +1,5 @@
 /* ============================================================================
-   Aramin — service worker
+   Aramis — service worker
    ----------------------------------------------------------------------------
    The server stamps the current build into BUILD, so every change to the
    shell is new bytes here: the worker reinstalls and drops the old cache.
@@ -11,7 +11,7 @@
    ========================================================================== */
 
 const BUILD = "__BUILD__";
-const CACHE = "aramin-shell-" + BUILD;
+const CACHE = "aramis-shell-" + BUILD;
 const SHELL = [
   "/",
   "/app.css?v=" + BUILD,
@@ -31,7 +31,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((key) => key.startsWith("aramin-") && key !== CACHE).map((key) => caches.delete(key))))
+      .then((keys) => Promise.all(keys.filter((key) => key.startsWith("aramis-") && key !== CACHE).map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });

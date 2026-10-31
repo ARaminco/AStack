@@ -18,7 +18,7 @@ AStack Enterprise نظام تشغيل ذكاء اصطناعي معياري يع�
 
 **في جيبك** — *جديد في 3.0*
 - **البوابة (gateway)** — وجّه AStack من تيليجرام أو واتساب (عبر بوابة HTTP متوافقة مع wapi، أو جسر «الجهاز المرتبط» الخاص بـ AStack، أو Cloud API من Meta)؛ قوائم سماح للمالك مع عدة حسابات لكل قناة؛ وافق بـ «بفرست» أو "approve" وارفض بـ «نه» أو "deny"؛ وتحويل الرسائل الصوتية الفارسية إلى نص محليًا ([الوثيقة](documentation/Gateway.md))
-- **لوحة تحكم آرامين** — تطبيق ويب محلي قابل للتثبيت (PWA) للموافقات والمهام والذاكرة والتشغيلات والوظائف والتدقيق والمهارات واللوحة وحالة النظام؛ على الجهاز المحلي فقط، بتسجيل دخول برمز، وبالفارسية افتراضيًا ([الوثيقة](documentation/Aramin-Console.md))
+- **لوحة تحكم آرامين** — تطبيق ويب محلي قابل للتثبيت (PWA) للموافقات والمهام والذاكرة والتشغيلات والوظائف والتدقيق والمهارات واللوحة وحالة النظام؛ على الجهاز المحلي فقط، بتسجيل دخول برمز، وبالفارسية افتراضيًا ([الوثيقة](documentation/Aramis-Console.md))
 
 **الذاكرة والاسترجاع**
 - **ذاكرة متعددة الأوجه وزمنية** — اثنا عشر وجهًا، واستبدال الحقائق بنسخ جديدة بدل الكتابة فوقها، وتجميع ليلي ([الوثيقة](documentation/Memory-OS.md))
@@ -159,4 +159,4 @@ node bin/astack.mjs approval pending
 المشاريع التي تضم AStack تُحدِّث نفسها بالأمر `astack upgrade` (أو `astack update`). أما التثبيتات الأقدم التي تسبق محرك الترقية فتنسخ الملف الواحد `scripts/astack-upgrade.mjs` إلى المشروع وتشغّله مرة واحدة — يجلب أحدث نواة ويطبّق منطق الترقية الجديد مع الحفاظ الكامل على `.astack/` و`memory/` والإضافات وحزم المعرفة وأي مسار مسجّل في `upgrade.keep`. انظر: [ترقية النواة](documentation/Upgrade.md) و[دليل الترحيل](documentation/Migration-Guide.md).
 
 ## الوثائق
-المجموعة الكاملة في [`documentation/`](documentation/README.md) — المفاهيم، والتشغيل، وأدلة التوسعة، والأمان، والدليل الفارسي الكامل للمالك ([fa-guide.html](documentation/fa-guide.html)). جديد في 3.0: [المنفّذ والعملية الخلفية](documentation/Runner-and-Daemon.md)، [البوابة](documentation/Gateway.md)، [لوحة آرامين](documentation/Aramin-Console.md)، [البحث](documentation/Search.md)، [مركز المهارات](documentation/Skill-Hub.md)، [اللوحة والبيئة المعزولة والخزائن وA2A](documentation/Board-Sandbox-Vault.md).
+المجموعة الكاملة في [`documentation/`](documentation/README.md) — المفاهيم، والتشغيل، وأدلة التوسعة، والأمان، والدليل الفارسي الكامل للمالك ([fa-guide.html](documentation/fa-guide.html)). جديد في 3.0: [المنفّذ والعملية الخلفية](documentation/Runner-and-Daemon.md)، [البوابة](documentation/Gateway.md)، [لوحة آرامين](documentation/Aramis-Console.md)، [البحث](documentation/Search.md)، [مركز المهارات](documentation/Skill-Hub.md)، [اللوحة والبيئة المعزولة والخزائن وA2A](documentation/Board-Sandbox-Vault.md).

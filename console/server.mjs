@@ -17,10 +17,10 @@ export const PUBLIC_DIRECTORY = join(here, "public");
 export const DEFAULT_PORT = 7717;
 export const DEFAULT_HOST = "127.0.0.1";
 const MAX_BODY_BYTES = 64 * 1024;
-const COOKIE = "aramin_sid";
+const COOKIE = "aramis_sid";
 // The remote listener is always HTTPS at the edge: a __Host- cookie is
 // Secure, host-only and Path=/ by definition.
-const REMOTE_COOKIE = "__Host-aramin_sid";
+const REMOTE_COOKIE = "__Host-aramis_sid";
 export const DEFAULT_REMOTE_PORT = 7718;
 // SSE keep-alive comments: Cloudflare drops a connection idle for about 100s.
 export const HEARTBEAT_MS = 20000;
@@ -138,7 +138,7 @@ export function resolveConsoleSettings(config = {}, overrides = {}) {
     host = DEFAULT_HOST;
   }
   if (!isLoopback(host)) {
-    warnings.push("Aramin is listening on " + host + ": anyone who can reach this address sees the login page. Use HTTPS in front of it and keep the token secret.");
+    warnings.push("Aramis is listening on " + host + ": anyone who can reach this address sees the login page. Use HTTPS in front of it and keep the token secret.");
   }
   const port = Number(overrides.port ?? config.port ?? DEFAULT_PORT);
   if (!Number.isInteger(port) || port < 0 || port > 65535) {
@@ -185,9 +185,9 @@ export function resolveConsoleSettings(config = {}, overrides = {}) {
 }
 
 /**
- * `console.brand`: the name this install shows. Aramin is the console's base
+ * `console.brand`: the name this install shows. Aramis is the console's base
  * name; an owner may give their panel its own (for example `name: Gisoo`,
- * `name_fa: گیسو`). Null keeps Aramin.
+ * `name_fa: گیسو`). Null keeps Aramis.
  */
 export function resolveBrand(section) {
   if (!section || typeof section !== "object") {
@@ -209,7 +209,7 @@ export function applyBrand(value, brand) {
     return value;
   }
   if (typeof value === "string") {
-    return value.replace(/آرامین/g, brand.nameFa).replace(/Aramin/g, brand.name);
+    return value.replace(/آرامیس/g, brand.nameFa).replace(/Aramis/g, brand.name);
   }
   if (Array.isArray(value)) {
     return value.map((entry) => applyBrand(entry, brand));
@@ -334,7 +334,7 @@ function parseCookies(header) {
 }
 
 /**
- * Aramin — the AStack console.
+ * Aramis — the AStack console.
  *
  * One node:http listener, no framework: the installable PWA shell from
  * `console/public/`, a JSON API over the runtime, and a Server-Sent Events
@@ -688,7 +688,7 @@ export class ConsoleServer {
 
     // ------------------------------------------------------ public endpoints
     if (pathname === "/api/health") {
-      this.send(response, 200, { ok: true, name: "aramin", build: this.build });
+      this.send(response, 200, { ok: true, name: "aramis", build: this.build });
       return;
     }
     if (pathname === "/api/i18n" && method === "GET") {

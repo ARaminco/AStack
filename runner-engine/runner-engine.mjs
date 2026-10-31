@@ -29,7 +29,7 @@ const APPROVAL_LINE = /^\s*APPROVAL-REQUEST:\s*(.+)$/gm;
 const ID_PATTERN = /^R-[a-z0-9-]+$/i;
 
 /**
- * Sources that carry the owner's own request: the command line, the Aramin
+ * Sources that carry the owner's own request: the command line, the Aramis
  * console and the owner gateway (which only ever hears allowlisted owners).
  * Only these may use the wider configured tools, and only at ceiling L3+.
  */

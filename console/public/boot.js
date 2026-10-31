@@ -1,11 +1,11 @@
-/* Aramin — runs before first paint so the app never flashes the wrong theme or direction. */
+/* Aramis — runs before first paint so the app never flashes the wrong theme or direction. */
 (function () {
   var root = document.documentElement;
   var theme = "system";
   var lang = "";
   try {
-    theme = localStorage.getItem("aramin-theme") || "system";
-    lang = localStorage.getItem("aramin-lang") || "";
+    theme = localStorage.getItem("aramis-theme") || "system";
+    lang = localStorage.getItem("aramis-lang") || "";
   } catch (error) {
     /* storage blocked: defaults */
   }

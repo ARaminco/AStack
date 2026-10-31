@@ -26,7 +26,7 @@ export function createService({ runtime, config = null, log = console.log } = {}
       server = new ConsoleServer({ runtime, ...settings, log });
       try {
         await server.start();
-        log("[console] Aramin on " + server.origin + " (token: astack console token)");
+        log("[console] Aramis on " + server.origin + " (token: astack console token)");
         const remote = server.describe().remote;
         if (remote?.running) {
           log("[console] internet listener on " + remote.url + " for " + remote.publicUrl + " (password + TOTP" + (remote.access ? ", Cloudflare Access" : "") + ")");

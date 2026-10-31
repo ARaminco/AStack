@@ -147,7 +147,7 @@ try {
   assert.equal(redactSecretsStrict("TOTP secret: JBSW Y3DP EHPK 3PXP ABCD").includes("Y3DP"), false, "a grouped secret after a label is redacted");
   assert.match(redactSecretsStrict("2fa seed JBSWY3DPEHPK3PXP"), /\[redacted/);
   assert.match(redactSecretsStrict("Key: GEZD GNBV GY3T QOJQ GEZD GNBV GY3T QOJQ"), /\[redacted/, "the CLI's enrolment line is redacted");
-  assert.ok(!redactSecretsStrict("otpauth://totp/Aramin:a?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=Aramin").includes("GEZDGNBV"));
+  assert.ok(!redactSecretsStrict("otpauth://totp/Aramis:a?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=Aramis").includes("GEZDGNBV"));
   assert.equal(redactSecretsStrict("JBSWY3DPEHPK3PXP alone"), "JBSWY3DPEHPK3PXP alone", "an unlabelled base32 run is left alone");
   assert.equal(redactSecretsStrict("the AUTHENTICATIONSERVICE is up"), "the AUTHENTICATIONSERVICE is up", "upper-case words are not secrets");
   assert.equal(redactSecretsStrict("SELECT ABCDEFGHIJKLMNOPQRSTUV2 FROM t"), "SELECT ABCDEFGHIJKLMNOPQRSTUV2 FROM t");
@@ -248,7 +248,7 @@ try {
   assert.ok(!usersFile.includes("s3cret-Passw0rd!"), "the password never reaches the disk");
   const cliUsers = new ConsoleUsers(join(cliWorkspace, ".astack", "console"));
   assert.equal(await cliUsers.checkPassword("alice", "s3cret-Passw0rd!"), "alice", "the BOM is not part of the password");
-  assert.ok(printed.some((line) => /^otpauth:\/\/totp\/Aramin:alice\?secret=[A-Z2-7]+&issuer=Aramin/.test(line)), "totp prints the otpauth URI");
+  assert.ok(printed.some((line) => /^otpauth:\/\/totp\/Aramis:alice\?secret=[A-Z2-7]+&issuer=Aramis/.test(line)), "totp prints the otpauth URI");
   assert.ok(printed.some((line) => line.startsWith("- alice") && line.includes("totp: on")));
   assert.ok(cliRuntime.audit.list({ action: "console-user-set" }).length === 1);
   await assert.rejects(() => cliUsers.set("bob", "short"), /at least 10/);
@@ -375,7 +375,7 @@ try {
   assert.equal(hasProxyHeaders({ host: "127.0.0.1", cookie: "a=b" }), false);
   // A malformed %-escape is a 400, not a 500.
   assert.equal((await call(base, "/api/approvals/%E0%A4%A")).status, 401, "unauthenticated first");
-  assert.equal((await call(base, "/api/session", { headers: { cookie: "aramin_sid=%E0%A4%A" } })).status, 400, "a malformed cookie is a 400");
+  assert.equal((await call(base, "/api/session", { headers: { cookie: "aramis_sid=%E0%A4%A" } })).status, 400, "a malformed cookie is a 400");
 
   const session0 = (await call(base, "/api/session")).json;
   assert.deepEqual(session0.login.methods, ["password", "token"], "auth defaults to both once a user exists");
@@ -522,7 +522,7 @@ try {
   const rsession = (await rcall("/api/session")).json;
   assert.deepEqual(rsession.login, { methods: ["password"], totp: "required", remote: true });
   const rlogin = (body, headers = {}) => rcall("/api/login", { method: "POST", body, origin: ORIGIN, headers });
-  assert.equal((await rcall("/api/session", { headers: { cookie: "__Host-aramin_sid=%ZZ" } })).status, 400, "remote: a malformed cookie is a 400");
+  assert.equal((await rcall("/api/session", { headers: { cookie: "__Host-aramis_sid=%ZZ" } })).status, 400, "remote: a malformed cookie is a 400");
   assert.equal((await rlogin({ token })).status, 403, "no token sign-in over the internet");
   assert.equal((await rlogin({ ticket: remoteServer.auth.issueTicket() })).status, 403, "no ticket sign-in over the internet");
   assert.equal((await rcall("/api/login", { method: "POST", body: { username: "owner", password: "a-long-owner-password", code: "000000" }, origin: rbase })).status, 403, "Origin must be https://<hostname>");
@@ -539,7 +539,7 @@ try {
   assert.ok(localRuntime.audit.list({ action: "console-login" }).some((entry) => /remote, access owner@example\.com/.test(entry.result)), "the login audit names the Access identity");
   assert.ok(localRuntime.audit.list({ action: "console-login-failed" }).some((entry) => /access owner@example\.com/.test(entry.result)), "failed remote logins too");
   const rcookieHeader = String(remoteLogin.headers["set-cookie"]);
-  assert.match(rcookieHeader, /^__Host-aramin_sid=/);
+  assert.match(rcookieHeader, /^__Host-aramis_sid=/);
   assert.match(rcookieHeader, /; HttpOnly/);
   assert.match(rcookieHeader, /; Secure/);
   assert.match(rcookieHeader, /SameSite=Strict/);
@@ -551,7 +551,7 @@ try {
   assert.equal(rme.stepUp, "totp");
   assert.deepEqual(rme.features.chats, { enabled: false, reason: "remote" }, "conversations are off over the internet");
   // Sessions are bound to their listener.
-  assert.equal((await call(base === remoteServer.origin ? base : remoteServer.origin, "/api/home", { cookie: rcookie.replace("__Host-aramin_sid", "aramin_sid") })).status, 401, "a remote session is not a local session");
+  assert.equal((await call(base === remoteServer.origin ? base : remoteServer.origin, "/api/home", { cookie: rcookie.replace("__Host-aramis_sid", "aramis_sid") })).status, 401, "a remote session is not a local session");
   // Per-username lock across addresses.
   for (let i = 0; i < 5; i += 1) {
     await rlogin({ username: "owner", password: "wrong-password-x", code: "123456" }, { "cf-connecting-ip": "192.0.2." + (i + 1) });

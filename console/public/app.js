@@ -1,5 +1,5 @@
 /* ============================================================================
-   Aramin — the AStack console (vanilla JS, no build step, no dependencies)
+   Aramis — the AStack console (vanilla JS, no build step, no dependencies)
    ----------------------------------------------------------------------------
    One hash-routed app shell: side rail on desktop, bottom tab bar on phones,
    command palette (Ctrl/⌘-K), bottom sheets, toasts, live updates over SSE.
@@ -193,7 +193,7 @@
     if (meta) meta.setAttribute("content", dark ? "#0b0d15" : "#f4f5f7");
   }
   function setTheme(choice) {
-    setPref("aramin-theme", choice);
+    setPref("aramis-theme", choice);
     applyTheme(choice);
     updateChrome();
   }
@@ -202,7 +202,7 @@
     setTheme(current === "dark" ? "light" : "dark");
   }
   if (darkQuery && darkQuery.addEventListener) {
-    darkQuery.addEventListener("change", function () { applyTheme(getPref("aramin-theme", "system")); });
+    darkQuery.addEventListener("change", function () { applyTheme(getPref("aramis-theme", "system")); });
   }
 
   function loadStrings(locale) {
@@ -216,7 +216,7 @@
     });
   }
   function setLanguage(locale) {
-    setPref("aramin-lang", locale);
+    setPref("aramis-lang", locale);
     return loadStrings(locale).then(function () {
       if (state.authenticated) {
         renderShell();
@@ -1228,7 +1228,7 @@
     subtitle: function () { return t("settings.subtitle"); },
     load: function () { return Promise.resolve({}); },
     render: function () {
-      var theme = getPref("aramin-theme", "system");
+      var theme = getPref("aramis-theme", "system");
       var perm = notificationState();
       var standalone = document.documentElement.getAttribute("data-display") === "standalone";
       return html`<div class="narrow">
@@ -2588,8 +2588,8 @@
   }
 
   function start() {
-    applyTheme(getPref("aramin-theme", "system"));
-    var preferred = getPref("aramin-lang", "");
+    applyTheme(getPref("aramis-theme", "system"));
+    var preferred = getPref("aramis-lang", "");
     fetch("/api/session", { credentials: "same-origin", cache: "no-store" }).then(function (r) { return r.json(); }).catch(function () { return {}; }).then(function (session) {
       return loadStrings(preferred || session.locale || "fa");
     }).then(boot).catch(function (error) {

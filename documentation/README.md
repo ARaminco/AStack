@@ -1,6 +1,6 @@
 # AStack Documentation
 
-AStack is a personal AI operating system for any practice — software, legal, finance, tax, accounting, marketing, operations, HR, research, and business. It classifies every engagement into a domain, forms a team of agents under a leadership layer, and delivers the work as a stage-gated project — all operable by Claude Code, Codex and compatible agent runtimes. Since 3.0 it also runs unattended in the background, answers on Telegram and WhatsApp, and has its own console, Aramin.
+AStack is a personal AI operating system for any practice — software, legal, finance, tax, accounting, marketing, operations, HR, research, and business. It classifies every engagement into a domain, forms a team of agents under a leadership layer, and delivers the work as a stage-gated project — all operable by Claude Code, Codex and compatible agent runtimes. Since 3.0 it also runs unattended in the background, answers on Telegram and WhatsApp, and has its own console, Aramis.
 
 **Readme languages:** [English](../README.md) · [فارسی](../README.fa.md) · [العربية](../README.ar.md) · [Türkçe](../README.tr.md) · Persian owner guide: [fa-guide.html](fa-guide.html)
 
@@ -13,7 +13,7 @@ AStack is a personal AI operating system for any practice — software, legal, f
 ## New in 3.0 — always on, in your pocket
 - [Runner and Daemon](Runner-and-Daemon.md) — unattended runs (Claude Code, Codex, Ollama), budgets, one background process, OS service install
 - [Gateway](Gateway.md) — command and approve from Telegram and WhatsApp, owner allowlists, local Persian voice
-- [Aramin Console](Aramin-Console.md) — the local installable console: sign in, screens, trust model, API
+- [Aramis Console](Aramis-Console.md) — the local installable console: sign in, screens, trust model, API
 - [Search](Search.md) — Persian-aware recall over memory, past sessions, reports, skills and missions
 - [Skill Hub](Skill-Hub.md) — third-party skill packs, the security scanner, the curator and the Hermes pack
 - [Board, Sandbox, Vault and A2A](Board-Sandbox-Vault.md) — multi-agent board, Docker sandbox, OS vault backends, Agent-to-Agent endpoint

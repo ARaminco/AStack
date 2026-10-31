@@ -1,9 +1,9 @@
 # AStack 3.0 — Build Contract
 
-> **Historical:** this was the build contract the 3.0 packages were developed against; 3.0.0 is released. For how the features work today read [Runner and Daemon](Runner-and-Daemon.md), [Gateway](Gateway.md), [Search](Search.md), [Skill Hub](Skill-Hub.md), [Aramin Console](Aramin-Console.md) and [Board, Sandbox, Vault and A2A](Board-Sandbox-Vault.md).
+> **Historical:** this was the build contract the 3.0 packages were developed against; 3.0.0 is released. For how the features work today read [Runner and Daemon](Runner-and-Daemon.md), [Gateway](Gateway.md), [Search](Search.md), [Skill Hub](Skill-Hub.md), [Aramis Console](Aramis-Console.md) and [Board, Sandbox, Vault and A2A](Board-Sandbox-Vault.md).
 
 AStack 3.0 adds an always-on runner, a two-way owner gateway, smarter memory and
-skills, and the **Aramin** console. It is strictly **additive**: every 2.5.1
+skills, and the **Aramis** console. It is strictly **additive**: every 2.5.1
 command, file format, test and behaviour keeps working unchanged.
 
 ## Non-negotiable rules for every work package
@@ -93,7 +93,7 @@ Packs live in `skill-packs/<pack>/` (managed, shipped). Imported third-party
 skills are scanned, labelled, and listed in the catalog with
 `source: "pack:<pack>"`, ranked below built-in and learned skills.
 
-### Console (owned by P5) — `console/`, product name **Aramin**
+### Console (owned by P5) — `console/`, product name **Aramis**
 Local HTTP server + installable PWA. Reads everything above; the only writes
 are owner decisions (approve/deny, pause/resume, run) and they go through the
 same engines.
@@ -111,5 +111,5 @@ secret-tool), and an A2A endpoint.
 | P2 | v3/p2-gateway | gateway-engine: WhatsApp (wapi-compatible HTTP), Telegram, owner allowlist, approvals by message, local Persian voice |
 | P3 | v3/p3-search | search-engine: SQLite FTS5 + Ollama embeddings over memory, past sessions, reports, skills |
 | P4 | v3/p4-skillhub | skill-hub: agentskills.io import, security scanner, curator; Hermes pack |
-| P5 | v3/p5-aramin | console: Aramin PWA |
+| P5 | v3/p5-aramin | console: Aramis PWA |
 | P6 | v3/p6-board | board-engine, sandbox-engine, vault backends, A2A |

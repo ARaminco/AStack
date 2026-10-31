@@ -2,7 +2,7 @@
 
 **Diller:** [English](README.md) · [فارسی](README.fa.md) · [العربية](README.ar.md) · Türkçe — **Belgeler:** [Belge Dizini](documentation/README.md)
 
-AStack Enterprise, Claude Code ve OpenAI Codex içinde eşit düzeyde çalışan — tek ortak sözleşme, tek bellek, tek olay günlüğü — ve ChatGPT ile gelecekteki ajan çalışma ortamlarına da açık kalan modüler bir yapay zekâ işletim sistemidir. Her türlü işi yönetir — yazılım geliştirme, hukuki davalar, finans, vergi, muhasebe, pazarlama, operasyon, insan kaynakları, araştırma ve iş stratejisi — alan ekipleri kurarak, ajanlar oluşturarak ve bir liderlik katmanı altında zamanlanmış görevler devrederek. 3.0 ile birlikte **her zaman açık ve cebinizde**: gözetimsiz bir çalıştırıcı ve tek bir arka plan süreci, klavye başında kimse yokken de görevleri, zamanlanmış işleri ve kancaları yürütür; ona Telegram veya WhatsApp'tan komut verir, geri alınamaz adımlarını oradan onaylarsınız; uygulama olarak kurulabilen yerel konsol **Aramin** ise her onayı, görevi, çalıştırmayı ve denetim kaydını gösterir. Her yeni yetenek aynı güven modelinin içinde çalışır: yetki tavanları, onay makbuzları ve denetim izi.
+AStack Enterprise, Claude Code ve OpenAI Codex içinde eşit düzeyde çalışan — tek ortak sözleşme, tek bellek, tek olay günlüğü — ve ChatGPT ile gelecekteki ajan çalışma ortamlarına da açık kalan modüler bir yapay zekâ işletim sistemidir. Her türlü işi yönetir — yazılım geliştirme, hukuki davalar, finans, vergi, muhasebe, pazarlama, operasyon, insan kaynakları, araştırma ve iş stratejisi — alan ekipleri kurarak, ajanlar oluşturarak ve bir liderlik katmanı altında zamanlanmış görevler devrederek. 3.0 ile birlikte **her zaman açık ve cebinizde**: gözetimsiz bir çalıştırıcı ve tek bir arka plan süreci, klavye başında kimse yokken de görevleri, zamanlanmış işleri ve kancaları yürütür; ona Telegram veya WhatsApp'tan komut verir, geri alınamaz adımlarını oradan onaylarsınız; uygulama olarak kurulabilen yerel konsol **Aramis** ise her onayı, görevi, çalıştırmayı ve denetim kaydını gösterir. Her yeni yetenek aynı güven modelinin içinde çalışır: yetki tavanları, onay makbuzları ve denetim izi.
 
 ## Özellikler
 
@@ -18,7 +18,7 @@ AStack Enterprise, Claude Code ve OpenAI Codex içinde eşit düzeyde çalışan
 
 **Cebinizde** — *3.0'da yeni*
 - **Ağ geçidi (gateway)** — AStack'e Telegram veya WhatsApp'tan komut verin (wapi uyumlu HTTP ağ geçidi, AStack'in kendi bağlı cihaz köprüsü veya Meta Cloud API ile); kanal başına birden çok hesapla sahip izin listeleri; «بفرست» / "approve" ile onay, «نه» / "deny" ile ret; Farsça sesli mesajların yerelde metne çevrilmesi ([belge](documentation/Gateway.md))
-- **Aramin konsolu** — onaylar, görevler, bellek, çalıştırmalar, işler, denetim, beceriler, pano ve sistem durumu için yerel, kurulabilir web uygulaması (PWA); yalnızca yerel makinede, token ile giriş, varsayılan dil Farsça ([belge](documentation/Aramin-Console.md))
+- **Aramis konsolu** — onaylar, görevler, bellek, çalıştırmalar, işler, denetim, beceriler, pano ve sistem durumu için yerel, kurulabilir web uygulaması (PWA); yalnızca yerel makinede, token ile giriş, varsayılan dil Farsça ([belge](documentation/Aramis-Console.md))
 
 **Bellek ve hatırlama**
 - **Çok yönlü ve zamansal bellek** — on iki bellek yüzü, üzerine yazmak yerine geçersiz kılma, gecelik konsolidasyon ([belge](documentation/Memory-OS.md))
@@ -89,7 +89,7 @@ node bin/astack.mjs daemon start
 node bin/astack.mjs daemon status
 node bin/astack.mjs daemon install-service --dry-run   # planı inceleyin, oturum açılışında başlaması için --dry-run olmadan çalıştırın
 
-# 3. Aramin konsolu: arka plan süreci çalışırken tarayıcıyı oturum açılmış olarak açar
+# 3. Aramis konsolu: arka plan süreci çalışırken tarayıcıyı oturum açılmış olarak açar
 node bin/astack.mjs console open                        # arka plan süreci yoksa: astack console start --open
 
 # 4. Telegram ağ geçidi: önce @BotFather ile bir bot oluşturun
@@ -159,4 +159,4 @@ Teslim motoru projeleri profesyonel bir teslim ekibi gibi yönetir: aşama kapı
 AStack gömülü projeler kendilerini `astack upgrade` (veya `astack update`) ile günceller. Yükseltme motorundan önceki eski kurulumlar ise tek dosyalık `scripts/astack-upgrade.mjs` betiğini projeye kopyalayıp bir kez çalıştırır — en son çekirdeği indirir ve yeni yükseltme mantığını uygular; `.astack/`, `memory/`, eklentiler, bilgi paketleri ve `upgrade.keep` altındaki her yol korunur. Bakınız: [Çekirdek Yükseltmeleri](documentation/Upgrade.md) ve [Geçiş Kılavuzu](documentation/Migration-Guide.md).
 
 ## Belgeler
-Belgelerin tamamı [`documentation/`](documentation/README.md) altındadır — kavramlar, operasyon, genişletme kılavuzları, güvenlik ve sahibe özel tam Farsça kılavuz ([fa-guide.html](documentation/fa-guide.html)). 3.0'da yeni: [Çalıştırıcı ve Arka Plan Süreci](documentation/Runner-and-Daemon.md), [Ağ Geçidi](documentation/Gateway.md), [Aramin Konsolu](documentation/Aramin-Console.md), [Arama](documentation/Search.md), [Beceri Merkezi](documentation/Skill-Hub.md), [Pano, Korumalı Alan, Kasa ve A2A](documentation/Board-Sandbox-Vault.md).
+Belgelerin tamamı [`documentation/`](documentation/README.md) altındadır — kavramlar, operasyon, genişletme kılavuzları, güvenlik ve sahibe özel tam Farsça kılavuz ([fa-guide.html](documentation/fa-guide.html)). 3.0'da yeni: [Çalıştırıcı ve Arka Plan Süreci](documentation/Runner-and-Daemon.md), [Ağ Geçidi](documentation/Gateway.md), [Aramis Konsolu](documentation/Aramis-Console.md), [Arama](documentation/Search.md), [Beceri Merkezi](documentation/Skill-Hub.md), [Pano, Korumalı Alan, Kasa ve A2A](documentation/Board-Sandbox-Vault.md).

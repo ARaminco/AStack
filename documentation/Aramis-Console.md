@@ -1,6 +1,6 @@
-# Aramin — the AStack console
+# Aramis — the AStack console
 
-Aramin (آرامین) is the owner's console for AStack: a local, installable web app
+Aramis (آرامیس) is the owner's console for AStack: a local, installable web app
 for the decisions and the overview that otherwise live in the CLI. It follows
 a native-app admin pattern — a separate, clean app with a bottom tab bar on phones,
 a side rail on desktop, a Ctrl/⌘-K command palette, bottom sheets, dark mode and
@@ -68,9 +68,9 @@ and the username: `console.lockout.attempts` failures (5) within
 ten-per-minute limit per address stays in place.
 
 **Install it as an app (PWA).** In Chrome or Edge, use the install icon in the
-address bar (or the menu's "Install Aramin"); on a phone, "Add to Home screen".
+address bar (or the menu's "Install Aramis"); on a phone, "Add to Home screen".
 The installed app opens in its own window with the same session. Settings →
-install shows the same option inside Aramin.
+install shows the same option inside Aramis.
 
 **Phone or another computer.** The console listens on `127.0.0.1` only. Reach it
 from elsewhere only through a tunnel or reverse proxy that you control and that
@@ -138,7 +138,7 @@ card; nothing breaks.
 
 ## Trust model
 
-Aramin adds no new authority. Every write is an owner decision that goes through
+Aramis adds no new authority. Every write is an owner decision that goes through
 the engine the CLI already uses, with the actor `owner@console`:
 
 - **Approve / deny** call `runtime.approvals.approve|reject`; the receipt
@@ -320,7 +320,7 @@ What the internet listener does differently:
   and in `astack console status`) until a console user has TOTP on and, since
   3.1.1, until `access.team` and `access.aud` are set;
 - sessions last at most 12 hours (`session_hours`) and end after
-  `idle_minutes` (60) unused; the cookie is `__Host-aramin_sid` with
+  `idle_minutes` (60) unused; the cookie is `__Host-aramis_sid` with
   `Secure; HttpOnly; SameSite=Strict`; a session belongs to the listener
   that created it;
 - every write needs the CSRF token and `Origin: https://<hostname>`;
@@ -378,7 +378,7 @@ Exposure checklist:
 5. Restart the console. `astack console status` must show the internet
    listener running with `access: on`; if it is stopped, the line says why.
 6. From outside: `https://<hostname>` first shows the Cloudflare Access
-   login, then Aramin's sign-in, which needs the authenticator code. On the
+   login, then Aramis's sign-in, which needs the authenticator code. On the
    machine, a request straight to `http://127.0.0.1:7718` is refused (421 for
    any other host name, 403 without a valid Access token), and `curl -H "X-Forwarded-For: 1.2.3.4" http://127.0.0.1:7717/api/health`
    gets 403.
@@ -433,11 +433,11 @@ mission states, runner runs and open incidents, so work started by another
 process (CLI, scheduler daemon, gateway) is noticed too. Differences become
 `notification` events (new approval, mission or run finished/failed/refused,
 new incident) and `counts` updates for the badges. When the owner allows it,
-the browser shows a system notification while Aramin is in the background.
+the browser shows a system notification while Aramis is in the background.
 
 ## PWA
 
-`manifest.webmanifest` (name and short name "Aramin", Persian description,
+`manifest.webmanifest` (name and short name "Aramis", Persian description,
 standalone, shortcuts to approvals and missions), SVG and PNG icons including a
 maskable one, and `sw.js`, which caches the shell for offline start and never
 caches or intercepts `/api/*`. The server stamps a content hash of
@@ -489,7 +489,7 @@ Write Windows project paths with forward slashes (`C:/Projects/shop`).
 
 ### Your own name for the panel (3.1.3)
 
-Aramin is the console's base name. An install can show its own name and
+Aramis is the console's base name. An install can show its own name and
 icons without touching the core:
 
 ```yaml

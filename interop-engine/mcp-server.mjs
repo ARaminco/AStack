@@ -531,7 +531,7 @@ function runCli(args) {
 
 /**
  * `mcp__astack__permission_prompt`: the `--permission-prompt-tool` of a
- * conversation started from the Aramin console. Claude Code calls it with
+ * conversation started from the Aramis console. Claude Code calls it with
  * `{ tool_name, input, tool_use_id }` whenever a tool use needs permission;
  * the tool turns it into an AStack approval (action `claude.tool`), waits
  * until the owner decides in the console or on the gateway (or the request
@@ -547,7 +547,7 @@ export const PERMISSION_TOOL_NAME = "permission_prompt";
 
 export const permissionTool = {
   name: PERMISSION_TOOL_NAME,
-  description: "Permission prompt for Claude Code conversations started from the Aramin console. Not for direct use.",
+  description: "Permission prompt for Claude Code conversations started from the Aramis console. Not for direct use.",
   inputSchema: {
     type: "object",
     properties: {

@@ -3,13 +3,13 @@
 AStack Enterprise is a layered, manifest-driven operating system for AI-run work. Version 2 generalizes it beyond software: any engagement — a lawsuit, a VAT filing, an accounting close, a hiring round, a product build — is classified into a domain, staffed by a team of agents, and delivered as a stage-gated project.
 
 ## Layers
-Core, Runtime, Chief of Staff, Orchestrator, Domains, Departments, Roles, Teams, Agents, Providers, Knowledge Packs, Plugins, Memory Engine, Knowledge Graph, Context Engine, Learning Engine, Mission Engine, Scheduler Engine, Signal Engine, Browser Engine, Tool Registry, Runtime Providers, Trust Engine, Workflow Engine, Delivery Engine, Team Engine, Agent Engine, Upgrade Engine, Localization Engine, Configuration Engine, Event Bus, Permission System, CLI, Installer, Documentation, Testing, and optional Telemetry. Version 3.0 adds Runner Engine, Daemon Engine, Gateway Engine, Search Engine, Skill Hub, Aramin Console, Board Engine, Sandbox Engine, vault backends and the A2A endpoint.
+Core, Runtime, Chief of Staff, Orchestrator, Domains, Departments, Roles, Teams, Agents, Providers, Knowledge Packs, Plugins, Memory Engine, Knowledge Graph, Context Engine, Learning Engine, Mission Engine, Scheduler Engine, Signal Engine, Browser Engine, Tool Registry, Runtime Providers, Trust Engine, Workflow Engine, Delivery Engine, Team Engine, Agent Engine, Upgrade Engine, Localization Engine, Configuration Engine, Event Bus, Permission System, CLI, Installer, Documentation, Testing, and optional Telemetry. Version 3.0 adds Runner Engine, Daemon Engine, Gateway Engine, Search Engine, Skill Hub, Aramis Console, Board Engine, Sandbox Engine, vault backends and the A2A endpoint.
 
 The autonomy layer added in version 2.1 sits above the original orchestration
 stack without replacing it: see [Autonomous Organization](Autonomous-Organization.md).
 
 Version 3.0 adds an always-on layer on top of the autonomy layer — Runner
-Engine, Daemon Engine, Gateway Engine, Search Engine, Skill Hub, Aramin
+Engine, Daemon Engine, Gateway Engine, Search Engine, Skill Hub, Aramis
 Console, Board Engine, Sandbox Engine, vault backends and the A2A endpoint —
 again without replacing anything beneath it (see [Always-on layer](#always-on-layer-30)).
 
@@ -49,7 +49,7 @@ again without replacing anything beneath it (see [Always-on layer](#always-on-la
 | Gateway Engine (3.0) | `gateway-engine/` | Owner messaging over Telegram and WhatsApp: allowlist, commands, approvals by message, local voice |
 | Search Engine (3.0) | `search-engine/` | SQLite FTS5 and optional Ollama embeddings over memory, past sessions, reports, skills and missions |
 | Skill Hub (3.0) | `skill-hub/`, `skill-packs/` | Third-party skill packs, static scanner, curator; packs rank below built-in skills |
-| Aramin Console (3.0) | `console/` | Local installable PWA over the same engines; owner decisions only |
+| Aramis Console (3.0) | `console/` | Local installable PWA over the same engines; owner decisions only |
 | Board Engine (3.0) | `board-engine/` | Durable multi-agent kanban executed through the runner |
 | Sandbox Engine (3.0) | `sandbox-engine/` | Docker-isolated command execution behind the automation policy |
 | Vault and redaction (3.0) | `trust-engine/vault.mjs`, `trust-engine/redaction.mjs` | OS keychain sources for the secret broker; scrubbing resolved secrets from outputs |
@@ -97,7 +97,7 @@ spawned command or network target passes `runtime.automationPolicy`, and every
 action lands in `runtime.audit`.
 
 ```
- owner surfaces           CLI (astack run)    Gateway (Telegram/WhatsApp)    Aramin console    A2A (other agents)
+ owner surfaces           CLI (astack run)    Gateway (Telegram/WhatsApp)    Aramis console    A2A (other agents)
                                 │                    │                            │               │ plan-only by default
                                 └──────────┬─────────┴────────────┬───────────────┘               │
  background triggers   Scheduler (kind agent) · Signals (run-agent) · Board cards                  │

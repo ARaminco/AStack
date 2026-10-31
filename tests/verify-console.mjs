@@ -106,8 +106,8 @@ try {
   const manifest = await call(base, "/manifest.webmanifest");
   assert.equal(manifest.status, 200);
   assert.match(manifest.headers["content-type"], /manifest\+json/);
-  assert.equal(manifest.json.name, "Aramin");
-  assert.equal(manifest.json.short_name, "Aramin");
+  assert.equal(manifest.json.name, "Aramis");
+  assert.equal(manifest.json.short_name, "Aramis");
   assert.equal(manifest.json.display, "standalone");
   assert.ok(manifest.json.icons.some((icon) => icon.sizes === "512x512"));
   const worker = await call(base, "/sw.js");
@@ -131,8 +131,8 @@ try {
   assert.equal((await call(base, "/api/health")).status, 200);
   const i18n = await call(base, "/api/i18n?lang=fa");
   assert.equal(i18n.json.meta.direction, "rtl");
-  assert.equal(i18n.json.strings.brand, "آرامین");
-  assert.equal((await call(base, "/api/i18n?lang=en")).json.strings.brand, "Aramin");
+  assert.equal(i18n.json.strings.brand, "آرامیس");
+  assert.equal((await call(base, "/api/i18n?lang=en")).json.strings.brand, "Aramis");
   assert.equal((await call(base, "/api/session")).json.authenticated, false);
 
   // Login: wrong token refused, cross-origin refused, right token gives a strict cookie.
@@ -378,7 +378,7 @@ try {
   await service.stop();
   assert.equal(service.status().running, false);
 
-  console.log("AStack console (Aramin) verification passed");
+  console.log("AStack console (Aramis) verification passed");
 } finally {
   await cleanup();
 }
@@ -395,7 +395,7 @@ try {
   console.log("AStack console service config merge verified");
 }
 
-// 3.1.3: console.brand renames this install's panel; Aramin stays the base name.
+// 3.1.3: console.brand renames this install's panel; Aramis stays the base name.
 {
   const { resolveBrand, applyBrand } = await import("../console/server.mjs");
   assert.equal(resolveBrand(null), null);
@@ -403,8 +403,8 @@ try {
   const brand = resolveBrand({ name: "Gisoo<script>", name_fa: "گیسو" });
   assert.equal(brand.name, "Gisooscript", "markup characters are dropped from the brand");
   assert.equal(brand.nameFa, "گیسو");
-  assert.equal(applyBrand("آرامین — Aramin console", brand), "گیسو — Gisooscript console");
-  assert.deepEqual(applyBrand({ a: ["آرامین"], b: 1, c: "aramin-theme" }, brand), { a: ["گیسو"], b: 1, c: "aramin-theme" }, "storage keys and non-strings are untouched");
-  assert.equal(applyBrand("آرامین", null), "آرامین");
+  assert.equal(applyBrand("آرامیس — Aramis console", brand), "گیسو — Gisooscript console");
+  assert.deepEqual(applyBrand({ a: ["آرامیس"], b: 1, c: "aramis-theme" }, brand), { a: ["گیسو"], b: 1, c: "aramis-theme" }, "storage keys and non-strings are untouched");
+  assert.equal(applyBrand("آرامیس", null), "آرامیس");
   console.log("AStack console brand verified");
 }

@@ -22,7 +22,7 @@ Managed engine files are replaced (with a full backup under `.astack/backups/`).
 Owner-facing output: Persian by default, with English, Arabic, and Turkish locales (`ASTACK_LOCALE` or `cli.default_locale`). Missing keys fall back to English. Domain and workflow detection understands Persian and English request text. Code and stored data are always English.
 
 ## Where is my data?
-Everything is local: project, team, and agent state under `.astack/`, durable memory under `memory/`. Telemetry is disabled by default. The listeners added in 3.0 — the Aramin console, the gateway's webhook listener and the A2A endpoint — run only when you start them and bind `127.0.0.1` unless you set `allow_remote` deliberately.
+Everything is local: project, team, and agent state under `.astack/`, durable memory under `memory/`. Telemetry is disabled by default. The listeners added in 3.0 — the Aramis console, the gateway's webhook listener and the A2A endpoint — run only when you start them and bind `127.0.0.1` unless you set `allow_remote` deliberately.
 
 # Does AStack remember me between conversations?
 
@@ -85,12 +85,12 @@ values and a four-character code; reply «بفرست», «تایید» or "appro
 message (or «نه», «رد», "deny"). In a group, quote the request or include the
 code. The decision produces the same receipt as `astack approval approve`.
 
-## How do I open the Aramin console?
+## How do I open the Aramis console?
 
 With the daemon running, `astack console open` opens the browser already
 signed in. Without the daemon, `astack console start --open`. By hand: open
 `http://127.0.0.1:7717` and paste the token from `astack console token`. Your
-browser can install it as an app. See [Aramin Console](Aramin-Console.md).
+browser can install it as an app. See [Aramis Console](Aramis-Console.md).
 
 ## Can the console or the gateway be reached from the internet?
 

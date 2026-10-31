@@ -19,7 +19,7 @@ resolve each gap with the owner (one question per gap); re-rate after the fix
 4. **Generic-look risk:** stock hero, three feature cards, generic icons. Name
    the concrete choice that makes it this product's own.
 5. **Design system fit:** existing components, tokens, spacing and typography
-   reused; for an admin panel, the owner's Aramin console pattern (bottom tabs,
+   reused; for an admin panel, the owner's Aramis console pattern (bottom tabs,
    quick search, dark mode, notifications).
 6. **Responsive and accessible:** each viewport designed on purpose; keyboard
    navigation, focus, contrast, touch targets; `dir="rtl"`, Persian fonts and

@@ -2,7 +2,7 @@
 
 **Languages:** English · [فارسی](README.fa.md) · [العربية](README.ar.md) · [Türkçe](README.tr.md) — **Docs:** [Documentation Index](documentation/README.md)
 
-AStack Enterprise is a modular AI operating system that runs natively in both Claude Code and OpenAI Codex — one shared contract, one memory, one journal — while remaining open to ChatGPT and future agent runtimes. It manages any kind of engagement — software delivery, legal cases, finance, tax, accounting, marketing, operations, HR, research, and business strategy — by forming domain teams, creating agents, and delegating scheduled missions under a leadership layer. Since 3.0 it is also **always on and in your pocket**: an unattended runner and one background daemon keep missions, jobs and hooks moving while nobody is at the keyboard; you command it and approve its irreversible steps from Telegram or WhatsApp; and **Aramin**, a local installable console, shows every approval, mission, run and audit record. Every new capability sits inside the same trust model: authority ceilings, approval receipts and the audit trail.
+AStack Enterprise is a modular AI operating system that runs natively in both Claude Code and OpenAI Codex — one shared contract, one memory, one journal — while remaining open to ChatGPT and future agent runtimes. It manages any kind of engagement — software delivery, legal cases, finance, tax, accounting, marketing, operations, HR, research, and business strategy — by forming domain teams, creating agents, and delegating scheduled missions under a leadership layer. Since 3.0 it is also **always on and in your pocket**: an unattended runner and one background daemon keep missions, jobs and hooks moving while nobody is at the keyboard; you command it and approve its irreversible steps from Telegram or WhatsApp; and **Aramis**, a local installable console, shows every approval, mission, run and audit record. Every new capability sits inside the same trust model: authority ceilings, approval receipts and the audit trail.
 
 ## Features
 
@@ -18,7 +18,7 @@ AStack Enterprise is a modular AI operating system that runs natively in both Cl
 
 **In your pocket** — *new in 3.0*
 - **Gateway** — command AStack from Telegram or WhatsApp (a wapi-compatible HTTP gateway, AStack's own linked-device bridge, or the Meta Cloud API); owner allowlists with several accounts per channel; approve with «بفرست» / "approve" or decline with «نه» / "deny"; local Persian voice notes ([docs](documentation/Gateway.md))
-- **Aramin console** — a local, installable web app (PWA) for approvals, missions, memory, runs, jobs, audit, skills, board and system state; loopback only, token login, Persian by default ([docs](documentation/Aramin-Console.md))
+- **Aramis console** — a local, installable web app (PWA) for approvals, missions, memory, runs, jobs, audit, skills, board and system state; loopback only, token login, Persian by default ([docs](documentation/Aramis-Console.md))
 
 **Memory and recall**
 - **Memory OS** — twelve temporal facets, supersede instead of overwrite, nightly consolidation ([docs](documentation/Memory-OS.md))
@@ -89,7 +89,7 @@ node bin/astack.mjs daemon start
 node bin/astack.mjs daemon status
 node bin/astack.mjs daemon install-service --dry-run   # review the plan, then run it without --dry-run to start at logon
 
-# 3. Aramin console: opens the browser already signed in while the daemon runs
+# 3. Aramis console: opens the browser already signed in while the daemon runs
 node bin/astack.mjs console open                        # without the daemon: astack console start --open
 
 # 4. Telegram gateway: create a bot with @BotFather first
@@ -159,4 +159,4 @@ The delivery engine manages projects like a top-tier delivery team: stage-gated 
 Projects that embed AStack update themselves with `astack upgrade` (alias: `astack update`). Older installs that predate the upgrade engine drop the single-file `scripts/astack-upgrade.mjs` into the project and run it once — it fetches the latest core and applies the new upgrade logic while preserving `.astack/`, `memory/`, plugins, knowledge packs, and any path listed under `upgrade.keep`. See [Core Upgrades](documentation/Upgrade.md) and the [Migration Guide](documentation/Migration-Guide.md).
 
 ## Documentation
-The complete set lives in [`documentation/`](documentation/README.md) — concepts, operations, extension guides, security, and the full Persian owner guide ([fa-guide.html](documentation/fa-guide.html)). New in 3.0: [Runner and Daemon](documentation/Runner-and-Daemon.md), [Gateway](documentation/Gateway.md), [Aramin Console](documentation/Aramin-Console.md), [Search](documentation/Search.md), [Skill Hub](documentation/Skill-Hub.md), [Board, Sandbox, Vault and A2A](documentation/Board-Sandbox-Vault.md).
+The complete set lives in [`documentation/`](documentation/README.md) — concepts, operations, extension guides, security, and the full Persian owner guide ([fa-guide.html](documentation/fa-guide.html)). New in 3.0: [Runner and Daemon](documentation/Runner-and-Daemon.md), [Gateway](documentation/Gateway.md), [Aramis Console](documentation/Aramis-Console.md), [Search](documentation/Search.md), [Skill Hub](documentation/Skill-Hub.md), [Board, Sandbox, Vault and A2A](documentation/Board-Sandbox-Vault.md).

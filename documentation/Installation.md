@@ -95,7 +95,7 @@ astack daemon service-status
 
 Stop or remove it with `astack daemon stop` and `astack daemon uninstall-service`.
 
-### 3. Aramin console
+### 3. Aramis console
 
 ```bash
 astack console open            # daemon running: the browser opens signed in
@@ -104,7 +104,7 @@ astack console token           # manual sign-in at http://127.0.0.1:7717
 ```
 
 Phone access, installing as an app and the security model:
-[Aramin Console](Aramin-Console.md#how-to-sign-in).
+[Aramis Console](Aramis-Console.md#how-to-sign-in).
 
 ### 4. Gateway (Telegram)
 

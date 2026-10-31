@@ -7,7 +7,7 @@ import { VaultBackends } from "../trust-engine/vault.mjs";
 const scrypt = promisify(scryptCallback);
 
 /**
- * Console users: username + password (+ optional TOTP) for Aramin.
+ * Console users: username + password (+ optional TOTP) for Aramis.
  *
  * `.astack/console/users.json` holds, per user, an scrypt hash with its own
  * salt and parameters (never the password), a credential version and, when
@@ -145,7 +145,7 @@ export function verifyTotp(secret, code, { time = Date.now(), step = 30, window 
   return matched;
 }
 
-export function otpauthUri({ secret, username, issuer = "Aramin" }) {
+export function otpauthUri({ secret, username, issuer = "Aramis" }) {
   const label = encodeURIComponent(issuer) + ":" + encodeURIComponent(username);
   return "otpauth://totp/" + label + "?secret=" + secret + "&issuer=" + encodeURIComponent(issuer) + "&algorithm=SHA1&digits=6&period=30";
 }
@@ -450,7 +450,7 @@ export class LoginGuard {
   }
 
   static keyOf(key) {
-    return createHash("sha256").update("aramin-lockout\n" + String(key)).digest("hex").slice(0, 40);
+    return createHash("sha256").update("aramis-lockout\n" + String(key)).digest("hex").slice(0, 40);
   }
 
   live(entry, now) {
