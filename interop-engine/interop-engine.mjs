@@ -6,6 +6,7 @@ import { hashId, redactSecrets } from "../lib/text.mjs";
 import { ConfigurationEngine } from "../configuration-engine/configuration.mjs";
 import { importLegacyMemory } from "./memory-sources.mjs";
 import { readEconomyConfig } from "../economy-engine/storage.mjs";
+import { plannedCommitMsgHook } from "../lib/git-attribution.mjs";
 
 /**
  * Runtime interoperability: one contract, one memory, one journal.
@@ -387,7 +388,30 @@ export class InteropEngine {
     const browserReads = browser ? BROWSER_READ_TOOLS.map((tool) => "mcp__" + BROWSER_SERVER_ID + "__" + tool) : [];
     const keptAllow = (permissions.allow ?? []).filter((entry) => !ownAllow(entry));
     next.permissions = { ...permissions, allow: [...new Set([...keptAllow, "mcp__" + MCP_SERVER_ID, ...browserReads])] };
+    // Owner order: commits and pull requests never name Claude. Empty
+    // attribution strings turn off the co-author trailer and the PR footer.
+    next.attribution = { ...(next.attribution ?? {}), commit: "", pr: "" };
+    next.includeCoAuthoredBy = false;
     return next;
+  }
+
+  /**
+   * The git commit-msg hook that strips AI co-author lines and refuses an AI
+   * author, for every tool that commits (Codex, IDEs, scripts), not only
+   * Claude Code. An existing owner hook keeps its content; the managed block
+   * is inserted at its top. Not a git repository: nothing to wire.
+   */
+  plannedCommitMsgHook() {
+    const hooks = this.git(["rev-parse", "--git-path", "hooks"]);
+    if (!hooks) {
+      return null;
+    }
+    const absolute = resolve(this.projectRoot, hooks, "commit-msg");
+    const before = existsSync(absolute) ? readFileSync(absolute, "utf8") : null;
+    const script = "$(git rev-parse --show-toplevel)/" + relative(this.git(["rev-parse", "--show-toplevel"]) ?? this.projectRoot, join(this.root, "bin", "astack-commit-msg.mjs")).split("\\").join("/");
+    const content = plannedCommitMsgHook(before, script);
+    const same = before !== null && before.replace(/\r\n/g, "\n") === content.replace(/\r\n/g, "\n");
+    return { runtime: "git", path: relative(this.projectRoot, absolute).split("\\").join("/"), absolute, action: before === null ? "create" : same ? "ok" : "update", content };
   }
 
   plannedEconomySettings(next, hooks) {
@@ -563,14 +587,18 @@ export class InteropEngine {
       throw new Error("AGENTS.md is missing and the core has no " + CONTRACT_SOURCE + ": nothing to wire the runtimes to");
     }
     const plan = this.plan();
+    const hook = this.plannedCommitMsgHook();
+    if (hook) {
+      plan.push(hook);
+    }
     if (!dryRun) {
       for (const entry of plan) {
         if (entry.action === "ok" || entry.action === "invalid") {
           continue;
         }
-        const absolute = this.path(entry.path);
+        const absolute = entry.absolute ?? this.path(entry.path);
         mkdirSync(dirname(absolute), { recursive: true });
-        writeFileSync(absolute, entry.content, "utf8");
+        writeFileSync(absolute, entry.content, { encoding: "utf8", mode: entry.runtime === "git" ? 0o755 : undefined });
       }
     }
     return plan.map(({ runtime, path, action }) => ({ runtime, path, action }));

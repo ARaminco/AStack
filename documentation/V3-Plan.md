@@ -37,8 +37,8 @@ command, file format, test and behaviour keeps working unchanged.
 8. **State** lives under `.astack/<package>/` (add the path to `.gitignore`).
 9. Write a short doc `documentation/<Package>.md` and a CHANGELOG fragment in
    `documentation/v3-changelog/<package>.md` (the integrator merges them).
-10. Commit on your own branch, English messages, each ending with
-    `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Never push.
+10. Commit on your own branch, English messages, as the owner's git identity and
+    without any AI co-author line. Never push.
 
 ## Shared interfaces (code against these even if the other package is not merged yet)
 

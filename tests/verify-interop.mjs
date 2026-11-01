@@ -16,6 +16,8 @@ import { UpdatePipeline, changelogBetween, repositoryId } from "../upgrade-engin
 import { latestReleaseTag } from "../upgrade-engine/canonical.mjs";
 import { mergeJson, mergeKept, refreshBase, undoMerge } from "../upgrade-engine/kept-merge.mjs";
 import { facetForPath, importLegacyMemory, sections } from "../interop-engine/memory-sources.mjs";
+import { aiAttributionInCommand, hasAiAttribution, isAiIdentity, plannedCommitMsgHook, stripAiAttribution } from "../lib/git-attribution.mjs";
+import { decide } from "../bin/astack-guard.mjs";
 
 const repoRoot = process.cwd();
 const sandboxes = [];
@@ -81,6 +83,8 @@ const settings = readJson(join(workspace, ".claude", "settings.json"));
 assert.deepEqual(settings.permissions.allow, ["Bash(ls)", "mcp__astack", ...BROWSER_READ_TOOLS.map((tool) => "mcp__astack-browser__" + tool)], "owner permissions are kept, the astack tools and the browser tools that only look allowed");
 assert.equal(settings.hooks.SessionStart.length, 2, "owner hooks are kept beside the astack hook");
 assert.ok(settings.enabledMcpjsonServers.includes("astack"));
+assert.deepEqual(settings.attribution, { commit: "", pr: "" }, "Claude Code never adds a co-author line or PR footer");
+assert.equal(settings.includeCoAuthoredBy, false);
 const codexConfig = readFileSync(join(workspace, ".codex", "config.toml"), "utf8");
 assert.match(codexConfig, /model = "owner-model"/);
 assert.match(codexConfig, /\[mcp_servers\.astack\]/);
@@ -588,6 +592,50 @@ writeFileSync(join(aliasProject, "astack.config.yaml"), readFileSync(join(aliasP
 const aliasRun = spawnSync(process.execPath, [join(aliasProject, "bin", "astack.mjs"), "matter", "templates"], { cwd: aliasProject, encoding: "utf8", windowsHide: true });
 assert.equal(aliasRun.status, 0, aliasRun.stderr);
 assert.equal(aliasRun.stdout, spawnSync(process.execPath, [join(aliasProject, "bin", "astack.mjs"), "project", "templates"], { cwd: aliasProject, encoding: "utf8", windowsHide: true }).stdout, "an alias runs its command");
+
+// ---------------------------------------------------------------- no AI names in git (owner order 2026-11-01)
+
+const trailer = "Fix the login page\n\nBody line.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n";
+assert.ok(hasAiAttribution(trailer));
+assert.equal(stripAiAttribution(trailer), "Fix the login page\n\nBody line.\n");
+assert.equal(stripAiAttribution("Add Claude account switcher\n"), "Add Claude account switcher\n", "a message that only mentions Claude is kept");
+assert.equal(stripAiAttribution("Ship it\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n"), "Ship it\n");
+assert.ok(isAiIdentity("Claude <noreply@anthropic.com>"));
+assert.ok(!isAiIdentity("ARaminco <1698676+ARaminco@users.noreply.github.com>"));
+assert.ok(aiAttributionInCommand("git commit -m \"$(cat <<'EOF'\nFix\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\""));
+assert.ok(aiAttributionInCommand("git commit --author=\"Claude <noreply@anthropic.com>\" -m fix"));
+assert.ok(aiAttributionInCommand("gh pr create --title x --body \"Summary\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\""));
+assert.ok(aiAttributionInCommand("git config user.name Claude"));
+assert.equal(aiAttributionInCommand("git commit -m \"Aramis: add a second Claude account\""), null, "a message that only mentions Claude passes");
+assert.equal(aiAttributionInCommand("git log --grep='Co-Authored-By: Claude'"), null, "reading history is not writing it");
+assert.equal(decide({ tool_name: "Bash", tool_input: { command: "git commit -m \"x\n\nCo-Authored-By: Claude <noreply@anthropic.com>\"" } }, { state: {} }).decision, "deny", "the guard refuses an AI co-author line");
+assert.equal(decide({ tool_name: "Bash", tool_input: { command: "git commit -m \"Add Claude account switcher\"" } }, { state: {} }).decision, "allow");
+assert.match(plannedCommitMsgHook(null, "bin/astack-commit-msg.mjs"), /^#!\/bin\/sh\n# >>> astack:no-ai-attribution/);
+const ownerHook = "#!/bin/sh\necho owner\n";
+const mergedHook = plannedCommitMsgHook(ownerHook, "bin/astack-commit-msg.mjs");
+assert.match(mergedHook, /echo owner/, "an owner commit-msg hook keeps its content");
+assert.equal(plannedCommitMsgHook(mergedHook, "bin/astack-commit-msg.mjs"), mergedHook, "the managed block is refreshed, never duplicated");
+
+// A real repository: sync installs the hook; a Claude trailer is stripped and a Claude author refused.
+const gitProject = sandbox("astack-git-attr-");
+runSetup(gitProject);
+const gitRun = (args, env = {}) => spawnSync("git", args, { cwd: gitProject, encoding: "utf8", windowsHide: true, env: { ...process.env, ...env } });
+assert.equal(gitRun(["init", "-q"]).status, 0);
+gitRun(["config", "user.name", "Owner"]);
+gitRun(["config", "user.email", "owner@example.com"]);
+const gitSync = new InteropEngine(gitProject, { home, env: {} }).sync();
+assert.ok(gitSync.some((entry) => entry.runtime === "git" && /commit-msg$/.test(entry.path) && entry.action === "create"), "sync installs the commit-msg hook");
+assert.ok(new InteropEngine(gitProject, { home, env: {} }).sync().every((entry) => entry.action === "ok"), "hook install is idempotent");
+writeFileSync(join(gitProject, "note.txt"), "x");
+gitRun(["add", "note.txt"]);
+const committed = gitRun(["commit", "-q", "-m", "Add note\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"]);
+assert.equal(committed.status, 0, committed.stderr);
+assert.equal(gitRun(["log", "-1", "--format=%B"]).stdout.trim(), "Add note", "the hook strips the Claude trailer");
+writeFileSync(join(gitProject, "note.txt"), "y");
+gitRun(["add", "note.txt"]);
+const refused = gitRun(["commit", "-q", "-m", "As Claude"], { GIT_AUTHOR_NAME: "Claude", GIT_AUTHOR_EMAIL: "noreply@anthropic.com" });
+assert.notEqual(refused.status, 0, "a commit authored as Claude is refused");
+assert.match(refused.stderr, /AI identity/);
 
 delete process.env.ASTACK_USER_HOME;
 

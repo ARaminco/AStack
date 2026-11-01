@@ -8,7 +8,8 @@
  *   delete or permission change of a root, home or system folder, force-push
  *   or delete of a protected branch, `pm2 … all`, `pm2 kill`, disk
  *   formatting or erasing, a fork bomb, an agent granting an approval or
- *   writing an approval record);
+ *   writing an approval record, a commit or pull request that names Claude or
+ *   another AI as co-author or author);
  * - ask: destructive commands that are sometimes right (`git reset --hard`,
  *   `DROP TABLE`, `migrate:fresh`, data wipes, recursive deletes outside build
  *   and temp folders, reboots, turning the guard off, writing the guard's
@@ -36,6 +37,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, posix, relative, resolve, win32 } from "node:path";
 import { fileURLToPath } from "node:url";
 import { redactSecretsStrict } from "../lib/text.mjs";
+import { aiAttributionInCommand } from "../lib/git-attribution.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const stateDir = () => process.env.ASTACK_GUARD_STATE_DIR ?? join(root, ".astack", "guard");
@@ -1007,7 +1009,9 @@ export function decide(payload, { state = readGuardState(), projectDir = process
   const tool = String(payload?.tool_name ?? "");
   const input = payload?.tool_input ?? {};
   if (/^(Bash|PowerShell|Shell)$/i.test(tool) || typeof input.command === "string") {
-    return judgeCommand(input.command);
+    // Owner order: git history and pull requests never name Claude or another AI.
+    const attribution = aiAttributionInCommand(input.command);
+    return attribution ? verdict("deny", attribution) : judgeCommand(input.command);
   }
   if (/^(Edit|Write|MultiEdit|NotebookEdit)$/.test(tool)) {
     return judgeEdit(input.file_path ?? input.notebook_path ?? null, state, projectDir);

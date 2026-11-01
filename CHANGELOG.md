@@ -3,6 +3,14 @@
 All notable changes to AStack Enterprise. Versions follow the core manifest
 (`core/manifest.json`), which is what `astack upgrade` compares.
 
+## 4.0.1 — No AI names in git
+
+- Owner order: commits, tags and pull requests are the owner's own work and never name Claude or another AI. New `lib/git-attribution.mjs` recognises AI co-author trailers, "Generated with" footers and AI author identities.
+- `astack setup` / `astack interop sync` sets `attribution: { commit: "", pr: "" }` and `includeCoAuthoredBy: false` in `.claude/settings.json`, so Claude Code adds no co-author line or PR footer.
+- A managed `commit-msg` git hook (`bin/astack-commit-msg.mjs`) strips AI credit lines and refuses a commit whose author or committer is an AI, for Codex, IDEs and scripts as well as Claude Code. An existing owner hook keeps its content; the block is inserted at its top.
+- The guard denies `git commit`, `git tag`, `gh pr create|edit` and `git config user.*` commands that carry an AI co-author line or AI identity. Messages that only mention Claude ("add a Claude account") pass.
+- The contract gains a Git Identity section; `documentation/V3-Plan.md` no longer asks for a Claude co-author line.
+
 ## 4.0.0 — Aramis: new console UI, Claude accounts switcher, projects hub
 
 - The console is renamed from Aramin to Aramis (آرامیس) everywhere: documentation (`documentation/Aramis-Console.md`), the session cookie `aramis_sid`, and browser storage `aramis-*`. Old `aramin-*` keys are read once as a fallback, so existing installs keep their theme, language and layout.

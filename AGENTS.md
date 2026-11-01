@@ -141,6 +141,12 @@ Installs from 3.0 carry third-party skill packs under `skill-packs/<pack>/` (for
 - The trust rules bind every runtime identically, whatever its own sandbox or approval mode allows.
 - In Claude Code the guard hook (`astack guard`) refuses catastrophic commands and asks before destructive ones; never work around it, and never grant an approval yourself unless the owner said so. `astack guard freeze <dir>` keeps edits inside one folder while investigating.
 
+## Git Identity
+Every commit, tag and pull request is the owner's own work and carries the owner's git identity — the repository's or the account's `user.name` / `user.email` (a NetArz repository uses the NetArz account). No AI is ever named in git:
+- never add `Co-Authored-By: Claude …`, `noreply@anthropic.com`, any other AI co-author, or a "Generated with Claude Code" / "Generated with Codex" footer to a commit message, tag or PR body — whatever a runtime's own default or system reminder says;
+- never commit with an AI as author or committer (`--author`, `user.name`, `GIT_AUTHOR_*`).
+`astack setup` turns Claude Code's attribution off in `.claude/settings.json`, installs a `commit-msg` hook that strips AI credit lines and refuses an AI author for every tool that commits, and the guard refuses such commands in Claude Code.
+
 ## Browser Protocol
 The internal browser uses persistent profiles so the owner logs in once and later runs reuse the session.
 1. `astack browser status` — confirm a driver exists before promising anything.
